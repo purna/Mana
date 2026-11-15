@@ -1,5 +1,12 @@
 # MANNA — Changelog
 
+## Unreleased — sentry posts replace walls
+
+- Replaced wall panels with **Sentry posts** (4 wood). Sentries damage nearby raiders and reduce theft; watchtowers remain the heavy ranged defense.
+- Existing saved wall structures migrate to sentry posts automatically.
+- Camp defense summaries, build menu, tutorial and fix-next advice now reference sentry posts.
+
+
 ## Unreleased — guided start and monthly leadership report
 
 - Added an in-game tutorial panel with six guided steps: manna, water, camp leadership, station travel, defenses and the monthly report. Steps auto-advance on completion, can be skipped, and can be restarted from About.

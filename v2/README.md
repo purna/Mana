@@ -7,7 +7,7 @@ An isometric survival game inspired by the Exodus, built in `index.html` as a se
 - 28 visible citizen agents with traits (greedy, lazy, murmurer, devout, ordinary) gather manna and acacia wood, deposit stores, hoard, murmur, fall sick and can be counselled.
 - Faith drives an obedience ladder: Optimal Order → Growing Unrest → Secret Idolatry → Open Rebellion.
 - Hoarded manna rots at midnight, breeding disease and feeding Golden Calf progress.
-- Build tents, wall panels and watchtowers from acacia wood; defend the camp from night raids with towers and palisades.
+- Build tents, sentry posts and watchtowers from acacia wood; sentries damage and deter raiders, while watchtowers provide heavy ranged defense.
 - Open the **Camp** panel with `C` for population, traits, stores, construction and defense.
 - Terrain uses textured tiles plus a dual-grid pass for blended water/rock/trail edges and sloped height transitions.
 - Every tribe has a per-tribe stat block: canonical population, represented agents, sickness, hoarding and trait counts.
