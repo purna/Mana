@@ -324,7 +324,17 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .vital.critical .bar i{animation:vitalPulse .8s infinite alternate}
 @keyframes vitalPulse{from{opacity:.65}to{opacity:1}}
 @media (max-width:760px){.vital{grid-template-columns:54px 1fr 24px}.vital-val{font-size:10px}}
-#bCampWater{background:linear-gradient(90deg,#2f6f94,#6fb6d8);box-shadow:0 0 6px rgba(111,182,216,.25)}</style>
+#bCampWater{background:linear-gradient(90deg,#2f6f94,#6fb6d8);box-shadow:0 0 6px rgba(111,182,216,.25)}
+.raid-indicator{
+  position:absolute;z-index:39;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;
+  padding:5px 9px;border-radius:999px;background:rgba(100,22,16,.94);border:1px solid #ff8a6a;
+  color:#ffe6d8;font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.05em;white-space:nowrap;
+  box-shadow:0 0 18px rgba(224,88,74,.65);pointer-events:none
+}
+.raid-indicator[hidden]{display:none}
+.raid-arrow{display:inline-block;color:#ffb257;font-size:15px;line-height:1;transition:transform .08s linear}
+.raid-text{font-weight:600}
+</style>
 </head>
 <body class="menu-open">
 <canvas id="c" aria-label="Isometric wilderness"></canvas>
@@ -388,6 +398,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 
   <div id="buildBanner" class="build-banner" hidden></div>
   <div id="raidBanner" class="raid-banner" hidden>Raiders at the perimeter!</div>
+  <div id="raidIndicator" class="raid-indicator" hidden><span class="raid-arrow">➤</span><span class="raid-text">Raiders</span></div>
 
   <div class="controls-top-right" id="topBtns">
     <button class="icon-btn" id="btnPause" title="Pause (Esc)" aria-label="Pause">❚❚</button>
@@ -999,6 +1010,7 @@ function resetState(){
   state.interaction = null; state.endShown = false;
   $('buildBanner').hidden = true;
   $('raidBanner').hidden = true;
+  $('raidIndicator').hidden = true;
   manna = []; particles = []; pops = []; structures = []; raiders = []; buildGhost = null;
   fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
   woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
@@ -1690,6 +1702,11 @@ function healSickCitizens(n){
   state.sick = sickCount();
 }
 
+function cardinalOf(dx,dy){
+  const deg = (Math.atan2(dx, -dy) * 180/Math.PI + 360) % 360;
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45) % 8];
+}
+
 function orderInfo(){
   const f = state.faith;
   if (f >= 75) return { id:'optimal',  label:'Optimal Order',  color:'#9dbb74', speed:1.12 };
@@ -1923,14 +1940,57 @@ function spawnRaid(){
     raiders.push({ x:spot.x, y:spot.y, hp:95, maxHp:95, loot:0, state:'raid', phase:Math.random()*6.28 });
   }
   if (raiders.length){
-    say('Raiders approach the camp perimeter! Towers and walls will defend it.');
-    $('raidBanner').hidden = false;
-    setTimeout(() => { $('raidBanner').hidden = true; }, 4200);
+    const lead = raiders[0];
+    const cardinal = cardinalOf(lead.x - state.player.x, lead.y - state.player.y);
+    const label = `${raiders.length} raider${raiders.length > 1 ? 's' : ''}`;
+    say(`${label} approach from the ${cardinal}! Move toward them and press E to strike, or let towers fire.`);
+    const banner = $('raidBanner');
+    banner.textContent = `${label} at the perimeter — ${cardinal}!`;
+    banner.hidden = false;
+    setTimeout(() => { banner.hidden = true; }, 4200);
     playSfx('hurt', 0.3);
+    updateRaidIndicator();
+  }
+}
+
+function updateRaidIndicator(){
+  const el = $('raidIndicator');
+  if (!el) return;
+  if (!raiders.length || state.mode === 'menu' || state.mode === 'end'){
+    el.hidden = true;
+    return;
+  }
+  const p = state.player;
+  let lead = null, bd = 1e9;
+  for (const r of raiders){
+    const d = Math.hypot(r.x-p.x, r.y-p.y);
+    if (d < bd){ bd = d; lead = r; }
+  }
+  if (!lead){ el.hidden = true; return; }
+  const sp = W2S(lead.x, lead.y);
+  const dx = sp.x - W/2;
+  const dy = sp.y - H/2;
+  const angle = Math.atan2(dy, dx);
+  const kx = dx !== 0 ? (W/2 - 95) / Math.abs(dx) : Infinity;
+  const ky = dy !== 0 ? (H/2 - 135) / Math.abs(dy) : Infinity;
+  const k = Math.min(1, kx, ky);
+  const x = clamp(W/2 + dx*k, 90, W-90);
+  const y = clamp(H/2 + dy*k, 110, H-130);
+  el.hidden = false;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  const arrow = el.querySelector('.raid-arrow');
+  if (arrow) arrow.style.transform = `rotate(${angle}rad)`;
+  const text = el.querySelector('.raid-text');
+  if (text){
+    const cardinal = cardinalOf(lead.x-p.x, lead.y-p.y);
+    text.textContent = `${raiders.length} raider${raiders.length > 1 ? 's' : ''} · ${Math.round(bd*10)}m ${cardinal}`;
   }
 }
 
 function clearRaiders(msg){
+  const el = $('raidIndicator');
+  if (el) el.hidden = true;
   if (!raiders.length){ state.raidSpawned = false; return; }
   raiders = [];
   state.raidSpawned = false;
@@ -3155,6 +3215,17 @@ function drawRaider(r,t){
   g.fillRect(p.x-w/2, p.y-28, w, 3);
   g.fillStyle = hpk > 0.5 ? '#e0a24a' : '#e0584a';
   g.fillRect(p.x-w/2, p.y-28, w*hpk, 3);
+  // Pulsing alert marker above the raider.
+  const pulse = 0.55 + 0.45*Math.sin(t*6 + r.phase);
+  g.strokeStyle = `rgba(224,88,74,${0.45+0.35*pulse})`;
+  g.lineWidth = 2;
+  g.beginPath(); g.ellipse(p.x, p.y+1, 11, 5, 0, 0, Math.PI*2); g.stroke();
+  g.fillStyle = '#e0584a';
+  g.beginPath(); g.moveTo(p.x,p.y-42); g.lineTo(p.x+6,p.y-35); g.lineTo(p.x,p.y-28); g.lineTo(p.x-6,p.y-35); g.closePath(); g.fill();
+  g.fillStyle = '#fff6ef';
+  g.font = '700 9px Georgia, serif';
+  g.textAlign = 'center';
+  g.fillText('!', p.x, p.y-31);
   if (r.loot > 0){
     g.fillStyle = '#ffe27a';
     g.beginPath(); g.arc(p.x-5,p.y-10,2.4,0,6.28); g.fill();
@@ -3393,6 +3464,7 @@ function draw(){
     g.fillStyle = 'rgba(14,9,5,.30)';
     g.fillRect(0,0,W,H);
   }
+  updateRaidIndicator();
 }
 
 /* ------------------------------- HUD --------------------------------- */

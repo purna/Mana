@@ -1,5 +1,13 @@
 # MANNA — Changelog
 
+## Unreleased — raider direction and markers
+
+- Raid warnings now name the direction and count: "2 raiders at the perimeter — SW!"
+- Added a pulsing red raider indicator with count, distance and cardinal direction; it tracks the nearest raider and points toward off-screen threats.
+- Raiders now have a pulsing red ring and exclamation marker in the scene.
+- The initial raid log explains the response: move toward them and press E to strike, or rely on watchtowers.
+
+
 ## Unreleased — monthly turns, real pressure and growth
 
 - Calendar is now month-based: each round is a month, twelve months make a year, with Hebrew month names and a 40-year cap. HUD and journey panel show Year/Month; saves migrate from the old year-per-round format.
