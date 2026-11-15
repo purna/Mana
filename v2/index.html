@@ -284,16 +284,16 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 }
 
 .camp-tribe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 4px}
-.camp-tribe-card{border:1px solid rgba(232,184,74,.26);border-radius:7px;padding:6px 8px;background:rgba(255,255,255,.03);text-align:left}
+.camp-tribe-card{border:1px solid rgba(232,184,74,.26);border-radius:8px;padding:9px 11px;background:rgba(255,255,255,.03);text-align:left}
 .camp-tribe-head{display:flex;align-items:center;gap:6px}
 .camp-tribe-head i{width:9px;height:9px;border-radius:50%;flex:none;border:1px solid #0006}
-.camp-tribe-head b{font-family:Cinzel,serif;font-size:12px;color:#f2cc6b}
-.camp-tribe-head span{margin-left:auto;font-family:Cinzel,serif;font-size:11px;color:#e8dcc4;white-space:nowrap}
-.camp-tribe-line{font-size:10px;color:#cbb894;margin-top:3px}
+.camp-tribe-head b{font-family:Cinzel,serif;font-size:14px;color:#f2cc6b}
+.camp-tribe-head span{margin-left:auto;font-family:Cinzel,serif;font-size:12px;color:#e8dcc4;white-space:nowrap}
+.camp-tribe-line{font-size:11px;color:#cbb894;margin-top:4px;line-height:1.35}
 .camp-tribe-line b{color:#e8dcc4}
-.camp-tribe-traits{display:flex;flex-wrap:wrap;gap:3px 7px;font-size:9.5px;color:#cbb894;margin-top:3px}
+.camp-tribe-traits{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:10.5px;color:#cbb894;margin-top:4px}
 .camp-tribe-traits span{white-space:nowrap}
-.camp-tribe-traits b{font-family:Cinzel,serif;font-size:10px;color:#e8dcc4}
+.camp-tribe-traits b{font-family:Cinzel,serif;font-size:11px;color:#e8dcc4}
 @media (max-width:760px){
   .camp-tribe-grid{grid-template-columns:1fr}
 }
@@ -334,6 +334,46 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .raid-indicator[hidden]{display:none}
 .raid-arrow{display:inline-block;color:#ffb257;font-size:15px;line-height:1;transition:transform .08s linear}
 .raid-text{font-weight:600}
+
+/* Monthly leadership report */
+.report-summary{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}
+.report-summary span{border:1px solid rgba(232,184,74,.3);border-radius:6px;padding:4px 8px;font-size:11px;color:#cbb894;background:rgba(255,255,255,.03)}
+.report-summary b{color:#f2cc6b;font-family:Cinzel,serif;font-size:12px}
+.report-annual{font-size:12px;color:#f2cc6b;text-align:center;border:1px solid rgba(232,184,74,.28);border-radius:7px;padding:7px 10px;margin:0 0 10px;background:rgba(232,184,74,.05)}
+.report-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
+.report-block{text-align:left;margin:0 0 10px}
+.report-block h3{font-family:Cinzel,serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#f2cc6b;margin:0 0 5px}
+.report-block ul{margin:0;padding-left:18px;font-size:12px;line-height:1.45;color:#e8dcc4}
+.report-block li{margin:0 0 3px}
+#reportSuccess li::marker{color:#9dbb74}
+#reportFailures li::marker{color:#e0584a}
+#reportFixes li::marker{color:#f2cc6b}
+.report-offender{display:flex;align-items:center;gap:8px;padding:5px 7px;border-bottom:1px solid rgba(232,184,74,.18);font-size:12px;color:#e8dcc4}
+.report-offender span{flex:1;min-width:0}
+.report-offender em{color:#cbb894;font-size:10.5px;font-style:normal;white-space:nowrap}
+.report-offender button{padding:4px 8px;font-size:10.5px}
+.report-empty{font-size:12px;color:#9dbb74;padding:5px 0}
+#reportContinue{position:sticky;bottom:0;z-index:3;margin-top:8px}
+@media (max-width:620px){
+  .report-columns{grid-template-columns:1fr}
+  .report-offender{flex-wrap:wrap}
+}
+
+.tutorial-panel{
+  position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 62px);width:270px;
+  z-index:37;pointer-events:auto;padding:10px 12px;border:1px solid rgba(232,184,74,.5);border-radius:10px;
+  background:linear-gradient(180deg,rgba(48,36,20,.97),rgba(28,20,11,.96));
+  box-shadow:0 10px 26px #0009,inset 0 0 0 1px rgba(255,242,196,.1)
+}
+.tutorial-kicker{font-family:Cinzel,serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#e8b84a;margin-bottom:4px}
+.tutorial-text{font-size:11.5px;line-height:1.4;color:#e8dcc4}
+.tutorial-text b{color:#f2cc6b;font-family:Cinzel,serif}
+.tutorial-actions{display:flex;gap:6px;margin-top:7px}
+.tutorial-actions button{flex:1;padding:6px 8px;font-size:11px}
+.tutorial-actions button.ghost{flex:.7;opacity:.75}
+@media (max-width:820px){
+  .tutorial-panel{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);left:8px;right:8px;width:auto}
+}
 </style>
 </head>
 <body class="menu-open">
@@ -399,6 +439,15 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div id="buildBanner" class="build-banner" hidden></div>
   <div id="raidBanner" class="raid-banner" hidden>Raiders at the perimeter!</div>
   <div id="raidIndicator" class="raid-indicator" hidden><span class="raid-arrow">➤</span><span class="raid-text">Raiders</span></div>
+
+  <div id="tutorialPanel" class="tutorial-panel" hidden>
+    <div class="tutorial-kicker">Guidance · <span id="tutorialStepNum">1</span>/6</div>
+    <div id="tutorialText" class="tutorial-text"></div>
+    <div class="tutorial-actions">
+      <button id="tutorialNext">Next</button>
+      <button id="tutorialSkip" class="ghost">Skip</button>
+    </div>
+  </div>
 
   <div class="controls-top-right" id="topBtns">
     <button class="icon-btn" id="btnPause" title="Pause (Esc)" aria-label="Pause">❚❚</button>
@@ -472,6 +521,23 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   </div>
 </div>
 
+<!-- Monthly report -->
+<div class="overlay" id="reportOverlay">
+  <div class="sheet wide">
+    <div class="kicker" id="reportKicker">Year 1 · Nisan</div>
+    <h2 id="reportTitle">Monthly Report</h2>
+    <div id="reportSummary" class="report-summary"></div>
+    <div id="reportAnnual" class="report-annual"></div>
+    <div class="report-columns">
+      <div class="report-block"><h3>Successes</h3><ul id="reportSuccess"></ul></div>
+      <div class="report-block"><h3>Failures</h3><ul id="reportFailures"></ul></div>
+    </div>
+    <div class="report-block"><h3>Fix Next</h3><ul id="reportFixes"></ul></div>
+    <div class="report-block"><h3>Discipline</h3><div id="reportOffenders"></div></div>
+    <button class="primary" id="reportContinue">Continue</button>
+  </div>
+</div>
+
 <!-- Pause -->
 <div class="overlay" id="pauseOverlay">
   <div class="sheet">
@@ -531,6 +597,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
       <span><b>E</b> — draw / warm / gather / counsel</span><span><b>C</b> — camp</span><span><b>M</b> — map</span><span><b>Esc</b> — pause</span>
     </div>
     <button class="primary" id="aboutClose">Return to the wilderness</button>
+    <button class="ghost" id="aboutTutorial">Show tutorial</button>
   </div>
 </div>
 
@@ -660,6 +727,22 @@ const TRIBES = [
   { name:'Benjamin', epithet:'A Ravenous Wolf',   color:'#6C3483', population:35400 }
 ];
 
+const HEBREW_NAMES = [
+  'Aaron','Joshua','Caleb','Eleazar','Hur','Bezalel','Oholiab','Phinehas',
+  'Gershom','Eliezer','Nadab','Abihu','Ithamar','Nahshon','Salmon','Korah',
+  'Dathan','Abiram','Jethro','Hobab','Othniel','Kenaz','Sethur','Palti',
+  'Gaddiel','Ammiel','Pagiel','Eliasaph'
+];
+
+const TUTORIAL_STEPS = [
+  { title:'Gather manna', text:'Walk into the glowing flakes. Manna feeds you and the camp; the monthly quota is ' + QUOTA + '.' },
+  { title:'Draw water', text:'Find a blue spring and press E. The camp water store keeps the people alive; when it is empty, you suffer too.' },
+  { title:'Lead the camp', text:'Open the Camp panel with C. Review the tribes, counsel murmurers with E, and discipline hoarders.' },
+  { title:'Follow the pillar', text:'The compass points to the next station. Approach the pillar to hear its story; the camp must have enough manna, water and faith.' },
+  { title:'Prepare defenses', text:'Build a watchtower from Camp → Build before the night raids. Towers fire automatically.' },
+  { title:'Read the monthly report', text:'At the end of each month, review successes, failures, who to punish, and what to fix next.' }
+];
+
 function seedTribeStats(){
   const out = {};
   for (const t of TRIBES){
@@ -673,6 +756,37 @@ function seedTribeStats(){
 function totalPopulation(){
   return Object.values(state.tribeStats || {}).reduce((sum, t) => sum + (t.population || 0), 0);
 }
+function beginMonthTracking(){
+  state.monthTracking = {
+    population: totalPopulation(),
+    livestock: totalLivestock(),
+    faith: state.faith,
+    health: state.health,
+    manna: state.manna,
+    campWater: state.campWater,
+    stations: state.stationIndex,
+    mannaGathered: 0,
+    waterDrawn: 0,
+    woodGathered: 0,
+    raids: 0,
+    raidersDefeated: 0,
+    stolen: 0
+  };
+}
+function beginYearTracking(){
+  state.yearTracking = {
+    mannaGathered: 0,
+    waterDrawn: 0,
+    woodGathered: 0,
+    raids: 0,
+    raidersDefeated: 0,
+    stolen: 0,
+    stations: 0,
+    monthsFed: 0,
+    months: 0
+  };
+}
+
 function totalLivestock(){
   return Object.values(state.tribeStats || {}).reduce((sum, t) => sum + (t.livestock || 0), 0);
 }
@@ -949,6 +1063,7 @@ function buildDecor(){
     let x = CAMP.x + Math.cos(a)*r, y = CAMP.y + Math.sin(a)*r;
     if (!free(x,y,0)) { x = CAMP.x + (rnd()-0.5)*3; y = CAMP.y + (rnd()-0.5)*3; }
     people.push({
+      name: HEBREW_NAMES[i % HEBREW_NAMES.length],
       x, y, hx:x, hy:y, wx:x, wy:y, t:rnd()*3, col:robes[i%robes.length], phase:rnd()*6.28,
       trait:traitPool[i], baseTrait:traitPool[i], tribe:pickTribe(),
       carry:0, hoard:0, woodCarry:0, task:'idle', target:null, work:0, stuck:0,
@@ -968,6 +1083,8 @@ const state = {
   wood:0, sick:0, rot:0, calf:0, raidSpawned:false, order:'Optimal',
   campFed:false, lastFoodShort:0, lastWaterShort:0, stationWarnCd:0,
   tribeStats: seedTribeStats(),
+  monthTracking:null, yearTracking:null, lastReport:null,
+  tutorialStep:-1, tutorialDone:false, tutorialCampSeen:false,
   buildMode:null, mouseWorld:null,
   keys:{}, log:[], explored:new Set(), exploreTimer:0,
   duskDone:false, nightDone:false, mannaSpawned:false,
@@ -1003,6 +1120,10 @@ function resetState(){
   state.wood = 0; state.sick = 0; state.rot = 0; state.calf = 0;
   state.campFed = false; state.lastFoodShort = 0; state.lastWaterShort = 0; state.stationWarnCd = 0;
   state.tribeStats = seedTribeStats();
+  state.monthTracking = null; state.yearTracking = null; state.lastReport = null;
+  state.tutorialStep = -1; state.tutorialDone = false; state.tutorialCampSeen = false;
+  $('tutorialPanel').hidden = true;
+  beginMonthTracking(); beginYearTracking();
   state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
   state.score = 0; state.speed = 1; state.keys = {}; state.log = [];
   state.explored = new Set(); state.exploreTimer = 0;
@@ -1011,6 +1132,7 @@ function resetState(){
   $('buildBanner').hidden = true;
   $('raidBanner').hidden = true;
   $('raidIndicator').hidden = true;
+  $('reportOverlay').classList.remove('open');
   manna = []; particles = []; pops = []; structures = []; raiders = []; buildGhost = null;
   fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
   woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
@@ -1290,7 +1412,251 @@ function nightFalls(){
   if (Math.random() < 0.78) spawnRaid();
 }
 
+function renderTutorial(){
+  const step = TUTORIAL_STEPS[state.tutorialStep];
+  if (!step){ $('tutorialPanel').hidden = true; return; }
+  $('tutorialPanel').hidden = false;
+  $('tutorialStepNum').textContent = state.tutorialStep + 1;
+  $('tutorialText').innerHTML = `<b>${step.title}.</b> ${step.text}`;
+  $('tutorialNext').textContent = state.tutorialStep === TUTORIAL_STEPS.length - 1 ? 'Finish' : 'Next';
+}
+function beginTutorial(){
+  if (state.mode !== 'playing') return;
+  state.tutorialStep = 0;
+  state.tutorialDone = false;
+  state.tutorialCampSeen = false;
+  renderTutorial();
+}
+function hideTutorial(){
+  state.tutorialStep = -1;
+  state.tutorialDone = true;
+  $('tutorialPanel').hidden = true;
+}
+function advanceTutorial(){
+  if (state.tutorialStep < 0) return;
+  state.tutorialStep++;
+  if (state.tutorialStep >= TUTORIAL_STEPS.length){
+    hideTutorial();
+    say('Guidance complete. Lead the people well.');
+    return;
+  }
+  renderTutorial();
+  say(`Guidance: ${TUTORIAL_STEPS[state.tutorialStep].title}.`);
+}
+function updateTutorial(){
+  if (state.tutorialStep < 0) return;
+  const step = state.tutorialStep;
+  let done = false;
+  if (step === 0) done = (state.monthTracking?.mannaGathered || 0) > 0 || state.manna > 0;
+  else if (step === 1) done = (state.monthTracking?.waterDrawn || 0) > 0;
+  else if (step === 2) done = state.tutorialCampSeen;
+  else if (step === 3) done = state.visited.size > 0 || (currentStation() && dist(state.player, currentStation()) < 15);
+  else if (step === 4) done = structures.some(s => s.kind === 'tower');
+  else if (step === 5) done = state.mode === 'report';
+  if (done) advanceTutorial();
+}
+
+function tutorialTarget(){
+  if (state.tutorialStep < 0) return null;
+  const step = state.tutorialStep;
+  if (step === 0){
+    let best = null, bd = 1e9;
+    for (const m of manna){ const d = Math.hypot(m.x-state.player.x, m.y-state.player.y); if (d < bd){ bd = d; best = m; } }
+    return best || { x:CAMP.x, y:CAMP.y };
+  }
+  if (step === 1){
+    let best = null, bd = 1e9;
+    for (const t of waterTiles){ const d = Math.hypot(t.x-state.player.x, t.y-state.player.y); if (d < bd){ bd = d; best = t; } }
+    return best || { x:CAMP.x, y:CAMP.y };
+  }
+  if (step === 2){
+    let best = null, bd = 1e9;
+    for (const c of people){ if (c.trait !== 'murmurer' && c.trait !== 'lazy') continue; const d = Math.hypot(c.x-state.player.x, c.y-state.player.y); if (d < bd){ bd = d; best = c; } }
+    return best || { x:CAMP.x, y:CAMP.y };
+  }
+  if (step === 3 || step === 5) return currentStation();
+  if (step === 4) return { x:CAMP.x, y:CAMP.y };
+  return null;
+}
+
+function drawTutorialHint(t){
+  if (state.tutorialStep < 0) return;
+  const target = tutorialTarget();
+  if (!target) return;
+  const p = W2S(target.x, target.y);
+  if (p.x < -50 || p.x > W+50 || p.y < -50 || p.y > H+50) return;
+  const pulse = 0.5 + 0.5*Math.sin(t*4);
+  g.save();
+  g.strokeStyle = `rgba(242,204,107,${0.45 + 0.35*pulse})`;
+  g.lineWidth = 2;
+  g.beginPath(); g.ellipse(p.x, p.y+1, 18 + pulse*4, 8 + pulse*2, 0, 0, Math.PI*2); g.stroke();
+  g.fillStyle = '#f2cc6b';
+  g.beginPath();
+  g.moveTo(p.x, p.y-28); g.lineTo(p.x+5, p.y-36); g.lineTo(p.x-5, p.y-36); g.closePath(); g.fill();
+  g.restore();
+}
+
+function buildFixList(){
+  const fixes = [];
+  const req = stationRequirements();
+  const waterNeed = Math.max(18, req.water);
+  if (state.campWater < waterNeed) fixes.push(`Refill camp water (${Math.round(state.campWater)}/${waterNeed}) at a spring with E.`);
+  if (state.manna < QUOTA) fixes.push(`Gather ${QUOTA - state.manna} more manna before dusk (camp quota ${QUOTA}).`);
+  if (state.faith < Math.max(50, req.faith)) fixes.push(`Restore faith to ${Math.max(50, req.faith)}% — counsel murmurers, tithe, or pray at the campfire.`);
+  if (state.sick > 0) fixes.push(`Tend ${state.sick} sick citizens — warm them at the campfire.`);
+  const hoard = totalHoard();
+  if (hoard > 0) fixes.push(`Discipline or counsel ${hoard} hoarded manna before it rots at midnight.`);
+  if (state.wood < 10) fixes.push('Gather acacia wood for defenses — a watchtower costs 10.');
+  if (!structures.some(s => s.kind === 'tower')) fixes.push('Build a watchtower before the next night raid (Camp → Build).');
+  if (currentStation() && !canEnterStation()) fixes.push(`The next station needs ${req.manna} manna, ${req.water} water and ${req.faith}% faith.`);
+  if (!fixes.length) fixes.push('The camp is stable. Keep following the pillar and gathering surplus.');
+  return fixes.slice(0, 7);
+}
+
+function buildOffenders(){
+  const list = [];
+  people.forEach((p, i) => {
+    if (p.hoard > 0 || p.trait === 'murmurer' || (p.trait === 'lazy' && p.gatheredMonth === 0)){
+      list.push({
+        index: i,
+        name: p.name || p.tribe,
+        tribe: p.tribe,
+        trait: p.trait,
+        hoard: p.hoard || 0
+      });
+    }
+  });
+  return list.slice(0, 8);
+}
+
+function buildMonthReport(){
+  const t = state.monthTracking || { population: totalPopulation(), livestock: totalLivestock(), faith: state.faith, health: state.health, stations: state.stationIndex, mannaGathered: 0, waterDrawn: 0, woodGathered: 0, raids: 0, raidersDefeated: 0, stolen: 0 };
+  const popNow = totalPopulation();
+  const liveNow = totalLivestock();
+  const popDiff = popNow - t.population;
+  const liveDiff = liveNow - t.livestock;
+  const stations = Math.max(0, state.stationIndex - (t.stations || 0));
+  const successes = [];
+  const failures = [];
+
+  if (state.campFed) successes.push('The camp was fed and watered at dusk.');
+  else {
+    if (state.lastFoodShort) failures.push(`${state.lastFoodShort} households went hungry at dusk.`);
+    if (state.lastWaterShort) failures.push(`The camp was short ${state.lastWaterShort} water at dusk.`);
+  }
+  if (t.mannaGathered) successes.push(`Manna gathered: ${t.mannaGathered}.`);
+  if (t.waterDrawn) successes.push(`Water carried to camp: ${t.waterDrawn}.`);
+  if (t.woodGathered) successes.push(`Acacia wood gathered: ${t.woodGathered}.`);
+  if (t.raids){
+    successes.push(`Raiders faced: ${t.raids}.`);
+    if (t.raidersDefeated) successes.push(`Raiders defeated: ${t.raidersDefeated}.`);
+    if (t.stolen) failures.push(`${t.stolen} manna stolen by raiders.`);
+  }
+  if (stations) successes.push(`Stations reached: ${stations}.`);
+  if (popDiff > 0) successes.push(`Population grew by ${popDiff.toLocaleString()}; flocks ${liveDiff >= 0 ? '+' : ''}${liveDiff.toLocaleString()}.`);
+  else if (popDiff < 0) failures.push(`Population fell by ${Math.abs(popDiff).toLocaleString()}; flocks ${liveDiff}.`);
+  if (state.sick > 0) failures.push(`${state.sick} citizens are sick.`);
+  const hoard = totalHoard();
+  if (hoard > 0) failures.push(`${hoard} manna was hoarded; worms and disease follow.`);
+  const faithDiff = state.faith - t.faith;
+  if (faithDiff < -1) failures.push(`Faith fell from ${Math.round(t.faith)}% to ${Math.round(state.faith)}%.`);
+  else if (faithDiff > 1) successes.push(`Faith rose to ${Math.round(state.faith)}%.`);
+  if (state.health < t.health - 2) failures.push(`Wellbeing fell from ${Math.round(t.health)} to ${Math.round(state.health)}.`);
+
+  if (!successes.length) successes.push('The camp endured the month, but nothing notable was achieved.');
+  if (!failures.length) failures.push('No major failures this month.');
+
+  let annual = '';
+  if (monthOfYear() === 12 && state.yearTracking){
+    const y = state.yearTracking;
+    annual = `Year ${yearOfMonth()} complete: ${y.mannaGathered} manna gathered · ${y.waterDrawn} water carried · ${y.monthsFed}/12 months fed · ${y.raidersDefeated}/${y.raids} raiders defeated · ${y.stolen} manna stolen.`;
+  }
+
+  return {
+    year: yearOfMonth(),
+    month: monthOfYear(),
+    nextYear: yearOfMonth(state.day + 1),
+    nextMonth: monthOfYear(state.day + 1),
+    successes, failures,
+    fixes: buildFixList(),
+    offenders: state.monthOffenders || buildOffenders(),
+    annual,
+    summary: {
+      population: popNow,
+      livestock: liveNow,
+      faith: state.faith,
+      campWater: state.campWater,
+      manna: state.manna,
+      stations: state.stationIndex
+    }
+  };
+}
+
+function renderReportOffenders(report){
+  const el = $('reportOffenders');
+  if (!el) return;
+  if (!report.offenders.length){
+    el.innerHTML = '<div class="report-empty">No open offenses this month.</div>';
+    return;
+  }
+  el.innerHTML = report.offenders.map(o => {
+    const trait = TRAITS[o.trait] || TRAITS.ordinary;
+    const why = o.hoard > 0 ? `hoarded ${o.hoard} manna` : o.trait === 'murmurer' ? 'murmuring against Moses' : 'refusing work';
+    return `<div class="report-offender"><span><b style="color:${trait.color}">${o.name}</b> of ${o.tribe}<br><em>${why}</em></span><button data-offender="${o.index}">Punish</button></div>`;
+  }).join('');
+}
+
+function showReport(report){
+  state.lastReport = report;
+  state.mode = 'report';
+  $('reportKicker').textContent = `Year ${report.year} · ${MONTH_NAMES[report.month-1]}`;
+  $('reportTitle').textContent = report.month === 12 ? `Year ${report.year} Complete` : `Month ${report.month} Report`;
+  $('reportSummary').innerHTML =
+    `<span>Souls <b>${report.summary.population.toLocaleString()}</b></span>` +
+    `<span>Flocks <b>${report.summary.livestock.toLocaleString()}</b></span>` +
+    `<span>Faith <b>${Math.round(report.summary.faith)}%</b></span>` +
+    `<span>Camp water <b>${Math.round(report.summary.campWater)}</b></span>` +
+    `<span>Manna <b>${report.summary.manna}</b></span>` +
+    `<span>Stations <b>${report.summary.stations}/8</b></span>`;
+  $('reportAnnual').textContent = report.annual || '';
+  $('reportAnnual').hidden = !report.annual;
+  $('reportSuccess').innerHTML = report.successes.map(s => `<li>${s}</li>`).join('');
+  $('reportFailures').innerHTML = report.failures.map(s => `<li>${s}</li>`).join('');
+  $('reportFixes').innerHTML = report.fixes.map(s => `<li>${s}</li>`).join('');
+  renderReportOffenders(report);
+  $('reportContinue').textContent = `Continue to Year ${report.nextYear}, ${MONTH_NAMES[report.nextMonth-1]}`;
+  $('reportOverlay').classList.add('open');
+  if (state.tutorialStep === 5) advanceTutorial();
+}
+
+function closeReport(){
+  $('reportOverlay').classList.remove('open');
+  if (state.mode === 'report') state.mode = 'playing';
+  beginMonthTracking();
+  if (monthOfYear() === 1) beginYearTracking();
+  updateHud(true);
+}
+
+function punishOffender(index){
+  const c = people[index];
+  if (!c || !state.lastReport) return;
+  const o = state.lastReport.offenders.find(x => x.index === index);
+  if (!o) return;
+  c.hoard = 0;
+  c.trait = 'ordinary';
+  c.counselCd = 20;
+  state.faith = clamp(state.faith + 1.5, 0, 100);
+  state.health = clamp(state.health - 0.5, 0, 100);
+  state.score += 5;
+  state.lastReport.offenders = state.lastReport.offenders.filter(x => x.index !== index);
+  say(`${c.name || c.tribe} of ${c.tribe} is disciplined before the people. Order is restored.`);
+  renderReportOffenders(state.lastReport);
+  updateHud(true);
+}
+
 function endDay(){
+  // Capture discipline issues before midnight clears hoards.
+  state.monthOffenders = buildOffenders();
   // Midnight: hoarded manna rots, plague spreads, and idolatry grows.
   const hoarded = totalHoard();
   if (hoarded > 0){
@@ -1356,6 +1722,21 @@ function endDay(){
     else if (struggling) say(`The tribes dwindle (${totalPopulation().toLocaleString()} souls); flocks scatter (${totalLivestock().toLocaleString()}).`);
   }
 
+  // Accumulate the year summary before building this month's report.
+  if (state.monthTracking && state.yearTracking){
+    const t = state.monthTracking;
+    state.yearTracking.mannaGathered += t.mannaGathered;
+    state.yearTracking.waterDrawn += t.waterDrawn;
+    state.yearTracking.woodGathered += t.woodGathered;
+    state.yearTracking.raids += t.raids;
+    state.yearTracking.raidersDefeated += t.raidersDefeated;
+    state.yearTracking.stolen += t.stolen;
+    state.yearTracking.stations += Math.max(0, state.stationIndex - t.stations);
+    state.yearTracking.months++;
+    if (state.campFed) state.yearTracking.monthsFed++;
+  }
+  const report = buildMonthReport();
+
   state.day += 1;
   state.duskDone = false;
   state.nightDone = false;
@@ -1377,6 +1758,7 @@ function endDay(){
   say(`Year ${yearOfMonth()}, Month ${monthName()} (${monthOfYear()}/12) begins. The pillar leads to ${currentStation()?.name || 'the Promised Land'}.`);
   playSfx('day', 0.25);
   saveGame();
+  showReport(report);
 }
 
 /* ----------------------------- gameplay ------------------------------ */
@@ -1385,6 +1767,7 @@ function update(dt){
   if (state.mode !== 'playing') return;
   const gameDt = dt * state.speed;
   addGameTime(gameDt * 24 / MONTH_LENGTH);
+  if (state.mode !== 'playing') return;
   updatePlayer(gameDt);
   updatePeople(gameDt);
   updateRaiders(gameDt);
@@ -1398,6 +1781,7 @@ function update(dt){
   checkStation();
   checkEnd();
   updateInteraction();
+  updateTutorial();
   updateHud(false);
 }
 
@@ -1490,6 +1874,7 @@ function updateManna(dt){
     if (Math.hypot(m.x-p.x,m.y-p.y) <= TUNE.pickupRadius){
       manna.splice(i,1);
       state.manna++; state.score++;
+      if (state.monthTracking) state.monthTracking.mannaGathered++;
       pops.push({ x:m.x, y:m.y, text:'+1 manna', color:'#ffe27a', t:1, max:1 });
       burst(m.x, m.y, '#ffe27a', 7);
       playSfx('pickup', 0.35);
@@ -1768,11 +2153,13 @@ function moveCitizen(p, tx, ty, speed, dt){
 function depositCitizen(p){
   if (p.carry > 0){
     state.manna += p.carry;
+    if (state.monthTracking) state.monthTracking.mannaGathered += p.carry;
     if (p.carry >= 2) pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.carry} manna`, color:'#ffe27a', t:0.9, max:0.9 });
     p.carry = 0;
   }
   if (p.woodCarry > 0){
     state.wood += p.woodCarry;
+    if (state.monthTracking) state.monthTracking.woodGathered += p.woodCarry;
     pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.woodCarry} wood`, color:'#c99a5a', t:0.9, max:0.9 });
     p.woodCarry = 0;
   }
@@ -1891,6 +2278,7 @@ function updateRaiders(dt){
     }
     if (r.hp <= 0){
       state.manna += r.loot;
+      if (state.monthTracking) state.monthTracking.raidersDefeated++;
       state.faith = clamp(state.faith + 1, 0, 100);
       state.score += 15;
       pops.push({ x:r.x, y:r.y, text:r.loot ? `Raider defeated +${r.loot}` : 'Raider defeated', color:'#ff8a6a', t:1.2, max:1.2 });
@@ -1912,6 +2300,7 @@ function updateRaiders(dt){
         const got = Math.min(steal, state.manna);
         state.manna -= got;
         r.loot += got;
+        if (state.monthTracking) state.monthTracking.stolen += got;
         r.state = 'flee';
         state.faith = clamp(state.faith - 1.3, 0, 100);
         say(`A raider steals ${got} manna and flees${walls ? ' past the palisade' : ''}.`);
@@ -1939,6 +2328,7 @@ function spawnRaid(){
     if (!spot) continue;
     raiders.push({ x:spot.x, y:spot.y, hp:95, maxHp:95, loot:0, state:'raid', phase:Math.random()*6.28 });
   }
+  if (state.monthTracking) state.monthTracking.raids += raiders.length;
   if (raiders.length){
     const lead = raiders[0];
     const cardinal = cardinalOf(lead.x - state.player.x, lead.y - state.player.y);
@@ -2077,6 +2467,7 @@ function attackRaider(r){
   playSfx('hurt', 0.25);
   if (r.hp <= 0){
     state.manna += r.loot;
+    if (state.monthTracking) state.monthTracking.raidersDefeated++;
     state.faith = clamp(state.faith + 1, 0, 100);
     state.score += 15;
     pops.push({ x:r.x, y:r.y, text:r.loot ? `+${r.loot} manna` : 'Raider defeated', color:'#ff8a6a', t:1.2, max:1.2 });
@@ -2093,6 +2484,7 @@ function gatherWood(node){
   const amount = Math.min(3, node.wood);
   node.wood -= amount;
   state.wood += amount;
+  if (state.monthTracking) state.monthTracking.woodGathered += amount;
   pops.push({ x:node.x, y:node.y, text:`+${amount} wood`, color:'#c99a5a', t:1, max:1 });
   burst(node.x, node.y, '#c99a5a', 6);
   playSfx('click', 0.2);
@@ -2126,6 +2518,7 @@ function counselCitizen(c){
 
 function openCamp(){
   if (state.mode !== 'playing') return;
+  state.tutorialCampSeen = true;
   state.mode = 'camp';
   $('buildBanner').hidden = true;
   updateCampUI();
@@ -2291,6 +2684,7 @@ function interact(){
   if (it?.type === 'water'){
     state.waterskin = 3;
     state.campWater = clamp(state.campWater + 25, 0, 100);
+    if (state.monthTracking) state.monthTracking.waterDrawn += 25;
     state.hydration = clamp(state.hydration + 12, 0, 100);
     say('You fill the waterskin and carry water back for the camp.');
     burst(state.player.x, state.player.y, '#7fc4e8', 10);
@@ -2440,6 +2834,9 @@ function endGame(win, reason){
   $('endOverlay').classList.add('open');
   $('menuOverlay').classList.remove('open');
   $('campOverlay').classList.remove('open');
+  $('reportOverlay').classList.remove('open');
+  $('tutorialPanel').hidden = true;
+  state.tutorialStep = -1;
   playSfx(win ? 'coins' : 'over', 0.5);
   localStorage.removeItem(SAVE_KEY);
 }
@@ -2512,6 +2909,12 @@ function loadGame(){
   camX = (state.player.x-state.player.y)*HW;
   camY = (state.player.x+state.player.y)*HH;
   setSpeed(state.speed);
+  $('reportOverlay').classList.remove('open');
+  $('tutorialPanel').hidden = true;
+  state.tutorialStep = -1; state.tutorialDone = true;
+  state.monthOffenders = [];
+  beginMonthTracking();
+  beginYearTracking();
   say(`Year ${yearOfMonth()}, Month ${monthName()} (${monthOfYear()}/12). The journey continues.`);
   if (state.hour >= 6 && state.hour < 10) spawnManna();
   startMusic();
@@ -2529,9 +2932,11 @@ function startGame(){
   $('pauseOverlay').classList.remove('open');
   $('stationOverlay').classList.remove('open');
   $('campOverlay').classList.remove('open');
+  $('reportOverlay').classList.remove('open');
   startMusic();
   playSfx('click', 0.25);
   updateHud(true);
+  beginTutorial();
 }
 
 /* ------------------------------- draw -------------------------------- */
@@ -3457,10 +3862,11 @@ function draw(){
   const s = currentStation();
   if (s) drawPillarBase(s, tNow);
   drawFx(tNow);
+  drawTutorialHint(tNow);
   drawPops();
   drawParticles();
 
-  if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'end'){
+  if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'report' || state.mode === 'end'){
     g.fillStyle = 'rgba(14,9,5,.30)';
     g.fillRect(0,0,W,H);
   }
@@ -3667,6 +4073,7 @@ document.addEventListener('keydown', e => {
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
   if (key === 'Escape'){
+    if (state.mode === 'report'){ closeReport(); return; }
     if (state.buildMode) cancelBuild();
     else if (state.mode === 'camp') closeCamp();
     else if (state.mode === 'about') closeAbout();
@@ -3737,6 +4144,7 @@ $('btnMap').addEventListener('click', () => state.mode === 'playing' && openMap(
 $('btnAbout').addEventListener('click', openAbout);
 $('btnCredits').addEventListener('click', openCredits);
 $('aboutClose').addEventListener('click', closeAbout);
+$('aboutTutorial').addEventListener('click', () => { closeAbout(); beginTutorial(); });
 $('creditsClose').addEventListener('click', closeCredits);
 $('musicToggle').addEventListener('click', () => {
   state.musicOn = !state.musicOn;
@@ -3745,6 +4153,13 @@ $('musicToggle').addEventListener('click', () => {
 });
 $('mapClose').addEventListener('click', closeMap);
 $('campClose').addEventListener('click', closeCamp);
+$('reportContinue').addEventListener('click', closeReport);
+$('tutorialNext').addEventListener('click', advanceTutorial);
+$('tutorialSkip').addEventListener('click', hideTutorial);
+$('reportOffenders').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-offender]');
+  if (btn) punishOffender(Number(btn.dataset.offender));
+});
 document.querySelectorAll('#buildButtons button').forEach(btn => {
   btn.addEventListener('click', () => startBuild(btn.dataset.build));
 });

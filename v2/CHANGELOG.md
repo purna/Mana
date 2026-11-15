@@ -1,5 +1,15 @@
 # MANNA — Changelog
 
+## Unreleased — guided start and monthly leadership report
+
+- Added an in-game tutorial panel with six guided steps: manna, water, camp leadership, station travel, defenses and the monthly report. Steps auto-advance on completion, can be skipped, and can be restarted from About.
+- Added pulsing gold guidance rings around the current tutorial target (nearest manna, spring, murmurer, station or camp).
+- Added a monthly leadership report after every month: successes, failures, a prioritised "Fix Next" list, and a Discipline section naming offending citizens by name and tribe.
+- Offenders can be punished directly from the report; punishment restores order and clears their offence.
+- Added named citizens and annual summaries at the end of month 12.
+- Enlarged the Camp tribe cards and trait text for readability.
+
+
 ## Unreleased — raider direction and markers
 
 - Raid warnings now name the direction and count: "2 raiders at the perimeter — SW!"

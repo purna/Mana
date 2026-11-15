@@ -28,6 +28,10 @@ npm run build     # static build in dist/
 npm run preview   # serve the built game
 ```
 
+## Tutorial
+
+A six-step in-game tutorial starts with a new game and points to the nearest manna, spring, murmurer, station or camp. It can be skipped or restarted from **About**.
+
 ## Time and pressure
 
 Each round is a **month**; twelve months make a year. Camp water, manna and faith gate station travel, and neglected tribes lose people and flocks. Personal vitals are shown only when low or critical.
