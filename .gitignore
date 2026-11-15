@@ -1,0 +1,17 @@
+# Dependencies and local build/cache output
+node_modules/
+.vite/
+.vite-cache/
+**/.vite/
+**/.vite-cache/
+dist/
+**/dist/
+
+# Local scratch / intermediate copies
+v1-iso/
+*.log
+.check-iso.js
+
+# OS metadata
+.DS_Store
+**/.DS_Store
