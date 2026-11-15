@@ -1,0 +1,72 @@
+# MANNA — Architecture
+
+## Runtime
+
+A Vite + Three.js browser game. The source lives in `js/` and is bundled by Vite. Root `index.html` is the development entry; `npm run build` writes `dist/`.
+
+```
+index.html
+  styles/main.css + survival.css + journey.css
+  js/main.js
+    LoadingScreenManager
+    Game
+      AudioManager, WeatherManager, PlayerManager, SceneManager,
+      UIManager, ParticleManager, SaveManager, MarketSimulation,
+      DayNightManager, WildernessManager, JourneyManager, PillarManager
+```
+
+## Main systems
+
+| Concern | Files | Notes |
+|---|---|---|
+| Boot / loop | `js/main.js`, `js/Game.js` | Scene, render loop, day/year timer, survival drain, actions, win/loss |
+| 40-year journey | `js/JourneyManager.js`, `js/config.js` | Eight stations, year tracking, pillar target, compass guidance, blessings, victory |
+| Pillar of Cloud & Fire | `js/PillarManager.js`, `js/DayNightManager.js` | Cloud by day, fire by night, distant fog-ignoring shaft, point light, ground halo |
+| Survival | `js/Game.js`, `js/config.js`, `js/UIManager.js` | Wellbeing, hunger/fed, hydration, warmth, stamina, faith; eat/drink/fill/warm actions |
+| Player | `js/PlayerManager.js` | Moses robe/headwrap/staff, walking animation, sprint/stamina, terrain grounding, collisions |
+| Terrain cache | `js/TerrainStore.js` | Persists 1 km sections as JSON records in IndexedDB; loads automatically |
+| Explored map | `js/MapManager.js` | Explored-section summaries, Esri satellite basemap and fog-of-war canvas |
+| Terrain | `js/TerrainStreamer.js` | 1 km section streaming, Wadi Rum procedural terrain, Terrarium/SRTM adapter, wadi carving, vegetation and rock scatter |
+| World | `js/SceneManager.js` | Landmarks, eight station monuments, camp crowd, pickups, legacy tile fallback |
+| Persistence | `js/SaveManager.js`, `js/GameState.js` | localForage save v2; v1 saves merge forward safely |
+| Wilderness economy | `js/WildernessManager.js`, `js/wilderness-day-cycle.js` | Tithe, Sabbath, Golden Calf, Bronze Serpent, camp needs |
+| Day/night | `js/DayNightManager.js` | Sky/fog/light lerp, sun/moon, torch, stars, pillar fire blend |
+| Audio | `js/AudioManager.js`, `assets/audio/` | Howler music/SFX |
+| Tuning | `js/tribes.json`, `js/config.js` | Tribes/households; survival and station data |
+
+## Journey data flow
+
+1. `Game.startGame()` resets `GameState.journey` and survival stats, then `JourneyManager.getTarget()` places `PillarManager` over station 1.
+2. `Game.animate()` runs `JourneyManager.update()` while playing. When the player is within `config.journey.arriveRadius`, `arrive()` pauses the day, applies the station blessing and opens the story modal.
+3. `Game.advanceStation()` → `JourneyManager.advance()` marks the station complete, advances the index, moves/glides the pillar, relocates the day's manna around the new camp, and resumes play.
+4. The final station calls `Game.victory()`. Reaching the fortieth year before then calls `Game.journeyEnding()`.
+
+## Terrain streaming
+
+`Game` enables `TerrainStreamer` from `config.terrain.real`. Each 1 km section is compressed into a 96-unit game tile. The streamer:
+
+1. builds the first 3×3 ring before landmarks/player creation (`initAsync`),
+2. optionally fetches real Terrarium elevation tiles and applies them to the ring,
+3. streams new sections around the player as they walk,
+4. samples height for the player, pickups, stations and clicks from the active grid,
+5. scatters biome-specific plants and rocks per section.
+
+If external tiles are unavailable, a deterministic Wadi Rum model supplies sandstone massifs, dunes, wadis, an oasis and vegetation. Heights are normalised around `terrain.real.baseElevation`.
+
+## Map and terrain persistence
+
+- `TerrainStore` keys records by `terrain:<tx>:<tz>` and stores height arrays plus source metadata.
+- `TerrainStreamer` checks the JSON cache before real DEM, then writes either the DEM or the procedural fallback record.
+- `MapManager` stores a lightweight summary per explored section in `GameState.map` (min/max/avg, 4×4 thumbnail, source, visits).
+- The map canvas is drawn on demand. Explored sections use Esri World Imagery tiles; unknown sections are covered by fog.
+- Meshes unload when distant, but JSON records remain available for later reloads.
+
+## Save shape (v3)
+
+`GameState` persists player vitals (`health`, `hydration`, `hunger`, `warmth`, `stamina`, `faith`, `waterskin`), `world.day` (interpreted as the year in the journey UI), `map` (explored sections), and the existing market/wilderness/session data. Loading merges saved nested objects onto defaults, so older saves keep working.
+
+## Asset notes
+
+- Terrain, characters and landmarks are procedural Three.js geometry. Blender `.blend`/`.glb` assets in `models/` remain available for future runtime integration.
+- Published paths kept stable: `assets/audio/`, `fonts/`, `js/tribes.json`, `plugins/`, `favicon.ico`.
+- The Vite config copies those runtime assets into `dist/` on build.

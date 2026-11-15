@@ -1,0 +1,3201 @@
+
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ * MANNA — isometric journey
+ * A 2D isometric adaptation of the v1 Three.js game. The canonical
+ * stations, survival actions and forty-year loop are preserved.
+ * ------------------------------------------------------------------ */
+
+const N = 48;
+const HW = 32;               // half tile width
+const HH = 16;               // half tile height
+const ELEV = 13;             // screen pixels per terrain height level
+const CAMP = { x: 24, y: 24 };
+const QUOTA = 22;            // manna the camp eats each month
+const MONTH_LENGTH = 32;     // real seconds per month at ×1
+const MONTHS_PER_YEAR = 12;
+const TOTAL_YEARS = 40;
+const TOTAL_MONTHS = TOTAL_YEARS * MONTHS_PER_YEAR;
+const MONTH_NAMES = ['Nisan','Iyar','Sivan','Tammuz','Av','Elul','Tishrei','Cheshvan','Kislev','Tevet','Shevat','Adar'];
+const SAVE_KEY = 'manna-iso-save-v1';
+
+function yearOfMonth(m = state.day){ return Math.min(TOTAL_YEARS, Math.floor((m-1)/MONTHS_PER_YEAR)+1); }
+function monthOfYear(m = state.day){ return ((m-1)%MONTHS_PER_YEAR)+1; }
+function monthName(m = state.day){ return MONTH_NAMES[monthOfYear(m)-1]; }
+
+const STATIONS = [
+  {
+    id:'shore', name:'The Red Sea Shore', x:10, y:34, color:'#3f8fb0',
+    scripture:'Exodus 14:31', title:'The sea is behind you',
+    text:'The waters closed over the chariots of Egypt. The people lift their eyes to the pillar of cloud, and for the first time they believe.',
+    trial:'Follow the pillar into the wilderness. Gather manna, find water, and keep the camp alive.',
+    blessing:{ faith:8, health:8 }
+  },
+  {
+    id:'marah', name:'Waters of Marah', x:10, y:15, color:'#4f9a86',
+    scripture:'Exodus 15:23-25', title:'The bitter water is made sweet',
+    text:'Three days without water. At Marah the spring is bitter, and the people murmur. Moses cries to the Lord, and a tree is shown him; he casts it into the waters, and they become sweet.',
+    trial:'Fill your waterskin at the spring and carry water to the thirsty.',
+    blessing:{ hydration:100, campWater:55, faith:6, health:10 }
+  },
+  {
+    id:'elim', name:'Elim', x:38, y:9, color:'#6fae4f',
+    scripture:'Exodus 15:27', title:'Twelve springs and seventy palms',
+    text:'They came to Elim, where there were twelve springs of water and seventy palm trees, and they encamped there beside the waters.',
+    trial:'Rest in the shade. Let the camp recover its strength.',
+    blessing:{ health:22, faith:5, warmth:30, manna:6 }
+  },
+  {
+    id:'sin', name:'Wilderness of Sin', x:42, y:25, color:'#c9b46c',
+    scripture:'Exodus 16:4-15', title:'Bread from heaven',
+    text:'In the morning a fine, flake-like thing lay on the face of the wilderness. “It is the bread the Lord has given you to eat.” Gather only what you need; let nothing remain until morning.',
+    trial:'Gather manna for the household. Do not hoard what will spoil.',
+    blessing:{ manna:12, faith:6, health:8 }
+  },
+  {
+    id:'rephidim', name:'Rephidim', x:30, y:42, color:'#b08a68',
+    scripture:'Exodus 17:1-7', title:'Water from the rock',
+    text:'The people thirsted and tested the Lord. “Behold, I will stand before you there on the rock at Horeb; strike the rock, and water shall come out of it.”',
+    trial:'Strike the rock. Bring water to a dry and grumbling camp.',
+    blessing:{ hydration:100, campWater:70, faith:7, health:12 }
+  },
+  {
+    id:'sinai', name:'Mount Sinai', x:14, y:27, color:'#8a72b0',
+    scripture:'Exodus 19:16-20', title:'The mountain trembles',
+    text:'Thunder and lightning, a thick cloud upon the mountain, and the sound of a trumpet growing louder. Moses goes up, and the Lord descends in fire.',
+    trial:'Choose faithfulness. The covenant shapes the people you lead.',
+    blessing:{ faith:14, health:10, manna:8 }
+  },
+  {
+    id:'kadesh', name:'Kadesh-Barnea', x:21, y:7, color:'#c98a4a',
+    scripture:'Numbers 13-14', title:'The report of the spies',
+    text:'The land is good, but the people are afraid. Ten spies bring back fear; two bring back faith. The camp stands at the edge of promise, and doubt spreads like a plague.',
+    trial:'Hold the camp together. Faith is harder than fear.',
+    blessing:{ faith:10, health:8, manna:6 }
+  },
+  {
+    id:'moab', name:'Plains of Moab', x:41, y:39, color:'#e0b24a',
+    scripture:'Deuteronomy 34:1-4', title:'The Promised Land in sight',
+    text:'Moses climbs the mountain and looks across the land. Forty years of wandering are ended. The pillar stands still, and the people lift their eyes to the horizon.',
+    trial:'Lead the people home.',
+    blessing:{ faith:20, health:20 }
+  }
+];
+
+const TRIBES = [
+  { name:'Reuben',   epithet:'Unstable as Water', color:'#C0392B', population:46500 },
+  { name:'Simeon',   epithet:'Swift & Fierce',    color:'#8E44AD', population:59300 },
+  { name:'Levi',     epithet:'The Priests',       color:'#2980B9', population:22000 },
+  { name:'Judah',    epithet:'Lion of Praise',    color:'#F1C40F', population:74600 },
+  { name:'Dan',      epithet:'The Serpent',       color:'#16A085', population:62700 },
+  { name:'Naphtali', epithet:'Hind Let Loose',    color:'#27AE60', population:53400 },
+  { name:'Gad',      epithet:'A Troop',           color:'#D35400', population:45650 },
+  { name:'Asher',    epithet:'Rich Bread',        color:'#B8860B', population:41500 },
+  { name:'Issachar', epithet:'Bearing Burdens',   color:'#7F8C8D', population:54400 },
+  { name:'Zebulun',  epithet:'Haven of Ships',    color:'#2E86C1', population:57400 },
+  { name:'Joseph',   epithet:'Fruitful Bough',    color:'#A04000', population:72700 },
+  { name:'Benjamin', epithet:'A Ravenous Wolf',   color:'#6C3483', population:35400 }
+];
+
+function seedTribeStats(){
+  const out = {};
+  for (const t of TRIBES){
+    out[t.name] = {
+      population: t.population,
+      livestock: Math.max(8, Math.round(t.population / 2000))
+    };
+  }
+  return out;
+}
+function totalPopulation(){
+  return Object.values(state.tribeStats || {}).reduce((sum, t) => sum + (t.population || 0), 0);
+}
+function totalLivestock(){
+  return Object.values(state.tribeStats || {}).reduce((sum, t) => sum + (t.livestock || 0), 0);
+}
+
+const TRAITS = {
+  greedy:   { label:'Greedy',   color:'#e0a24a' },
+  lazy:     { label:'Lazy',     color:'#8fb0c0' },
+  murmurer: { label:'Murmurer', color:'#e0584c' },
+  faithful: { label:'Devout',   color:'#7fc4e8' },
+  ordinary: { label:'Ordinary', color:'#d8c9a8' }
+};
+
+function pickTribe(){
+  const total = TRIBES.reduce((sum, t) => sum + t.population, 0);
+  let r = rnd() * total;
+  for (const t of TRIBES){ r -= t.population; if (r <= 0) return t.name; }
+  return TRIBES[0].name;
+}
+
+const BUILD_COSTS = { tent:5, wall:3, tower:10 };
+const BUILD_LABELS = { tent:'Tent', wall:'Wall panel', tower:'Watchtower' };
+const CAMP_RADIUS = 11;
+
+const TUNE = {
+  walk: 4.4, sprint: 1.55,
+  hunger: 0.30, hungerMove: 0.10,
+  hydration: 0.36, hydrationDay: 0.10,
+  staminaDrain: 24, staminaRegen: 16,
+  warmthNight: 1.35, warmthGain: 38, warmthDay: 0.55,
+  fireRadius: 3.6,
+  healthStarve: 3.0, healthThirst: 3.4, healthCold: 2.4,
+  faithCritical: 0.55,
+  pickupRadius: 0.9,
+  stationRadius: 3.1
+};
+
+const SFX = {
+  pickup:'assets/audio/sfx/pickup.wav',
+  water:'assets/audio/sfx/water.mp3',
+  click:'assets/audio/sfx/click.wav',
+  coins:'assets/audio/sfx/coins.mp3',
+  hurt:'assets/audio/sfx/hurt.wav',
+  day:'assets/audio/sfx/day_end.wav',
+  over:'assets/audio/sfx/game_over.wav'
+};
+
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp = (a,b,t) => a + (b-a)*t;
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+const hash = (x,y) => { const h = Math.sin(x*127.1 + y*311.7) * 43758.5453; return h - Math.floor(h); };
+
+const cv = $('c');
+const g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.imageSmoothingEnabled = true;
+}
+window.addEventListener('resize', resize);
+
+/* ------------------------------- world ------------------------------- */
+
+let HT, WATER, TRAIL, TCOLOR, waterTiles = [];
+let decor = [], people = [], manna = [], particles = [], pops = [];
+let woodNodes = [], structures = [], raiders = [], buildGhost = null;
+let fx = [];
+const fxTimers = { ambient:0, pillar:0, fire:0 };
+const glowCache = new Map();
+let terrainCanvas = null;
+const OX = N*HW + 2*HW;
+const TERRAIN_PAD = 44;
+
+let seed = 20261115;
+const rnd = () => { seed = (seed*1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+
+const shadeCache = new Map();
+function shade(hex, amt){
+  const key = hex + amt;
+  if (shadeCache.has(key)) return shadeCache.get(key);
+  const n = parseInt(hex.slice(1),16);
+  const r = clamp(Math.round(((n>>16)&255) * (1+amt)),0,255);
+  const gg = clamp(Math.round(((n>>8)&255) * (1+amt)),0,255);
+  const b = clamp(Math.round((n&255) * (1+amt)),0,255);
+  const out = '#' + ((1<<24)+(r<<16)+(gg<<8)+b).toString(16).slice(1);
+  shadeCache.set(key,out);
+  return out;
+}
+
+function buildTerrain(){
+  seed = 20261115;
+  HT = Array.from({length:N}, () => new Uint8Array(N));
+  WATER = Array.from({length:N}, () => new Uint8Array(N));
+  TRAIL = Array.from({length:N}, () => new Uint8Array(N));
+  waterTiles = [];
+
+  const addHill = (cx,cy,r,peak) => {
+    for (let x=1;x<N-1;x++) for (let y=1;y<N-1;y++){
+      const d = Math.hypot(x-cx,y-cy) / r + hash(x,y)*0.22;
+      let level = 0;
+      if (d < 0.30) level = peak;
+      else if (d < 0.55) level = Math.max(1, peak-1);
+      else if (d < 0.80) level = 1;
+      if (level > HT[x][y]) HT[x][y] = level;
+    }
+  };
+  for (let i=0;i<15;i++){
+    const cx = 3 + rnd()*(N-6);
+    const cy = 3 + rnd()*(N-6);
+    const r = 2.1 + rnd()*4.4;
+    if (Math.hypot(cx-CAMP.x, cy-CAMP.y) < 9) continue;
+    addHill(cx,cy,r, r > 4.4 ? 3 : 2);
+  }
+
+  const addPool = (cx,cy,r) => {
+    for (let x=1;x<N-1;x++) for (let y=1;y<N-1;y++){
+      const d = Math.hypot(x-cx,y-cy) / r + hash(x+9,y+3)*0.18;
+      if (d < 1){ WATER[x][y] = 1; HT[x][y] = 0; }
+    }
+  };
+  addPool(6.5,36.5,3.2);       // the sea behind the Red Sea Shore
+  addPool(37.5,7.5,2.1);       // Elim springs
+  addPool(8.5,14.5,1.9);       // Marah
+  addPool(30.5,43.0,2.2);      // Rephidim
+  addPool(23.0,20.0,1.5);      // oasis near camp
+  addPool(44.0,33.0,1.3);      // a small wilderness pool
+
+  const flatten = (cx,cy,r) => {
+    for (let x=Math.floor(cx-r);x<=Math.ceil(cx+r);x++)
+      for (let y=Math.floor(cy-r);y<=Math.ceil(cy+r);y++)
+        if (x>0&&x<N-1&&y>0&&y<N-1&&Math.hypot(x-cx,y-cy) <= r){ HT[x][y]=0; WATER[x][y]=0; }
+  };
+  flatten(CAMP.x, CAMP.y, 5.6);
+  STATIONS.forEach(s => flatten(s.x, s.y, 3.4));
+
+  const carve = (x0,y0,x1,y1) => {
+    const len = Math.hypot(x1-x0,y1-y0);
+    const steps = Math.ceil(len*3.2);
+    for (let i=0;i<=steps;i++){
+      const t = i/steps;
+      const x = lerp(x0,x1,t) + Math.sin(t*Math.PI*3.1)*1.35;
+      const y = lerp(y0,y1,t) + Math.cos(t*Math.PI*2.3)*1.15;
+      for (let a=-1;a<=1;a++) for (let b=-1;b<=1;b++){
+        if (a*a+b*b > 1.25) continue;
+        const tx = Math.round(x)+a, ty = Math.round(y)+b;
+        if (tx>0&&tx<N-1&&ty>0&&ty<N-1){ HT[tx][ty]=0; WATER[tx][ty]=0; TRAIL[tx][ty]=1; }
+      }
+    }
+  };
+  STATIONS.forEach(s => carve(CAMP.x, CAMP.y, s.x, s.y));
+  carve(CAMP.x, CAMP.y, 23, 20);
+
+  TCOLOR = Array.from({length:N}, () => new Array(N));
+  const sand = ['#c99a5e','#d2a76b','#dcb67c','#e4c58c'];
+  const rock = ['#b08766','#bd9673','#a97f5f'];
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
+    let col;
+    if (WATER[x][y]) col = ['#4b8aa8','#5699b7','#4382a1'][Math.floor(hash(x,y)*3)];
+    else if (TRAIL[x][y]) col = hash(x,y) < 0.5 ? '#dbc08a' : '#e3cb96';
+    else if (HT[x][y] > 0) col = rock[Math.min(2, HT[x][y]-1)] || rock[0];
+    else {
+      const n = Math.sin(x*0.16 + Math.sin(y*0.11)*1.8) + Math.sin((x*0.09+y*0.14)*1.1+1.2);
+      col = sand[clamp(Math.floor((n+2.4)/4.8*sand.length),0,sand.length-1)];
+      if (hash(x*2.3,y*1.7) < 0.16) col = shade(col,-0.045);
+    }
+    TCOLOR[x][y] = col;
+  }
+
+  waterTiles = [];
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++) if (WATER[x][y]) waterTiles.push({x,y});
+}
+
+function buildDecor(){
+  decor = []; people = []; woodNodes = []; structures = []; raiders = [];
+  const used = new Set();
+  const key = (x,y) => Math.floor(x) + ',' + Math.floor(y);
+  const free = (x,y,r=0.8) => {
+    if (x<1||x>N-2||y<1||y>N-2) return false;
+    if (HT[Math.floor(x)][Math.floor(y)] || WATER[Math.floor(x)][Math.floor(y)]) return false;
+    if (used.has(key(x,y))) return false;
+    if (Math.hypot(x-CAMP.x,y-CAMP.y) < 2.2) return false;
+    if (STATIONS.some(s => Math.hypot(x-s.x,y-s.y) < 2.4)) return false;
+    if (r > 0 && MATH_NEAR_WATER(x,y,r)) return false;
+    return true;
+  };
+  function MATH_NEAR_WATER(x,y,r){
+    const x0=Math.floor(x-r), x1=Math.ceil(x+r), y0=Math.floor(y-r), y1=Math.ceil(y+r);
+    for (let i=Math.max(0,x0);i<=Math.min(N-1,x1);i++)
+      for (let j=Math.max(0,y0);j<=Math.min(N-1,y1);j++)
+        if (WATER[i][j] && Math.hypot(i-x,j-y) < r+0.7) return true;
+    return false;
+  }
+
+  // Palms hug the water.
+  let palms = 0;
+  for (const t of waterTiles){
+    if (palms >= 30) break;
+    if (hash(t.x*3.1,t.y*5.7) > 0.16) continue;
+    const a = hash(t.x,t.y*2)*Math.PI*2;
+    const x = t.x + Math.cos(a)*2.0, y = t.y + Math.sin(a)*2.0;
+    if (free(x,y,0.2)){
+      decor.push({kind:'palm', x, y, s:0.8+hash(x,y)*0.45, h:hash(y,x)*6.28});
+      used.add(key(x,y)); palms++;
+    }
+  }
+
+  // Rocks at the feet of the massifs.
+  for (let i=0;i<95;i++){
+    const x = 2 + rnd()*(N-4), y = 2 + rnd()*(N-4);
+    if (!free(x,y,0.4)) continue;
+    const nearRock = [[1,0],[-1,0],[0,1],[0,-1]].some(([a,b]) => {
+      const tx=Math.floor(x)+a, ty=Math.floor(y)+b;
+      return tx>=0&&tx<N&&ty>=0&&ty<N&&HT[tx][ty]>0;
+    });
+    if (nearRock || rnd() < 0.18){
+      decor.push({kind:'rock', x, y, s:0.7+rnd()*0.8, h:rnd()*6.28});
+      used.add(key(x,y));
+    }
+  }
+
+  // Desert plants and pebbles.
+  const kinds = ['shrub','shrub','shrub','tuft','agave','cactus','pebble','pebble'];
+  for (let i=0;i<140;i++){
+    const x = 2 + rnd()*(N-4), y = 2 + rnd()*(N-4);
+    if (!free(x,y,0.2)) continue;
+    decor.push({kind:kinds[Math.floor(rnd()*kinds.length)], x, y, s:0.65+rnd()*0.7, h:rnd()*6.28});
+    used.add(key(x,y));
+  }
+
+  // Tents ring the camp.
+  for (let i=0;i<10;i++){
+    const a = i/10*Math.PI*2 + 0.2;
+    const x = CAMP.x + Math.cos(a)*(4.2 + (i%2)*0.7);
+    const y = CAMP.y + Math.sin(a)*(4.2 + (i%2)*0.7);
+    if (free(x,y,0)) decor.push({kind:'tent', x, y, s:0.85+hash(x,y)*0.2, h:a});
+  }
+
+  // The camp's fixed props.
+  decor.push({kind:'market', x:CAMP.x+2.9, y:CAMP.y-2.3, s:1});
+  decor.push({kind:'fire', x:CAMP.x, y:CAMP.y, s:1});
+  for (let i=0;i<5;i++){
+    const a = i/5*Math.PI*2 + 0.6;
+    decor.push({kind:'crate', x:CAMP.x+Math.cos(a)*1.35, y:CAMP.y+Math.sin(a)*1.35, s:0.7, h:a});
+  }
+
+  // Acacia wood nodes around the camp.
+  for (let i=0;i<7;i++){
+    const a = i/7*Math.PI*2 + 0.35;
+    const r = 6.4 + (i%3)*1.4;
+    const x = CAMP.x + Math.cos(a)*r, y = CAMP.y + Math.sin(a)*r;
+    if (free(x,y,0.2)){
+      woodNodes.push({ x, y, wood:18, max:18, claimedBy:null, h:hash(x,y)*6.28 });
+      used.add(key(x,y));
+    }
+  }
+
+  // Israelites with colony-sim traits.
+  const robes = ['#d8c9a8','#b9805a','#a9a07a','#c7b08a','#8f7a5c','#7f8fae','#b07a72'];
+  const traitPool = [
+    'greedy','greedy','greedy','greedy','greedy','greedy',
+    'lazy','lazy','lazy','lazy','lazy',
+    'murmurer','murmurer','murmurer','murmurer','murmurer',
+    'faithful','faithful','faithful','faithful','faithful','faithful',
+    'ordinary','ordinary','ordinary','ordinary','ordinary','ordinary'
+  ];
+  for (let i=0;i<traitPool.length;i++){
+    const a = rnd()*Math.PI*2, r = 1.9 + rnd()*3.8;
+    let x = CAMP.x + Math.cos(a)*r, y = CAMP.y + Math.sin(a)*r;
+    if (!free(x,y,0)) { x = CAMP.x + (rnd()-0.5)*3; y = CAMP.y + (rnd()-0.5)*3; }
+    people.push({
+      x, y, hx:x, hy:y, wx:x, wy:y, t:rnd()*3, col:robes[i%robes.length], phase:rnd()*6.28,
+      trait:traitPool[i], baseTrait:traitPool[i], tribe:pickTribe(),
+      carry:0, hoard:0, woodCarry:0, task:'idle', target:null, work:0, stuck:0,
+      counselCd:0, sick:false, murmurCd:2+rnd()*6, deposited:false, gatheredMonth:0
+    });
+  }
+}
+
+/* ------------------------------ state -------------------------------- */
+
+const state = {
+  mode:'menu', day:1, hour:5.25, stationIndex:0, visited:new Set(),
+  player:{ x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false },
+  health:100, hunger:100, hydration:100, warmth:100, stamina:100, faith:68,
+  manna:0, waterskin:0, campWater:34, silver:18,
+  score:0, speed:1, muted:false, musicOn:true,
+  wood:0, sick:0, rot:0, calf:0, raidSpawned:false, order:'Optimal',
+  campFed:false, lastFoodShort:0, lastWaterShort:0, stationWarnCd:0,
+  tribeStats: seedTribeStats(),
+  buildMode:null, mouseWorld:null,
+  keys:{}, log:[], explored:new Set(), exploreTimer:0,
+  duskDone:false, nightDone:false, mannaSpawned:false,
+  interaction:null, lastHud:0, started:false, endShown:false,
+  focusStation:null
+};
+
+let camX = 0, camY = 0, ox = 0, oy = 0;
+let last = 0, music = null;
+
+function currentStation(){ return STATIONS[state.stationIndex] || null; }
+
+function stationRequirements(index = state.stationIndex){
+  return {
+    manna: 16 + index*3,
+    water: 18 + index*3,
+    faith: 40 + index*3
+  };
+}
+function canEnterStation(){
+  const req = stationRequirements();
+  return state.manna >= req.manna && state.campWater >= req.water && state.faith >= req.faith;
+}
+
+
+function resetState(){
+  state.mode = 'playing'; state.day = 1; state.hour = 5.25; state.stationIndex = 0;
+  state.visited = new Set();
+  state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
+  state.health = 100; state.hunger = 100; state.hydration = 100; state.warmth = 100;
+  state.stamina = 100; state.faith = 68;
+  state.manna = 0; state.waterskin = 0; state.campWater = 34; state.silver = 18;
+  state.wood = 0; state.sick = 0; state.rot = 0; state.calf = 0;
+  state.campFed = false; state.lastFoodShort = 0; state.lastWaterShort = 0; state.stationWarnCd = 0;
+  state.tribeStats = seedTribeStats();
+  state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
+  state.score = 0; state.speed = 1; state.keys = {}; state.log = [];
+  state.explored = new Set(); state.exploreTimer = 0;
+  state.duskDone = false; state.nightDone = false; state.mannaSpawned = false;
+  state.interaction = null; state.endShown = false;
+  $('buildBanner').hidden = true;
+  $('raidBanner').hidden = true;
+  manna = []; particles = []; pops = []; structures = []; raiders = []; buildGhost = null;
+  fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
+  woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
+  state.player.x = CAMP.x; state.player.y = CAMP.y;
+  people.forEach(p => {
+    p.x = p.hx; p.y = p.hy; p.wx = p.hx; p.wy = p.hy; p.t = 0;
+    p.carry = 0; p.hoard = 0; p.woodCarry = 0; p.task = 'idle'; p.target = null;
+    p.trait = p.baseTrait || p.trait;
+    p.work = 0; p.stuck = 0; p.counselCd = 0; p.sick = false; p.deposited = false; p.gatheredMonth = 0;
+  });
+  state.sick = 0;
+  camX = (CAMP.x-CAMP.y)*HW; camY = (CAMP.x+CAMP.y)*HH;
+  revealAround(CAMP.x, CAMP.y, 6);
+  say(`Year 1, Month ${monthName()} (${monthOfYear()}/12). The pillar of cloud stands over the Red Sea Shore.`);
+  setSpeed(1);
+  updateHud(true);
+  saveGame();
+}
+
+/* ------------------------------ helpers ------------------------------ */
+
+function groundElev(x,y){
+  const i = Math.floor(x), j = Math.floor(y);
+  if (i<0||i>=N||j<0||j>=N) return 0;
+  return HT[i][j] * ELEV;
+}
+
+function blocked(x,y){
+  const i = Math.floor(x), j = Math.floor(y);
+  if (i<1||i>N-2||j<1||j>N-2) return true;
+  return HT[i][j] > 0 || WATER[i][j] > 0;
+}
+
+function W2S(x,y){
+  return { x: ox + (x-y)*HW, y: oy + (x+y)*HH - groundElev(x,y) };
+}
+
+function screenToWorld(sx,sy){
+  const wx = ((sx - ox)/HW + (sy - oy)/HH) / 2;
+  const wy = ((sy - oy)/HH - (sx - ox)/HW) / 2;
+  return { x:wx, y:wy };
+}
+
+function say(msg){
+  if (!msg) return;
+  if (state.log[state.log.length-1] === msg) return;
+  state.log.push(msg);
+  if (state.log.length > 4) state.log.shift();
+  renderLog();
+}
+function renderLog(){
+  $('log').innerHTML = state.log.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+}
+
+function renderTribeStats(){
+  const el = $('aboutTribes');
+  if (!el) return;
+  const total = totalPopulation();
+  el.innerHTML = `<h3>The Twelve Tribes</h3>` +
+    `<div class="tribe-stat-grid">` +
+    TRIBES.map((t) => {
+      const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
+      return `<div class="tribe-stat-card">` +
+        `<span class="tribe-stat-dot" style="background:${t.color}"></span>` +
+        `<span class="tribe-stat-name">${t.name}<span class="tribe-stat-epithet">${t.epithet} · ${st.livestock} flocks</span></span>` +
+        `<span class="tribe-stat-pop">${st.population.toLocaleString()}</span>` +
+      `</div>`;
+    }).join('') +
+    `</div><div class="tribe-stat-total">Souls of Israel <b>${total.toLocaleString()}</b> · Flocks <b>${totalLivestock().toLocaleString()}</b></div>`;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function playSfx(name, vol=0.45){
+  if (state.muted) return;
+  const src = SFX[name];
+  if (!src) return;
+  try {
+    const a = new Audio(src);
+    a.volume = vol;
+    a.play().catch(() => {});
+  } catch (_) {}
+}
+
+function setMuted(muted){
+  state.muted = muted;
+  applyMusic();
+  const btn = $('btnMute');
+  if (btn){
+    btn.textContent = muted ? '🔇' : '🔊';
+    btn.setAttribute('aria-label', muted ? 'Unmute audio' : 'Mute audio');
+  }
+  const pauseBtn = $('pauseMute');
+  if (pauseBtn) pauseBtn.textContent = muted ? 'Unmute audio' : 'Mute audio';
+}
+
+function applyMusic(){
+  if (!music) return;
+  music.muted = state.muted || !state.musicOn;
+  if (!music.muted) music.play().catch(() => {});
+}
+
+function updateMusicToggle(){
+  const btn = $('musicToggle');
+  if (btn) btn.textContent = state.musicOn ? 'Music: On' : 'Music: Off';
+  const note = $('btnCredits');
+  if (note) note.style.opacity = state.musicOn ? '1' : '.55';
+}
+
+function startMusic(){
+  if (music) { applyMusic(); return; }
+  try {
+    music = new Audio('assets/audio/music/desert.mp3');
+    music.loop = true; music.volume = 0.13;
+    applyMusic();
+  } catch (_) {}
+  updateMusicToggle();
+}
+
+function revealAround(x,y,r){
+  const x0 = Math.max(0,Math.floor(x-r)), x1 = Math.min(N-1,Math.ceil(x+r));
+  const y0 = Math.max(0,Math.floor(y-r)), y1 = Math.min(N-1,Math.ceil(y+r));
+  for (let i=x0;i<=x1;i++) for (let j=y0;j<=y1;j++)
+    if (Math.hypot(i-x,j-y) <= r) state.explored.add(i*N+j);
+}
+
+function findFreeNear(cx,cy,r){
+  for (let i=0;i<24;i++){
+    const a = rnd()*Math.PI*2, d = 2 + rnd()*r;
+    const x = cx + Math.cos(a)*d, y = cy + Math.sin(a)*d;
+    if (!blocked(x,y)) return {x,y};
+  }
+  return null;
+}
+
+/* ------------------------------ time --------------------------------- */
+
+function phaseName(h){
+  if (h >= 21 || h < 5) return 'Night';
+  if (h >= 18) return 'Dusk · camp rations';
+  if (h >= 10) return 'Daylight';
+  if (h >= 6) return 'Dawn · gather manna';
+  return 'Before dawn';
+}
+
+function addGameTime(hours){
+  let remaining = hours;
+  while (remaining > 0.0001){
+    const step = Math.min(remaining, 0.5);
+    const prev = state.hour;
+    let next = prev + step;
+    if (next >= 24){
+      state.hour = next - 24;
+      crossPhases(prev, 24);
+      endDay();
+      crossPhases(0, state.hour);
+    } else {
+      state.hour = next;
+      crossPhases(prev, state.hour);
+    }
+    remaining -= step;
+  }
+}
+
+function crossPhases(a,b){
+  if (a < 6 && b >= 6) dawn();
+  if (a < 10 && b >= 10) meltManna();
+  if (a < 18 && b >= 18) duskMeal();
+  if (a < 20 && b >= 20) nightFalls();
+}
+
+function dawn(){
+  state.mannaSpawned = false;
+  clearRaiders('The raiders withdraw at dawn.');
+  woodNodes.forEach(n => { n.wood = Math.min(n.max, n.wood + 6); n.claimedBy = null; });
+  people.forEach(p => { p.target = null; p.task = 'idle'; p.t = 0.4 + Math.random()*1.5; p.gatheredMonth = 0; });
+  const sabbath = state.day % 7 === 0;
+  if (sabbath){
+    state.faith = clamp(state.faith + 7, 0, 100);
+    state.health = clamp(state.health + 9, 0, 100);
+    say('The Sabbath. No manna falls; the people rest and remember.');
+    return;
+  }
+  spawnManna();
+}
+
+function spawnManna(){
+  if (state.mannaSpawned) return;
+  state.mannaSpawned = true;
+  const sabbath = state.day % 7 === 0;
+  if (sabbath) return;
+  let count = 16 + Math.floor(yearOfMonth()/4);
+  if (state.day % 7 === 6) count *= 2;
+  const centers = [
+    { x:CAMP.x, y:CAMP.y, r:9 },
+    { x:state.player.x, y:state.player.y, r:7 }
+  ];
+  const cur = currentStation();
+  if (cur) centers.push({ x:cur.x, y:cur.y, r:7 });
+  let made = 0, guard = 0;
+  while (made < count && guard < count*25){
+    guard++;
+    const c = centers[Math.floor(rnd()*centers.length)];
+    const p = findFreeNear(c.x, c.y, c.r);
+    if (!p) continue;
+    if (manna.some(m => Math.hypot(m.x-p.x,m.y-p.y) < 0.8)) continue;
+    manna.push({ x:p.x, y:p.y, seed:rnd()*6.28 });
+    made++;
+  }
+  if (state.day % 7 === 6) say('Double manna falls — prepare for the Sabbath.');
+  else say('Manna covers the ground around the camp and the pillar.');
+}
+
+function meltManna(){
+  if (!manna.length) return;
+  say(`${manna.length} flakes melted in the sun.`);
+  manna = [];
+}
+
+function duskMeal(){
+  if (state.duskDone) return;
+  state.duskDone = true;
+  const sabbath = state.day % 7 === 0;
+  let quota = QUOTA;
+  if (state.day % 7 === 6) quota *= 2;
+  if (sabbath) quota = Math.max(4, Math.round(QUOTA*0.6));
+
+  const food = Math.min(quota, state.manna);
+  state.manna -= food;
+  const foodShort = quota - food;
+  const waterNeed = 30;
+  const water = Math.min(waterNeed, state.campWater);
+  state.campWater -= water;
+  const waterShort = waterNeed - water;
+  state.campFed = foodShort === 0 && waterShort === 0;
+  state.lastFoodShort = foodShort;
+  state.lastWaterShort = waterShort;
+
+  if (waterShort > 0){
+    state.hydration = clamp(state.hydration - waterShort*0.5, 0, 100);
+    state.health = clamp(state.health - waterShort*0.35, 0, 100);
+  }
+
+  if (foodShort === 0 && waterShort === 0){
+    state.faith = clamp(state.faith + (sabbath ? 6 : 3), 0, 100);
+    state.health = clamp(state.health + (sabbath ? 8 : 2), 0, 100);
+    say(sabbath ? 'The Sabbath meal is shared. The camp is at peace.' : 'Dusk: the camp eats and drinks its fill.');
+  } else {
+    const fLoss = (foodShort/quota)*14;
+    const wLoss = (waterShort/waterNeed)*10;
+    state.faith = clamp(state.faith - fLoss - wLoss, 0, 100);
+    state.health = clamp(state.health - foodShort*0.7 - waterShort*0.22, 0, 100);
+    const bits = [];
+    if (foodShort) bits.push(`${foodShort} households hungry`);
+    if (waterShort) bits.push('the water is short');
+    say(`Dusk: ${bits.join(', ')}. Faith wavers.`);
+    playSfx('hurt', 0.25);
+  }
+  if (state.day % 7 === 0){
+    state.faith = clamp(state.faith + 5, 0, 100);
+    say('Sabbath rest restores the people.');
+  }
+  state.score += Math.round(state.faith);
+}
+
+function nightFalls(){
+  if (state.nightDone) return;
+  state.nightDone = true;
+  if (state.faith < 25){
+    state.faith = clamp(state.faith - 2, 0, 100);
+    say('Murmuring in the dark: “Was it because there were no graves in Egypt?”');
+    state.calf = clamp(state.calf + 6, 0, 100);
+  } else {
+    say('Night. The pillar becomes fire. Keep close to the campfire.');
+  }
+  if (Math.random() < 0.78) spawnRaid();
+}
+
+function endDay(){
+  // Midnight: hoarded manna rots, plague spreads, and idolatry grows.
+  const hoarded = totalHoard();
+  if (hoarded > 0){
+    state.rot += hoarded;
+    sickenCitizens(Math.floor(hoarded/3));
+    state.faith = clamp(state.faith - hoarded*0.45, 0, 100);
+    state.health = clamp(state.health - hoarded*0.5, 0, 100);
+    people.forEach(p => { p.hoard = 0; });
+    say(`Hoarded manna bred worms (${hoarded}). Disease spreads through the camp.`);
+    playSfx('hurt', 0.3);
+  }
+  if (state.rot > 0) state.rot = Math.max(0, state.rot - 2);
+
+  if (state.faith < 50 && Math.random() < 0.36){
+    const n = 1 + Math.floor(Math.random()*3);
+    sickenCitizens(n);
+    state.faith = clamp(state.faith - 3, 0, 100);
+    say(`A plague strikes the camp. ${n} more fall ill.`);
+    playSfx('hurt', 0.3);
+  }
+  if (state.faith < 25){
+    state.calf = clamp(state.calf + 12 + traitCounts().murmurer*2, 0, 100);
+    say('Gold and silver are being gathered in secret. The Golden Calf is taking shape.');
+  } else {
+    state.calf = Math.max(0, state.calf - 6);
+  }
+  if (state.calf >= 100){
+    endGame(false, 'The people completed the Golden Calf. Divine favour is withdrawn, and the camp falls into open rebellion.');
+    return;
+  }
+  if (state.sick > 0){
+    state.health = clamp(state.health - state.sick*0.5, 0, 100);
+    if (Math.random() < 0.4) healSickCitizens(1);
+  }
+
+  // Manna does not keep overnight, except the Sabbath preparation.
+  const preserveForSabbath = state.day % 7 === 6;
+  if (state.manna > 0){
+    if (preserveForSabbath) say('Manna is preserved for the Sabbath.');
+    else { say(`${state.manna} manna spoiled overnight.`); state.manna = 0; }
+  }
+
+  // Monthly growth: fed, watered and faithful tribes increase; a neglected
+  // camp loses people and flocks.
+  const healthy = state.campFed && state.faith >= 50 && state.campWater > 0;
+  const struggling = !state.campFed || state.campWater <= 0 || state.faith < 25;
+  for (const t of TRIBES){
+    const row = state.tribeStats[t.name];
+    if (!row) continue;
+    if (struggling){
+      row.population = Math.max(50, Math.round(row.population * 0.997));
+      row.livestock = Math.max(0, Math.round(row.livestock * 0.97));
+    } else if (healthy){
+      row.population = Math.round(row.population * 1.0015);
+      row.livestock = Math.round(row.livestock * 1.02);
+    } else {
+      row.population = Math.round(row.population * 1.0004);
+      row.livestock = Math.round(row.livestock * 1.005);
+    }
+  }
+  if (state.day % 6 === 0){
+    if (healthy) say(`The tribes increase (${totalPopulation().toLocaleString()} souls); flocks multiply (${totalLivestock().toLocaleString()}).`);
+    else if (struggling) say(`The tribes dwindle (${totalPopulation().toLocaleString()} souls); flocks scatter (${totalLivestock().toLocaleString()}).`);
+  }
+
+  state.day += 1;
+  state.duskDone = false;
+  state.nightDone = false;
+  state.mannaSpawned = false;
+  state.raidSpawned = false;
+  state.campFed = false;
+  state.lastFoodShort = 0;
+  state.lastWaterShort = 0;
+  state.stationWarnCd = 0;
+  clearRaiders();
+  raiders = [];
+  woodNodes.forEach(n => { n.wood = Math.min(n.max, n.wood + 4); });
+  people.forEach(p => { p.target = null; p.task = 'idle'; p.t = 0.2 + Math.random(); });
+  if (state.day > TOTAL_MONTHS){
+    endGame(false, 'Forty years are ended, and the people have not reached the Plains of Moab.');
+    return;
+  }
+  state.score += 20;
+  say(`Year ${yearOfMonth()}, Month ${monthName()} (${monthOfYear()}/12) begins. The pillar leads to ${currentStation()?.name || 'the Promised Land'}.`);
+  playSfx('day', 0.25);
+  saveGame();
+}
+
+/* ----------------------------- gameplay ------------------------------ */
+
+function update(dt){
+  if (state.mode !== 'playing') return;
+  const gameDt = dt * state.speed;
+  addGameTime(gameDt * 24 / MONTH_LENGTH);
+  updatePlayer(gameDt);
+  updatePeople(gameDt);
+  updateRaiders(gameDt);
+  updateVitals(gameDt);
+  updateManna(gameDt);
+  updateFx(gameDt);
+  updatePops(gameDt);
+  updateParticles(gameDt);
+  updateExplore(gameDt);
+  state.stationWarnCd = Math.max(0, state.stationWarnCd - gameDt);
+  checkStation();
+  checkEnd();
+  updateInteraction();
+  updateHud(false);
+}
+
+function updatePlayer(dt){
+  const p = state.player;
+  const k = state.keys;
+  let kx = (k.d||k.ArrowRight?1:0) - (k.a||k.ArrowLeft?1:0);
+  let ky = (k.s||k.ArrowDown?1:0) - (k.w||k.ArrowUp?1:0);
+  let moving = false;
+  const sprint = !!(k.Shift && state.stamina > 8);
+  const speed = TUNE.walk * (sprint ? TUNE.sprint : 1);
+
+  if (kx || ky){
+    let wx = kx + ky;
+    let wy = ky - kx;
+    const len = Math.hypot(wx,wy) || 1;
+    wx /= len; wy /= len;
+    moveEntity(p, wx*speed*dt, wy*speed*dt);
+    p.tx = null; p.ty = null;
+    moving = true;
+    state.stamina = clamp(state.stamina - (sprint ? TUNE.staminaDrain : 3.5)*dt, 0, 100);
+  } else if (p.tx != null){
+    const dx = p.tx - p.x, dy = p.ty - p.y;
+    const d = Math.hypot(dx,dy);
+    if (d > 0.08){
+      const step = Math.min(d, speed*dt);
+      moveEntity(p, dx/d*step, dy/d*step);
+      moving = true;
+    } else {
+      p.tx = null; p.ty = null;
+    }
+  } else {
+    state.stamina = clamp(state.stamina + TUNE.staminaRegen*dt, 0, 100);
+  }
+  if (sprint && moving) state.stamina = clamp(state.stamina - TUNE.staminaDrain*0.35*dt, 0, 100);
+  p.moving = moving;
+}
+
+function moveEntity(e, dx, dy){
+  const nx = e.x + dx, ny = e.y + dy;
+  if (!blocked(nx,ny)){ e.x = nx; e.y = ny; return; }
+  if (!blocked(nx, e.y)){ e.x = nx; return; }
+  if (!blocked(e.x, ny)){ e.y = ny; return; }
+  e.tx = null; e.ty = null;
+}
+
+function updateVitals(dt){
+  const night = state.hour >= 19 || state.hour < 5;
+  const moving = state.player.moving;
+  const nearFire = Math.hypot(state.player.x-CAMP.x, state.player.y-CAMP.y) <= TUNE.fireRadius;
+
+  state.hunger = clamp(state.hunger - (TUNE.hunger + (moving ? TUNE.hungerMove : 0))*dt, 0, 100);
+  state.hydration = clamp(state.hydration - (TUNE.hydration + (night ? 0.04 : TUNE.hydrationDay))*dt, 0, 100);
+  if (nearFire) state.warmth = clamp(state.warmth + TUNE.warmthGain*0.12*dt, 0, 100);
+  else if (night) state.warmth = clamp(state.warmth - TUNE.warmthNight*dt, 0, 100);
+  else state.warmth = clamp(state.warmth + TUNE.warmthDay*dt, 0, 100);
+
+  // The camp's shared water is also the player's lifeline.
+  if (state.campWater <= 0){
+    state.hydration = clamp(state.hydration - 0.45*dt, 0, 100);
+    state.health = clamp(state.health - 0.35*dt, 0, 100);
+    state.faith = clamp(state.faith - 0.05*dt, 0, 100);
+  }
+
+  if (state.hunger <= 0) state.health -= TUNE.healthStarve*dt;
+  if (state.hydration <= 0) state.health -= TUNE.healthThirst*dt;
+  if (state.warmth <= 0) state.health -= TUNE.healthCold*dt;
+  if (state.stamina <= 0 && moving) state.health -= 1.1*dt;
+  if (night && !nearFire) state.health -= 0.28*dt;
+
+  const critical = state.hunger < 15 || state.hydration < 15 || state.warmth < 15;
+  if (critical) state.faith = clamp(state.faith - TUNE.faithCritical*dt, 0, 100);
+
+  // Colony obedience drift: murmurers and hoarders pull the camp down;
+  // faithful citizens and good order lift it.
+  const counts = traitCounts();
+  const drift = counts.faithful*0.050 - counts.murmurer*0.045 - counts.lazy*0.012 - Math.min(4, totalHoard()*0.035);
+  state.faith = clamp(state.faith + drift*dt, 0, 100);
+  if (state.sick > 0) state.health = clamp(state.health - state.sick*0.02*dt, 0, 100);
+  if (state.faith >= 75) state.health = clamp(state.health + 0.05*dt, 0, 100);
+
+  state.health = clamp(state.health, 0, 100);
+  state.faith = clamp(state.faith, 0, 100);
+}
+
+function updateManna(dt){
+  const p = state.player;
+  for (let i=manna.length-1;i>=0;i--){
+    const m = manna[i];
+    if (Math.hypot(m.x-p.x,m.y-p.y) <= TUNE.pickupRadius){
+      manna.splice(i,1);
+      state.manna++; state.score++;
+      pops.push({ x:m.x, y:m.y, text:'+1 manna', color:'#ffe27a', t:1, max:1 });
+      burst(m.x, m.y, '#ffe27a', 7);
+      playSfx('pickup', 0.35);
+      if (!state.startHinted){
+        state.startHinted = true;
+        say('Manna gathered. Eat with F; the camp eats at dusk.');
+      }
+    }
+  }
+}
+
+
+function glowSprite(color){
+  const key = color;
+  if (glowCache.has(key)) return glowCache.get(key);
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const n = parseInt(color.slice(1),16);
+  const r = (n>>16)&255, gg = (n>>8)&255, b = n&255;
+  const grd = g.createRadialGradient(32,32,0,32,32,32);
+  grd.addColorStop(0,   `rgba(${r},${gg},${b},1)`);
+  grd.addColorStop(0.35,`rgba(${r},${gg},${b},0.75)`);
+  grd.addColorStop(0.7, `rgba(${r},${gg},${b},0.18)`);
+  grd.addColorStop(1,   `rgba(${r},${gg},${b},0)`);
+  g.fillStyle = grd;
+  g.fillRect(0,0,64,64);
+  glowCache.set(key,c);
+  return c;
+}
+
+function updateFx(dt){
+  const t = performance.now()/1000;
+  const night = state.hour >= 19 || state.hour < 5.5;
+
+  // Ambient dust / drifting sand around Moses.
+  fxTimers.ambient -= dt;
+  if (fxTimers.ambient <= 0 && fx.length < 150){
+    fxTimers.ambient = 0.16 + Math.random()*0.14;
+    const a = Math.random()*Math.PI*2, r = 4 + Math.random()*10;
+    fx.push({
+      kind:'dust',
+      x: state.player.x + Math.cos(a)*r, y: state.player.y + Math.sin(a)*r,
+      z: 6 + Math.random()*40,
+      vx: 0.18 + Math.random()*0.22, vy: (Math.random()-0.5)*0.08, vz: 1 + Math.random()*3,
+      life: 2 + Math.random()*2.2, max: 4.2,
+      size: 0.9 + Math.random()*1.6, phase: Math.random()*6.28, sway: 2 + Math.random()*3,
+      color: night ? '#c9d4ff' : '#fff0c8'
+    });
+  }
+
+  // Pillar of Cloud by day, Pillar of Fire by night.
+  const station = currentStation();
+  if (station && fx.length < 170){
+    const sp = W2S(station.x, station.y);
+    if (sp.x > -220 && sp.x < W+220 && sp.y > -260 && sp.y < H+180){
+      fxTimers.pillar -= dt;
+      if (fxTimers.pillar <= 0){
+        fxTimers.pillar = night ? 0.035 : 0.075;
+        const count = night ? 2 : 2;
+        for (let i=0;i<count;i++){
+          if (night){
+            const ember = Math.random() < 0.24;
+            fx.push({
+              kind: ember ? 'ember' : 'fire',
+              x: station.x + (Math.random()-0.5)*0.28,
+              y: station.y + (Math.random()-0.5)*0.28,
+              z: 4 + Math.random()*28,
+              vx: (Math.random()-0.5)*0.22, vy: (Math.random()-0.5)*0.18,
+              vz: 26 + Math.random()*34,
+              life: 0.7 + Math.random()*0.9, max: 1.6,
+              size: ember ? 1.6 + Math.random()*1.6 : 4 + Math.random()*6,
+              phase: Math.random()*6.28, sway: 4 + Math.random()*6,
+              color: ember ? '#ffe27a' : (Math.random()<0.4 ? '#e0584a' : Math.random()<0.5 ? '#ff9a45' : '#ffc24a')
+            });
+          } else {
+            fx.push({
+              kind:'cloud',
+              x: station.x + (Math.random()-0.5)*0.55,
+              y: station.y + (Math.random()-0.5)*0.55,
+              z: 18 + Math.random()*88,
+              vx: (Math.random()-0.5)*0.10, vy: (Math.random()-0.5)*0.08,
+              vz: 5 + Math.random()*12,
+              life: 2.4 + Math.random()*2.6, max: 5,
+              size: 8 + Math.random()*13,
+              phase: Math.random()*6.28, sway: 6 + Math.random()*8,
+              color: Math.random()<0.5 ? '#eef7ff' : '#d9ecff'
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Campfire embers when Moses is near the camp.
+  if (Math.hypot(state.player.x-CAMP.x, state.player.y-CAMP.y) < 13 && fx.length < 170){
+    fxTimers.fire -= dt;
+    if (fxTimers.fire <= 0){
+      fxTimers.fire = 0.16 + Math.random()*0.12;
+      fx.push({
+        kind:'ember',
+        x: CAMP.x + (Math.random()-0.5)*0.32,
+        y: CAMP.y + (Math.random()-0.5)*0.32,
+        z: 7 + Math.random()*12,
+        vx: (Math.random()-0.5)*0.16, vy: (Math.random()-0.5)*0.16,
+        vz: 14 + Math.random()*22,
+        life: 0.7 + Math.random()*0.8, max: 1.5,
+        size: 1.1 + Math.random()*1.8, phase: Math.random()*6.28, sway: 2 + Math.random()*3,
+        color: Math.random() < 0.3 ? '#ffe27a' : '#ff9a45'
+      });
+    }
+  }
+
+  for (const p of fx){
+    p.life -= dt;
+    p.x += p.vx*dt; p.y += p.vy*dt; p.z += p.vz*dt;
+    if (p.kind === 'cloud'){
+      p.vx += Math.sin(t*1.1 + p.phase) * 0.018 * dt;
+      p.vz *= 0.996;
+    } else if (p.kind === 'fire'){
+      p.vx += Math.sin(t*6 + p.phase) * 0.16 * dt;
+    }
+  }
+  if (fx.length > 180) fx.splice(0, fx.length-180);
+  fx = fx.filter(p => p.life > 0);
+}
+
+function drawFx(t){
+  for (const p of fx){
+    const base = W2S(p.x,p.y);
+    const sx = base.x + Math.sin(t*1.4 + p.phase) * p.sway;
+    const sy = base.y - p.z;
+    if (sx < -40 || sx > W+40 || sy < -60 || sy > H+40) continue;
+    const lifeK = Math.max(0, p.life / p.max);
+    const alpha = Math.min(1, lifeK * 1.5);
+    const sprite = glowSprite(p.color || '#ffffff');
+    let radius;
+    if (p.kind === 'cloud') radius = p.size * (1.0 + (1-lifeK)*0.45);
+    else if (p.kind === 'fire') radius = p.size * (0.55 + lifeK*0.65);
+    else if (p.kind === 'ember') radius = p.size * (0.5 + lifeK*0.5);
+    else radius = p.size;
+    const a = p.kind === 'dust' ? alpha*0.20 : p.kind === 'cloud' ? alpha*0.44 : p.kind === 'fire' ? alpha*0.62 : alpha*0.8;
+    g.globalAlpha = a;
+    g.globalCompositeOperation = (p.kind === 'fire' || p.kind === 'ember') ? 'lighter' : 'source-over';
+    g.drawImage(sprite, sx-radius, sy-radius, radius*2, radius*2);
+    if (p.kind === 'fire' || p.kind === 'ember'){
+      g.globalAlpha = a*0.9;
+      g.drawImage(sprite, sx-radius*0.45, sy-radius*0.45, radius*0.9, radius*0.9);
+    }
+  }
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+function updatePops(dt){ for (const p of pops) p.t -= dt; pops = pops.filter(p => p.t > 0); }
+function updateParticles(dt){
+  for (const q of particles){ q.x += q.vx*dt; q.y += q.vy*dt; q.vy += 40*dt; q.t -= dt; }
+  particles = particles.filter(q => q.t > 0);
+}
+function burst(x,y,color,count){
+  const s = W2S(x,y);
+  for (let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2, sp = 15+Math.random()*40;
+    particles.push({ sx:s.x, sy:s.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-20, t:0.5+Math.random()*0.35, color });
+  }
+}
+
+function updateExplore(dt){
+  state.exploreTimer -= dt;
+  if (state.exploreTimer > 0) return;
+  state.exploreTimer = 0.35;
+  revealAround(state.player.x, state.player.y, 5.2);
+  state.visited.forEach(i => {
+    const s = STATIONS[i];
+    if (s) revealAround(s.x, s.y, 3.2);
+  });
+}
+
+function traitCounts(){
+  const c = { greedy:0, lazy:0, murmurer:0, faithful:0, ordinary:0 };
+  for (const p of people) c[p.trait] = (c[p.trait] || 0) + 1;
+  return c;
+}
+
+function totalHoard(){
+  let n = 0;
+  for (const p of people) n += p.hoard || 0;
+  return n;
+}
+
+function sickCount(){
+  let n = 0;
+  for (const p of people) if (p.sick) n++;
+  return n;
+}
+function sickenCitizens(n){
+  let marked = 0;
+  for (const p of people){
+    if (marked >= n) break;
+    if (!p.sick){ p.sick = true; marked++; }
+  }
+  state.sick = sickCount();
+}
+function healSickCitizens(n){
+  let healed = 0;
+  for (const p of people){
+    if (healed >= n) break;
+    if (p.sick){ p.sick = false; healed++; }
+  }
+  state.sick = sickCount();
+}
+
+function orderInfo(){
+  const f = state.faith;
+  if (f >= 75) return { id:'optimal',  label:'Optimal Order',  color:'#9dbb74', speed:1.12 };
+  if (f >= 50) return { id:'unrest',   label:'Growing Unrest', color:'#d6c04a', speed:0.96 };
+  if (f >= 25) return { id:'idolatry', label:'Secret Idolatry',color:'#e08a3a', speed:0.82 };
+  return { id:'rebellion', label:'Open Rebellion', color:'#e0584a', speed:0.64 };
+}
+
+function wanderTarget(p){
+  for (let i=0;i<8;i++){
+    const x = p.hx + (Math.random()-0.5)*5.5;
+    const y = p.hy + (Math.random()-0.5)*5.5;
+    if (!blocked(x,y)) return { x, y };
+  }
+  return { x:p.hx, y:p.hy };
+}
+
+function nearestManna(p){
+  let best = null, bd = 1e9;
+  for (const m of manna){
+    const d = Math.hypot(m.x-p.x, m.y-p.y);
+    if (d < bd){ bd = d; best = m; }
+  }
+  return best;
+}
+
+function nearestWoodNode(p){
+  let best = null, bd = 1e9;
+  for (const n of woodNodes){
+    if (n.wood <= 0) continue;
+    const d = Math.hypot(n.x-p.x, n.y-p.y);
+    if (d < bd){ bd = d; best = n; }
+  }
+  return best;
+}
+
+function citizenSpeed(p, order){
+  let sp = 0.88;
+  if (p.trait === 'faithful') sp += 0.14;
+  if (p.trait === 'lazy') sp -= 0.32;
+  if (p.sick) sp -= 0.28;
+  sp += (order.speed - 1) * 0.7;
+  return Math.max(0.32, sp);
+}
+
+function moveCitizen(p, tx, ty, speed, dt){
+  const dx = tx - p.x, dy = ty - p.y;
+  const d = Math.hypot(dx,dy);
+  if (d < 0.12) return 0;
+  const step = Math.min(d, speed*dt);
+  const nx = p.x + dx/d*step, ny = p.y + dy/d*step;
+  if (!blocked(nx,ny)){ p.x = nx; p.y = ny; p.stuck = 0; }
+  else if (!blocked(nx,p.y)){ p.x = nx; p.stuck += dt; }
+  else if (!blocked(p.x,ny)){ p.y = ny; p.stuck += dt; }
+  else { p.stuck += dt; }
+  return Math.hypot(tx-p.x, ty-p.y);
+}
+
+function depositCitizen(p){
+  if (p.carry > 0){
+    state.manna += p.carry;
+    if (p.carry >= 2) pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.carry} manna`, color:'#ffe27a', t:0.9, max:0.9 });
+    p.carry = 0;
+  }
+  if (p.woodCarry > 0){
+    state.wood += p.woodCarry;
+    pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.woodCarry} wood`, color:'#c99a5a', t:0.9, max:0.9 });
+    p.woodCarry = 0;
+  }
+}
+
+function chooseCitizenTask(p){
+  if (p.carry > 0 || p.woodCarry > 0){ p.task = 'deposit'; p.target = { x:CAMP.x, y:CAMP.y }; return; }
+  if (p.sick){ p.task = 'rest'; p.target = { x:p.hx, y:p.hy }; return; }
+  const h = state.hour;
+  const dawn = h >= 6 && h < 10;
+  const day = h >= 10 && h < 17;
+  const night = h >= 20 || h < 6;
+  if (p.trait === 'lazy' && !night && Math.random() < 0.62){
+    p.task = 'wander'; p.target = wanderTarget(p); p.t = 2 + Math.random()*3; return;
+  }
+  if (dawn && p.gatheredMonth < 1 && manna.length && !(p.trait === 'lazy' && Math.random() < 0.7)){
+    const m = nearestManna(p);
+    if (m){ p.task = 'manna'; p.target = m; return; }
+  }
+  if (day && !night && p.trait !== 'lazy' && p.trait !== 'murmurer'){
+    const n = nearestWoodNode(p);
+    if (n){ p.task = 'wood'; p.target = n; return; }
+  }
+  if (night){
+    p.task = 'wander';
+    p.target = { x:p.hx + (Math.random()-0.5)*1.4, y:p.hy + (Math.random()-0.5)*1.4 };
+    return;
+  }
+  p.task = 'wander'; p.target = wanderTarget(p);
+}
+
+function updatePeople(dt){
+  const order = orderInfo();
+  state.order = order.label;
+  for (const p of people){
+    p.phase += dt*2.2;
+    p.counselCd = Math.max(0, p.counselCd - dt);
+    p.murmurCd = Math.max(0, p.murmurCd - dt);
+
+    if (p.trait === 'murmurer' && p.murmurCd <= 0 && Math.hypot(p.x-CAMP.x, p.y-CAMP.y) < 9){
+      p.murmurCd = 32 + Math.random()*24;
+      if (Math.random() < 0.3){
+        say('A murmurer stirs discontent around the tents.');
+        state.faith = clamp(state.faith - 0.35, 0, 100);
+      }
+    }
+
+    if (p.carry > 0 || p.woodCarry > 0) p.task = 'deposit';
+    if (!p.target && p.task !== 'idle') chooseCitizenTask(p);
+    if (p.task === 'idle'){
+      p.t -= dt;
+      if (p.t <= 0){ chooseCitizenTask(p); p.t = 1.5 + Math.random()*2.5; }
+      continue;
+    }
+
+    const speed = citizenSpeed(p, order);
+
+    if (p.task === 'deposit'){
+      const d = moveCitizen(p, CAMP.x, CAMP.y, speed*1.1, dt);
+      if (d < 1.7){ depositCitizen(p); p.task = 'idle'; p.t = 0.8 + Math.random()*1.8; }
+    } else if (p.task === 'manna'){
+      const m = p.target;
+      if (!m || !manna.includes(m)){ p.target = null; p.task = 'idle'; p.t = 0.3; continue; }
+      const d = moveCitizen(p, m.x, m.y, speed, dt);
+      if (d < 0.55){
+        manna.splice(manna.indexOf(m),1);
+        p.gatheredMonth++;
+        if (p.trait === 'greedy' && Math.random() < 0.6) p.hoard++;
+        else p.carry++;
+        p.target = null;
+        if (p.carry + p.hoard >= 1 || manna.length === 0) p.task = 'deposit';
+        else chooseCitizenTask(p);
+      }
+    } else if (p.task === 'wood'){
+      const n = p.target;
+      if (!n || n.wood <= 0){ p.target = null; p.task = 'idle'; p.t = 0.4; continue; }
+      const d = moveCitizen(p, n.x, n.y, speed, dt);
+      if (d < 0.95){
+        p.work += dt;
+        if (p.work >= 1.25){
+          n.wood = Math.max(0, n.wood - 1);
+          p.woodCarry++;
+          p.work = 0;
+          if (p.woodCarry >= 3 || n.wood <= 0){ p.target = null; p.task = 'deposit'; }
+        }
+      }
+    } else if (p.task === 'rest'){
+      moveCitizen(p, p.hx, p.hy, speed*0.7, dt);
+    } else {
+      if (!p.target) p.target = wanderTarget(p);
+      const d = moveCitizen(p, p.target.x, p.target.y, speed*0.8, dt);
+      if (d < 0.25){
+        p.target = null;
+        p.t -= dt;
+        if (p.t <= 0){ chooseCitizenTask(p); p.t = 1.5 + Math.random()*3; }
+      }
+    }
+
+    if (p.stuck > 2.4){ p.target = null; p.task = 'idle'; p.t = 0.5; p.stuck = 0; }
+  }
+}
+
+function updateRaiders(dt){
+  if (!raiders.length){
+    if (!(state.hour >= 20 || state.hour < 5.5)) state.raidSpawned = false;
+    return;
+  }
+  const night = state.hour >= 20 || state.hour < 5.5;
+  if (!night){ clearRaiders('The raiders withdraw at dawn.'); return; }
+  const towers = structures.filter(s => s.kind === 'tower');
+  const walls = structures.filter(s => s.kind === 'wall').length;
+  for (let i = raiders.length - 1; i >= 0; i--){
+    const r = raiders[i];
+    for (const t of towers){
+      if (Math.hypot(t.x-r.x, t.y-r.y) < 5.5) r.hp -= 30*dt;
+    }
+    if (r.hp <= 0){
+      state.manna += r.loot;
+      state.faith = clamp(state.faith + 1, 0, 100);
+      state.score += 15;
+      pops.push({ x:r.x, y:r.y, text:r.loot ? `Raider defeated +${r.loot}` : 'Raider defeated', color:'#ff8a6a', t:1.2, max:1.2 });
+      burst(r.x, r.y, '#e0584a', 8);
+      raiders.splice(i,1);
+      continue;
+    }
+    if (r.state === 'raid'){
+      const d = moveCitizen(r, CAMP.x, CAMP.y, 1.75, dt);
+      if ((r.stuck || 0) > 2.5){
+        const a = Math.atan2(CAMP.y-r.y, CAMP.x-r.x);
+        const nx = r.x + Math.cos(a)*3, ny = r.y + Math.sin(a)*3;
+        if (!blocked(nx,ny)){ r.x = nx; r.y = ny; }
+        r.stuck = 0;
+      }
+      if (d < 2.4){
+        const factor = Math.max(0.25, 1 - walls*0.09);
+        const steal = Math.max(1, Math.round(3*factor));
+        const got = Math.min(steal, state.manna);
+        state.manna -= got;
+        r.loot += got;
+        r.state = 'flee';
+        state.faith = clamp(state.faith - 1.3, 0, 100);
+        say(`A raider steals ${got} manna and flees${walls ? ' past the palisade' : ''}.`);
+        playSfx('hurt', 0.2);
+      }
+    } else {
+      const a = Math.atan2(r.y-CAMP.y, r.x-CAMP.x);
+      moveCitizen(r, r.x + Math.cos(a)*12, r.y + Math.sin(a)*12, 2.2, dt);
+      if (Math.hypot(r.x-CAMP.x, r.y-CAMP.y) > 19) raiders.splice(i,1);
+    }
+  }
+}
+
+function spawnRaid(){
+  if (state.raidSpawned || state.day < 2 || state.day % 7 === 0) return;
+  state.raidSpawned = true;
+  const count = Math.min(4, 1 + Math.floor(yearOfMonth()/8));
+  for (let i=0;i<count;i++){
+    let spot = null;
+    for (let a=0;a<30;a++){
+      const ang = Math.random()*Math.PI*2, r = 13 + Math.random()*6;
+      const x = CAMP.x + Math.cos(ang)*r, y = CAMP.y + Math.sin(ang)*r;
+      if (!blocked(x,y)){ spot = {x,y}; break; }
+    }
+    if (!spot) continue;
+    raiders.push({ x:spot.x, y:spot.y, hp:95, maxHp:95, loot:0, state:'raid', phase:Math.random()*6.28 });
+  }
+  if (raiders.length){
+    say('Raiders approach the camp perimeter! Towers and walls will defend it.');
+    $('raidBanner').hidden = false;
+    setTimeout(() => { $('raidBanner').hidden = true; }, 4200);
+    playSfx('hurt', 0.3);
+  }
+}
+
+function clearRaiders(msg){
+  if (!raiders.length){ state.raidSpawned = false; return; }
+  raiders = [];
+  state.raidSpawned = false;
+  if (msg) say(msg);
+}
+
+function checkStation(){
+  const s = currentStation();
+  if (!s) return;
+  if (state.mode !== 'playing') return;
+  if (dist(state.player, s) <= TUNE.stationRadius){
+    const req = stationRequirements();
+    if (!canEnterStation()){
+      if (state.stationWarnCd <= 0){
+        state.stationWarnCd = 4;
+        say(`The camp is not ready to move on. Needs ${req.manna} manna, ${req.water} camp water and ${req.faith}% faith.`);
+      }
+      return;
+    }
+    openStation();
+  }
+}
+
+function checkEnd(){
+  if (state.mode !== 'playing') return;
+  if (state.health <= 0){
+    endGame(false, 'Wellbeing failed. Moses cannot lead the people any further.');
+  } else if (state.faith <= 0){
+    endGame(false, 'Faith collapsed, and the people built a golden calf in the wilderness.');
+  }
+}
+
+function updateInteraction(){
+  const p = state.player;
+  let nearest = null, best = 99;
+
+  for (const r of raiders){
+    const d = Math.hypot(r.x-p.x, r.y-p.y);
+    if (d < 2.0 && d < best){ best = d; nearest = { type:'raider', raider:r }; }
+  }
+  for (const n of woodNodes){
+    if (n.wood <= 0) continue;
+    const d = Math.hypot(n.x-p.x, n.y-p.y);
+    if (d < 2.0 && d < best){ best = d; nearest = { type:'wood', node:n }; }
+  }
+  const market = { x:CAMP.x+2.9, y:CAMP.y-2.3 };
+  const dm = Math.hypot(p.x-market.x, p.y-market.y);
+  if (dm < 2.3 && dm < best){ best = dm; nearest = { type:'market' }; }
+  const dc = Math.hypot(p.x-CAMP.x, p.y-CAMP.y);
+  if (dc < TUNE.fireRadius && dc < best){ best = dc; nearest = { type:'fire' }; }
+  for (const t of waterTiles){
+    const d = Math.hypot(t.x-p.x, t.y-p.y);
+    if (d < 2.15 && d < best){ best = d; nearest = { type:'water' }; }
+  }
+  for (const c of people){
+    const d = Math.hypot(c.x-p.x, c.y-p.y);
+    if (d < 1.6 && d < best){ best = d; nearest = { type:'citizen', citizen:c }; }
+  }
+
+  state.interaction = nearest;
+  const btn = $('btnInteract');
+  if (nearest?.type === 'raider') btn.innerHTML = 'Strike raider <kbd>E</kbd>';
+  else if (nearest?.type === 'wood') btn.innerHTML = 'Gather wood <kbd>E</kbd>';
+  else if (nearest?.type === 'citizen') btn.innerHTML = 'Counsel <kbd>E</kbd>';
+  else if (nearest?.type === 'water') btn.innerHTML = 'Draw water <kbd>E</kbd>';
+  else if (nearest?.type === 'fire') btn.innerHTML = 'Warm <kbd>E</kbd>';
+  else if (nearest?.type === 'market') btn.innerHTML = 'Market <kbd>E</kbd>';
+  else btn.innerHTML = 'Interact <kbd>E</kbd>';
+
+  $('contextNote').textContent =
+    nearest?.type === 'raider' ? 'A raider is within reach — strike before they steal from the camp.'
+    : nearest?.type === 'wood' ? `Acacia wood: ${nearest.node.wood} remaining.`
+    : nearest?.type === 'citizen' ? `${nearest.citizen.tribe} · ${TRAITS[nearest.citizen.trait].label}. Counsel with E.`
+    : nearest?.type === 'water' ? 'A spring — draw water into the waterskin and the camp stores.'
+    : nearest?.type === 'fire' ? 'The campfire — warm yourself and recover.'
+    : nearest?.type === 'market' ? 'The market stall — trade surplus manna and tithe silver.'
+    : '';
+}
+
+function attackRaider(r){
+  if (!r || !raiders.includes(r)) return;
+  r.hp -= 48;
+  burst(r.x, r.y, '#ffb257', 8);
+  playSfx('hurt', 0.25);
+  if (r.hp <= 0){
+    state.manna += r.loot;
+    state.faith = clamp(state.faith + 1, 0, 100);
+    state.score += 15;
+    pops.push({ x:r.x, y:r.y, text:r.loot ? `+${r.loot} manna` : 'Raider defeated', color:'#ff8a6a', t:1.2, max:1.2 });
+    raiders.splice(raiders.indexOf(r),1);
+    say('You strike down a raider and recover what was taken.');
+  } else {
+    say('You strike the raider. They stagger back.');
+  }
+  updateHud(true);
+}
+
+function gatherWood(node){
+  if (!node || node.wood <= 0) return;
+  const amount = Math.min(3, node.wood);
+  node.wood -= amount;
+  state.wood += amount;
+  pops.push({ x:node.x, y:node.y, text:`+${amount} wood`, color:'#c99a5a', t:1, max:1 });
+  burst(node.x, node.y, '#c99a5a', 6);
+  playSfx('click', 0.2);
+  say(`You gather ${amount} acacia wood.`);
+  updateHud(true);
+}
+
+function counselCitizen(c){
+  if (!c) return;
+  if (c.trait === 'faithful'){ say(`${c.tribe} is already devout. Praise given.`); return; }
+  if (c.counselCd > 0){ say('They are still weighing your words. Give them time.'); return; }
+  c.counselCd = 28;
+  const success = Math.random() < (c.trait === 'murmurer' ? 0.5 : 0.62);
+  if (success){
+    if (c.hoard > 0){
+      state.manna += c.hoard;
+      pops.push({ x:c.x, y:c.y, text:`+${c.hoard} manna`, color:'#ffe27a', t:1.1, max:1.1 });
+      c.hoard = 0;
+    }
+    c.trait = 'faithful';
+    state.faith = clamp(state.faith + 2, 0, 100);
+    state.score += 5;
+    say(`${c.tribe} heeds your counsel and mends their ways.`);
+    burst(c.x, c.y, '#9dbb74', 7);
+  } else {
+    state.faith = clamp(state.faith - 1, 0, 100);
+    say(`${c.tribe} refuses your counsel and turns away.`);
+  }
+  updateHud(true);
+}
+
+function openCamp(){
+  if (state.mode !== 'playing') return;
+  state.mode = 'camp';
+  $('buildBanner').hidden = true;
+  updateCampUI();
+  $('campOverlay').classList.add('open');
+}
+function closeCamp(){
+  $('campOverlay').classList.remove('open');
+  if (state.mode === 'camp') state.mode = 'playing';
+  if (state.buildMode) showBuildBanner();
+}
+
+function updateCampUI(){
+  const counts = traitCounts();
+  const hoard = totalHoard();
+  const walls = structures.filter(s => s.kind === 'wall').length;
+  const towers = structures.filter(s => s.kind === 'tower').length;
+  const tents = structures.filter(s => s.kind === 'tent').length;
+  const order = orderInfo();
+  const totalSouls = totalPopulation();
+  $('campSummary').innerHTML =
+    `<span>Souls of Israel <b>${totalSouls.toLocaleString()}</b></span>` +
+    `<span>Represented <b>${people.length}</b></span>` +
+    `<span>Flocks <b>${totalLivestock().toLocaleString()}</b></span>` +
+    `<span>Order <b style="color:${order.color}">${order.label}</b></span>` +
+    `<span>Faith <b>${Math.round(state.faith)}%</b></span>` +
+    `<span>Calf <b>${Math.round(state.calf)}%</b></span>`;
+  $('campTraits').innerHTML = Object.entries(TRAITS).map(([id, t]) =>
+    `<div class="camp-trait"><i style="background:${t.color}"></i>${t.label}<b>${counts[id] || 0}</b></div>`
+  ).join('');
+  $('campStores').innerHTML =
+    `<div class="camp-store"><i style="background:#ffe27a"></i>Basket manna<b>${state.manna}</b></div>` +
+    `<div class="camp-store"><i style="background:#e0a24a"></i>Hoarded manna<b>${hoard}</b></div>` +
+    `<div class="camp-store"><i style="background:#8a5a2a"></i>Rot<b>${state.rot}</b></div>` +
+    `<div class="camp-store"><i style="background:#e0584a"></i>Sick<b>${state.sick}</b></div>` +
+    `<div class="camp-store"><i style="background:#c99a5a"></i>Wood<b>${state.wood}</b></div>` +
+    `<div class="camp-store"><i style="background:#7f8fae"></i>Structures<b>${structures.length}</b></div>` +
+    `<div class="camp-store"><i style="background:#c9a45e"></i>Flocks<b>${totalLivestock().toLocaleString()}</b></div>`;
+  const byTribe = {};
+  TRIBES.forEach(t => { byTribe[t.name] = { tribe:t, rep:0, sick:0, hoard:0, traits:{ greedy:0, lazy:0, murmurer:0, faithful:0, ordinary:0 } }; });
+  for (const p of people){
+    const row = byTribe[p.tribe];
+    if (!row) continue;
+    row.rep++;
+    row.traits[p.trait] = (row.traits[p.trait] || 0) + 1;
+    if (p.sick) row.sick++;
+    row.hoard += p.hoard || 0;
+  }
+  $('campTribes').innerHTML = TRIBES.map(t => {
+    const row = byTribe[t.name];
+    const tr = row.traits;
+    const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
+    return `<div class="camp-tribe-card">` +
+      `<div class="camp-tribe-head"><i style="background:${t.color}"></i><b>${t.name}</b><span>${st.population.toLocaleString()} souls</span></div>` +
+      `<div class="camp-tribe-line">Flocks <b>${st.livestock.toLocaleString()}</b> · Represented <b>${row.rep}</b> · Sick <b>${row.sick}</b> · Hoarded <b>${row.hoard}</b></div>` +
+      `<div class="camp-tribe-traits">` +
+        `<span style="color:${TRAITS.greedy.color}">Greedy <b>${tr.greedy}</b></span>` +
+        `<span style="color:${TRAITS.lazy.color}">Lazy <b>${tr.lazy}</b></span>` +
+        `<span style="color:${TRAITS.murmurer.color}">Murmurer <b>${tr.murmurer}</b></span>` +
+        `<span style="color:${TRAITS.faithful.color}">Devout <b>${tr.faithful}</b></span>` +
+        `<span style="color:${TRAITS.ordinary.color}">Ordinary <b>${tr.ordinary}</b></span>` +
+      `</div>` +
+    `</div>`;
+  }).join('');
+  $('defenseInfo').innerHTML = `Defense: <b>${walls}</b> wall panels · <b>${towers}</b> watchtowers · <b>${tents}</b> tents.` +
+    (state.buildMode ? ` <br>Placing: <b>${BUILD_LABELS[state.buildMode]}</b> — click the ground near camp.` : '');
+  document.querySelectorAll('#buildButtons button').forEach(b => {
+    const kind = b.dataset.build;
+    b.disabled = state.wood < BUILD_COSTS[kind];
+    b.classList.toggle('selected', state.buildMode === kind);
+  });
+}
+
+function showBuildBanner(){
+  const banner = $('buildBanner');
+  if (!state.buildMode){ banner.hidden = true; return; }
+  banner.hidden = false;
+  banner.innerHTML = `Placing <b>${BUILD_LABELS[state.buildMode]}</b> · ${BUILD_COSTS[state.buildMode]} wood · click near camp · <b>Esc</b> to cancel`;
+}
+
+function startBuild(kind){
+  const cost = BUILD_COSTS[kind];
+  if (!cost) return;
+  if (state.wood < cost){ say(`Not enough wood. ${BUILD_LABELS[kind]} costs ${cost}.`); return; }
+  state.buildMode = kind;
+  closeCamp();
+  showBuildBanner();
+  updateHud(true);
+}
+
+function cancelBuild(){
+  state.buildMode = null;
+  state.mouseWorld = null;
+  showBuildBanner();
+  updateHud(true);
+}
+
+function placeStructure(x,y){
+  const kind = state.buildMode;
+  if (!kind) return false;
+  const cost = BUILD_COSTS[kind];
+  if (state.wood < cost){ say('Not enough wood for that.'); cancelBuild(); return true; }
+  if (Math.hypot(x-CAMP.x, y-CAMP.y) > CAMP_RADIUS){ say('Build closer to the camp.'); return true; }
+  if (blocked(x,y)){ say('You cannot build on rock or water.'); return true; }
+  if (structures.some(s => Math.hypot(s.x-x, s.y-y) < 1.0)){ say('Something already stands there.'); return true; }
+
+  state.wood -= cost;
+  structures.push({ kind, x, y, s: kind === 'tent' ? 1.05 : 1 });
+  if (kind === 'tent') state.faith = clamp(state.faith + 1, 0, 100);
+  pops.push({ x, y, text:`${BUILD_LABELS[kind]} built`, color:'#e8b84a', t:1.2, max:1.2 });
+  burst(x, y, '#c99a5a', 10);
+  playSfx('click', 0.3);
+  say(`Built a ${BUILD_LABELS[kind]} (${cost} wood).`);
+  if (state.wood < cost) cancelBuild();
+  else { showBuildBanner(); updateHud(true); }
+  updateCampUI();
+  return true;
+}
+
+function eat(){
+  if (state.mode !== 'playing') return;
+  if (state.manna < 2){ say('Not enough manna in the basket. Gather more first.'); return; }
+  state.manna -= 2;
+  state.hunger = clamp(state.hunger + 38, 0, 100);
+  state.health = clamp(state.health + 6, 0, 100);
+  state.faith = clamp(state.faith + 1, 0, 100);
+  say('You eat manna. Hunger eases, and the people take heart.');
+  playSfx('pickup', 0.3);
+  updateHud(true);
+}
+
+function drink(){
+  if (state.mode !== 'playing') return;
+  if (state.waterskin <= 0){ say('The waterskin is empty. Draw water at a spring with E.'); return; }
+  state.waterskin--;
+  state.hydration = clamp(state.hydration + 40, 0, 100);
+  state.health = clamp(state.health + 2, 0, 100);
+  say('You drink from the waterskin. The dust loosens its grip.');
+  playSfx('water', 0.3);
+  updateHud(true);
+}
+
+function interact(){
+  if (state.mode !== 'playing') return;
+  const it = state.interaction;
+  if (it?.type === 'raider'){ attackRaider(it.raider); return; }
+  if (it?.type === 'wood'){ gatherWood(it.node); return; }
+  if (it?.type === 'citizen'){ counselCitizen(it.citizen); return; }
+  if (it?.type === 'market'){ openMarket(); return; }
+  if (it?.type === 'fire'){
+    state.warmth = clamp(state.warmth + 45, 0, 100);
+    state.stamina = clamp(state.stamina + 22, 0, 100);
+    if (state.sick > 0 && Math.random() < 0.5){
+      healSickCitizens(1);
+      say('You warm yourself at the fire. One of the sick recovers a little.');
+    } else {
+      say('You warm yourself at the fire. Strength returns.');
+    }
+    burst(state.player.x, state.player.y, '#ffb257', 9);
+    playSfx('day', 0.18);
+    updateHud(true);
+    return;
+  }
+  if (it?.type === 'water'){
+    state.waterskin = 3;
+    state.campWater = clamp(state.campWater + 25, 0, 100);
+    state.hydration = clamp(state.hydration + 12, 0, 100);
+    say('You fill the waterskin and carry water back for the camp.');
+    burst(state.player.x, state.player.y, '#7fc4e8', 10);
+    playSfx('water', 0.4);
+    updateHud(true);
+    return;
+  }
+  say('Nothing to draw from here. Look for the blue springs.');
+}
+
+function waitHour(){
+  if (state.mode !== 'playing') return;
+  addGameTime(1);
+  state.hunger = clamp(state.hunger - 2.5, 0, 100);
+  state.hydration = clamp(state.hydration - 3, 0, 100);
+  say('You wait an hour.');
+  updateHud(true);
+}
+
+function setSpeed(speed){
+  state.speed = speed;
+  const b = $('btnSpeed');
+  if (b) b.textContent = '×' + speed;
+}
+
+/* ---------------------------- interactions --------------------------- */
+
+function openStation(){
+  const s = currentStation();
+  if (!s) return;
+  state.mode = 'station';
+  state.focusStation = s;
+  state.visited.add(state.stationIndex);
+  $('stationKicker').textContent = s.scripture;
+  $('stationTitle').textContent = s.title;
+  $('stationText').textContent = s.text;
+  $('stationTrial').textContent = s.trial;
+  const bits = [];
+  const b = s.blessing || {};
+  if (b.health){ state.health = clamp(state.health + b.health, 0, 100); bits.push(`Wellbeing +${b.health}`); }
+  if (b.hydration){ state.hydration = 100; bits.push('Water restored'); }
+  if (b.campWater){ state.campWater = clamp(state.campWater + b.campWater, 0, 100); bits.push(`Camp water +${b.campWater}`); }
+  if (b.warmth){ state.warmth = clamp(state.warmth + b.warmth, 0, 100); bits.push(`Warmth +${b.warmth}`); }
+  if (b.faith){ state.faith = clamp(state.faith + b.faith, 0, 100); bits.push(`Faith +${b.faith}`); }
+  if (b.manna){ state.manna += b.manna; bits.push(`Manna +${b.manna}`); }
+  state.score += 100;
+  $('stationBlessing').textContent = bits.length ? 'Blessing: ' + bits.join(' · ') : '';
+  $('stationOverlay').classList.add('open');
+  playSfx('coins', 0.3);
+  revealAround(s.x, s.y, 6);
+  updateHud(true);
+}
+
+function closeStation(){
+  $('stationOverlay').classList.remove('open');
+  state.stationIndex++;
+  state.focusStation = null;
+  state.mode = 'playing';
+  const next = currentStation();
+  if (!next){
+    endGame(true, 'Eight stations are behind you. The pillar stands still on the Plains of Moab, and the Promised Land lies open before the people.');
+    return;
+  }
+  say(`The pillar moves on to ${next.name}. Follow the cloud.`);
+  saveGame();
+  updateHud(true);
+}
+
+function openMarket(){
+  state.mode = 'market';
+  updateMarket();
+  $('marketOverlay').classList.add('open');
+}
+function updateMarket(){
+  $('marketInfo').textContent = `Manna in basket: ${state.manna} · Silver: ${state.silver} · Faith: ${Math.round(state.faith)}%`;
+  $('mSell').disabled = state.manna < 5;
+  $('mWater').disabled = state.silver < 8;
+  $('mTithe').disabled = state.silver < 10 || state.faith >= 100;
+  $('sellPrice').textContent = `(+${5*2} silver)`;
+}
+function closeMarket(){
+  $('marketOverlay').classList.remove('open');
+  state.mode = 'playing';
+  updateHud(true);
+}
+
+function openPause(){
+  if (state.mode === 'playing'){
+    state.mode = 'paused';
+    saveGame();
+    $('pauseOverlay').classList.add('open');
+  } else if (state.mode === 'paused'){
+    closePause();
+  }
+}
+function closePause(){
+  $('pauseOverlay').classList.remove('open');
+  if (state.mode === 'paused') state.mode = 'playing';
+}
+
+function openAbout(){
+  if (state.mode !== 'playing') return;
+  state.mode = 'about';
+  $('aboutOverlay').classList.add('open');
+}
+function closeAbout(){
+  $('aboutOverlay').classList.remove('open');
+  if (state.mode === 'about') state.mode = 'playing';
+}
+function openCredits(){
+  if (state.mode !== 'playing') return;
+  state.mode = 'credits';
+  updateMusicToggle();
+  $('creditsOverlay').classList.add('open');
+}
+function closeCredits(){
+  $('creditsOverlay').classList.remove('open');
+  if (state.mode === 'credits') state.mode = 'playing';
+}
+
+function openMap(){
+  if (state.mode !== 'playing') return;
+  state.mode = 'map';
+  drawMap();
+  $('mapOverlay').classList.add('open');
+}
+function closeMap(){
+  $('mapOverlay').classList.remove('open');
+  if (state.mode === 'map') state.mode = 'playing';
+  updateHud(true);
+}
+
+function endGame(win, reason){
+  if (state.mode === 'end') return;
+  state.mode = 'end';
+  state.endShown = true;
+  $('endKicker').textContent = win ? 'Deuteronomy 34:1-4' : 'The wilderness';
+  $('endTitle').textContent = win ? 'The Promised Land in sight' : 'The journey ends';
+  $('endReason').textContent = reason;
+  const reached = state.visited.size;
+  $('endStats').innerHTML = `
+    <div><b>${yearOfMonth()}</b>Year</div>
+    <div><b>${monthOfYear()}/12</b>Month</div>
+    <div><b>${reached}/8</b>Stations</div>
+    <div><b>${Math.round(state.faith)}%</b>Faith</div>
+    <div><b>${state.score}</b>Renown</div>`;
+  $('endOverlay').classList.add('open');
+  $('menuOverlay').classList.remove('open');
+  $('campOverlay').classList.remove('open');
+  playSfx(win ? 'coins' : 'over', 0.5);
+  localStorage.removeItem(SAVE_KEY);
+}
+
+/* ------------------------------- save -------------------------------- */
+
+function saveGame(){
+  if (state.mode === 'menu' || state.mode === 'end') return;
+  try {
+    const data = {
+      v:2, day:state.day, hour:state.hour, stationIndex:state.stationIndex,
+      tribeStats:state.tribeStats,
+      visited:[...state.visited], player:{ x:state.player.x, y:state.player.y },
+      health:state.health, hunger:state.hunger, hydration:state.hydration,
+      warmth:state.warmth, stamina:state.stamina, faith:state.faith,
+      manna:state.manna, waterskin:state.waterskin, campWater:state.campWater,
+      silver:state.silver, wood:state.wood, sick:state.sick, rot:state.rot, calf:state.calf,
+      structures:state.structures, score:state.score, speed:state.speed,
+      explored:[...state.explored]
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    const hint = $('saveHint');
+    if (hint) hint.textContent = 'A journey is saved in this browser.';
+  } catch (_) {}
+}
+
+function hasSave(){
+  try { return !!localStorage.getItem(SAVE_KEY); } catch (_) { return false; }
+}
+
+function loadGame(){
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (_) {}
+  if (!data){ startGame(); return; }
+  state.mode = 'playing';
+  state.day = (data.v || 1) < 2 ? ((data.day || 1)-1)*MONTHS_PER_YEAR + 1 : (data.day || 1);
+  if ((data.v || 1) < 2) state.day = Math.min(TOTAL_MONTHS, state.day);
+  state.hour = data.hour ?? 6;
+  state.tribeStats = data.tribeStats && typeof data.tribeStats === 'object' ? data.tribeStats : seedTribeStats();
+  state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
+  state.visited = new Set(data.visited || []);
+  state.player = { x:data.player?.x ?? CAMP.x, y:data.player?.y ?? CAMP.y, tx:null, ty:null, moving:false };
+  state.health = data.health ?? 100;
+  state.hunger = data.hunger ?? 100;
+  state.hydration = data.hydration ?? 100;
+  state.warmth = data.warmth ?? 100;
+  state.stamina = data.stamina ?? 100;
+  state.faith = data.faith ?? 68;
+  state.manna = data.manna ?? 0;
+  state.waterskin = data.waterskin ?? 0;
+  state.campWater = data.campWater ?? 34;
+  state.silver = data.silver ?? 18;
+  state.wood = data.wood ?? 0;
+  state.sick = data.sick ?? 0;
+  state.rot = data.rot ?? 0;
+  state.calf = data.calf ?? 0;
+  people.forEach(p => { p.sick = false; });
+  if (state.sick > 0) sickenCitizens(state.sick);
+  structures = Array.isArray(data.structures) ? data.structures : [];
+  raiders = [];
+  state.buildMode = null;
+  state.raidSpawned = false;
+  state.score = data.score ?? 0;
+  state.speed = data.speed ?? 1;
+  state.explored = new Set(data.explored || []);
+  state.log = []; state.keys = {}; state.duskDone = false; state.nightDone = false;
+  state.mannaSpawned = false; state.interaction = null; state.endShown = false;
+  manna = []; particles = []; pops = [];
+  revealAround(state.player.x, state.player.y, 5);
+  camX = (state.player.x-state.player.y)*HW;
+  camY = (state.player.x+state.player.y)*HH;
+  setSpeed(state.speed);
+  say(`Year ${yearOfMonth()}, Month ${monthName()} (${monthOfYear()}/12). The journey continues.`);
+  if (state.hour >= 6 && state.hour < 10) spawnManna();
+  startMusic();
+  $('menuOverlay').classList.remove('open');
+  $('campOverlay').classList.remove('open');
+  document.body.classList.remove('menu-open');
+  updateHud(true);
+}
+
+function startGame(){
+  resetState();
+  document.body.classList.remove('menu-open');
+  $('menuOverlay').classList.remove('open');
+  $('endOverlay').classList.remove('open');
+  $('pauseOverlay').classList.remove('open');
+  $('stationOverlay').classList.remove('open');
+  $('campOverlay').classList.remove('open');
+  startMusic();
+  playSfx('click', 0.25);
+  updateHud(true);
+}
+
+/* ------------------------------- draw -------------------------------- */
+
+
+/* ── Detailed isometric tile textures (inspired by structures.js) ── */
+const TILE_TEX_SIZE = 48;
+const tileTextureCache = new Map();
+
+function tileHash2(x, y, seed){
+  let n = (x * 374761393 + y * 668265263 + seed * 69069) | 0;
+  n = (n ^ (n >> 13)) * 1274126177;
+  return ((n ^ (n >> 16)) >>> 0) / 4294967295;
+}
+function tileSeed(str){
+  let h = 2166136261;
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function shadeHex(hex, amt){ return shade(hex, amt); }
+
+function tileTexture(top, face, variant, kind){
+  const bottom = shadeHex(top, -0.34);
+  const key = `${face}|${top}|${variant}|${kind||''}`;
+  if (tileTextureCache.has(key)) return tileTextureCache.get(key);
+  const S = TILE_TEX_SIZE;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const t = c.getContext('2d');
+  const seed = tileSeed(key);
+
+  if (face === 'top'){
+    t.fillStyle = top;
+    t.fillRect(0,0,S,S);
+    // Soft patches of lighter/darker ground.
+    for (let i=0;i<9;i++){
+      const x = tileHash2(i,1,seed)*S, y = tileHash2(i,2,seed)*S;
+      const r = 2 + tileHash2(i,3,seed)*6;
+      t.fillStyle = shadeHex(top, (tileHash2(i,4,seed)-0.48)*0.12);
+      t.beginPath(); t.ellipse(x,y,r,r*0.55,0,0,Math.PI*2); t.fill();
+    }
+    // Fine grain.
+    for (let y=0;y<S;y++) for (let x=0;x<S;x++){
+      const h = tileHash2(x,y,seed);
+      if (h > 0.86) t.fillStyle = shadeHex(top, (h-0.5)*0.18);
+      else if (h < 0.07) t.fillStyle = shadeHex(top, 0.10);
+      else continue;
+      t.fillRect(x,y,1,1);
+    }
+    if (kind === 'water'){
+      t.strokeStyle = 'rgba(225,250,255,.25)'; t.lineWidth = 1;
+      for (let i=0;i<4;i++){
+        const y = 5 + i*8 + tileHash2(i,9,seed)*2;
+        t.beginPath(); t.moveTo(2,y); t.quadraticCurveTo(S/2,y-2,S-2,y); t.stroke();
+      }
+    } else if (kind === 'rock'){
+      t.strokeStyle = 'rgba(55,35,22,.28)'; t.lineWidth = 1;
+      for (let i=0;i<4;i++){
+        const x = 3 + tileHash2(i,5,seed)*(S-6), y = 3 + tileHash2(i,6,seed)*(S-6);
+        t.beginPath(); t.moveTo(x,y); t.lineTo(x+4,y+2); t.lineTo(x+5,y+5); t.stroke();
+      }
+    } else if (kind === 'trail'){
+      for (let i=0;i<12;i++){
+        const x = tileHash2(i,7,seed)*S, y = tileHash2(i,8,seed)*S;
+        t.fillStyle = i%2 ? 'rgba(120,85,45,.25)' : 'rgba(255,240,200,.22)';
+        t.fillRect(x,y,1,1);
+      }
+    }
+  } else {
+    const left = face === 'left';
+    const topColor = shadeHex(top, left ? -0.16 : -0.04);
+    const bottomColor = shadeHex(bottom, left ? -0.18 : -0.06);
+    t.fillStyle = topColor; t.fillRect(0,0,S,S*0.52);
+    t.fillStyle = bottomColor; t.fillRect(0,S*0.52,S,S*0.48);
+    // Strata / brick courses.
+    for (let y=4;y<S;y+=5){
+      const off = (Math.floor(y/5)%2)*5;
+      t.fillStyle = 'rgba(40,24,12,.22)';
+      t.fillRect(0,y,S,1);
+      t.fillStyle = 'rgba(255,238,200,.10)';
+      t.fillRect(0,y+1,S,1);
+      t.fillStyle = 'rgba(40,24,12,.16)';
+      for (let x=off;x<S;x+=10) t.fillRect(x,y,1,5);
+    }
+    for (let y=0;y<S;y++) for (let x=0;x<S;x++){
+      const h = tileHash2(x,y,seed);
+      if (h > 0.88) t.fillStyle = 'rgba(255,240,210,.12)';
+      else if (h < 0.08) t.fillStyle = 'rgba(35,20,10,.14)';
+      else continue;
+      t.fillRect(x,y,1,1);
+    }
+  }
+  tileTextureCache.set(key,c);
+  return c;
+}
+
+function drawTextureQuad(t, pts, tex, alpha=1){
+  if (!tex) return;
+  const [p0,p1,,p3] = pts;
+  const S = tex.width;
+  const ux = (p1[0]-p0[0])/S, uy = (p1[1]-p0[1])/S;
+  const vx = (p3[0]-p0[0])/S, vy = (p3[1]-p0[1])/S;
+  t.save();
+  t.globalAlpha = alpha;
+  t.beginPath();
+  t.moveTo(pts[0][0],pts[0][1]);
+  for (let i=1;i<pts.length;i++) t.lineTo(pts[i][0],pts[i][1]);
+  t.closePath();
+  t.clip();
+  t.transform(ux,uy,vx,vy,p0[0],p0[1]);
+  t.drawImage(tex,0,0);
+  t.restore();
+}
+
+
+function terrainKindAt(x,y){
+  if (x<0||x>=N||y<0||y>=N) return 'sand';
+  if (WATER[x][y]) return 'water';
+  if (HT[x][y] > 0) return 'rock';
+  if (TRAIL[x][y]) return 'trail';
+  return 'sand';
+}
+
+function buildTerrainCanvas(){
+  const c = document.createElement('canvas');
+  c.width = 2*N*HW + 4*HW;
+  c.height = 2*N*HH + 180;
+  const tg = c.getContext('2d');
+  tg.fillStyle = '#c99a5e';
+  tg.fillRect(0,0,c.width,c.height);
+
+  const topPoint = (x,y,e) => ({
+    x: OX + (x-y)*HW,
+    y: (x+y)*HH + TERRAIN_PAD - e
+  });
+
+  function tile(x,y){
+    const e = HT[x][y]*ELEV;
+    const p = topPoint(x,y,e);
+    const top = TCOLOR[x][y];
+    const water = !!WATER[x][y];
+    const trail = !!TRAIL[x][y];
+    const kind = water ? 'water' : HT[x][y] > 0 ? 'rock' : trail ? 'trail' : 'sand';
+    const variant = Math.floor(hash(x,y)*3);
+    const lY = y+1 < N ? HT[x][y+1]*ELEV : -1;
+    const rX = x+1 < N ? HT[x+1][y]*ELEV : -1;
+    const A = [p.x, p.y];
+    const B = [p.x+HW, p.y+HH];
+    const C = [p.x, p.y+2*HH];
+    const D = [p.x-HW, p.y+HH];
+
+    // Front-left cliff (towards +y), textured with strata.
+    if (!water && lY >= 0 && lY < e){
+      const h = e-lY;
+      const face = [[p.x-HW, p.y+HH], [p.x, p.y+2*HH], [p.x, p.y+2*HH+h], [p.x-HW, p.y+HH+h]];
+      drawTextureQuad(tg, face, tileTexture(top, 'left', (variant+1)%3, 'cliff'));
+      tg.strokeStyle = 'rgba(28,15,7,.34)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(face[0][0],face[0][1]); face.slice(1).forEach(q => tg.lineTo(q[0],q[1])); tg.closePath(); tg.stroke();
+      tg.strokeStyle = 'rgba(255,240,205,.18)';
+      tg.beginPath(); tg.moveTo(face[0][0],face[0][1]); tg.lineTo(face[1][0],face[1][1]); tg.stroke();
+    }
+    // Front-right cliff (towards +x).
+    if (!water && rX >= 0 && rX < e){
+      const h = e-rX;
+      const face = [[p.x, p.y+2*HH], [p.x+HW, p.y+HH], [p.x+HW, p.y+HH+h], [p.x, p.y+2*HH+h]];
+      drawTextureQuad(tg, face, tileTexture(top, 'right', (variant+2)%3, 'cliff'));
+      tg.strokeStyle = 'rgba(28,15,7,.32)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(face[0][0],face[0][1]); face.slice(1).forEach(q => tg.lineTo(q[0],q[1])); tg.closePath(); tg.stroke();
+      tg.strokeStyle = 'rgba(255,240,205,.14)';
+      tg.beginPath(); tg.moveTo(face[1][0],face[1][1]); tg.lineTo(face[0][0],face[0][1]); tg.stroke();
+    }
+
+    // Top face with a detailed texture.
+    drawTextureQuad(tg, [A,B,C,D], tileTexture(top, 'top', variant, kind));
+
+    // Bevel only where the tile has a visible step or is water; flat sand
+    // relies on texture rather than a hard grid.
+    if (water || HT[x][y] > 0){
+      tg.strokeStyle = water ? 'rgba(220,248,255,.26)' : 'rgba(255,246,214,.14)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(A[0],A[1]); tg.lineTo(B[0],B[1]); tg.moveTo(A[0],A[1]); tg.lineTo(D[0],D[1]); tg.stroke();
+      if (HT[x][y] > 0){
+        tg.strokeStyle = 'rgba(38,20,8,.16)';
+        tg.beginPath(); tg.moveTo(B[0],B[1]); tg.lineTo(C[0],C[1]); tg.moveTo(D[0],D[1]); tg.lineTo(C[0],C[1]); tg.stroke();
+      }
+    }
+
+    // Per-tile details: pebbles, dry grass, rock cracks, trail stones.
+    if (!water){
+      const count = kind === 'trail' ? 4 : kind === 'rock' ? 2 : 3;
+      for (let i=0;i<count;i++){
+        const fx = (hash(x*2.3+i*1.7, y*3.1+i*2.9)-0.5)*1.6;
+        const fy = (hash(y*1.9+i*3.7, x*2.7+i*1.3)-0.5)*1.5;
+        if (Math.abs(fx)+Math.abs(fy) > 0.82) continue;
+        const px = p.x + fx*HW;
+        const py = p.y + HH + fy*HH;
+        if (kind === 'rock'){
+          tg.strokeStyle = 'rgba(55,35,22,.30)'; tg.lineWidth = 1;
+          tg.beginPath(); tg.moveTo(px,py); tg.lineTo(px+2,py+1); tg.lineTo(px+3,py+3); tg.stroke();
+        } else if (kind !== 'trail' && hash(x+i,y+i) < 0.24){
+          tg.strokeStyle = 'rgba(120,125,60,.55)'; tg.lineWidth = 1;
+          for (let b=0;b<3;b++){
+            tg.beginPath(); tg.moveTo(px+b*1.5-2, py); tg.lineTo(px+b*1.8-3, py-3); tg.stroke();
+          }
+        } else {
+          tg.fillStyle = kind === 'trail' ? 'rgba(100,70,38,.45)' : 'rgba(90,62,32,.34)';
+          tg.beginPath(); tg.ellipse(px,py,1.4,0.8,0,0,Math.PI*2); tg.fill();
+        }
+      }
+      if (kind === 'sand' && hash(x*5.1,y*4.3) < 0.22){
+        tg.strokeStyle = 'rgba(255,240,205,.18)'; tg.lineWidth = 1;
+        const rx = p.x + (hash(x,y)-0.5)*HW*0.9;
+        const ry = p.y + HH + (hash(y,x)-0.5)*HH*0.5;
+        tg.beginPath(); tg.quadraticCurveTo(rx+3,ry-1,rx+9,ry); tg.stroke();
+      }
+    }
+  }
+
+  for (let s=0; s<=2*(N-1); s++){
+    const x0 = Math.max(0, s-(N-1));
+    const x1 = Math.min(N-1, s);
+    for (let x=x0; x<=x1; x++) tile(x, s-x);
+  }
+
+  // ── Dual-grid pass: soften cliff faces into slopes ───────────────────
+  function slope(x,y,dir){
+    const h = HT[x][y];
+    if (h <= 0) return;
+    const e = h*ELEV;
+    const p = topPoint(x,y,e);
+    const top = TCOLOR[x][y];
+    const variant = Math.floor(hash(x,y)*3);
+    if (dir === 'y'){
+      const lE = (y+1 < N ? HT[x][y+1] : h)*ELEV;
+      if (lE >= e) return;
+      const drop = e-lE;
+      const D = [p.x-HW, p.y+HH], C = [p.x, p.y+2*HH];
+      const dx = -HW*0.58, dy = HH*0.58 + drop;
+      const pts = [D, C, [C[0]+dx,C[1]+dy], [D[0]+dx,D[1]+dy]];
+      drawTextureQuad(tg, pts, tileTexture(top,'top',variant,'slope'));
+      const gx = (D[0]+C[0])/2, gy = (D[1]+C[1])/2;
+      const grd = tg.createLinearGradient(gx, gy, gx+dx, gy+dy);
+      grd.addColorStop(0,'rgba(255,245,210,.13)');
+      grd.addColorStop(.55,'rgba(45,28,14,.05)');
+      grd.addColorStop(1,'rgba(28,16,7,.34)');
+      tg.fillStyle = grd;
+      tg.beginPath(); pts.forEach((q,i) => i ? tg.lineTo(q[0],q[1]) : tg.moveTo(q[0],q[1])); tg.closePath(); tg.fill();
+      tg.strokeStyle = 'rgba(45,26,12,.28)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(D[0],D[1]); tg.lineTo(C[0],C[1]); tg.lineTo(C[0]+dx,C[1]+dy); tg.lineTo(D[0]+dx,D[1]+dy); tg.closePath(); tg.stroke();
+      tg.strokeStyle = 'rgba(255,242,208,.20)';
+      tg.beginPath(); tg.moveTo(D[0],D[1]); tg.lineTo(C[0],C[1]); tg.stroke();
+    } else {
+      const rE = (x+1 < N ? HT[x+1][y] : h)*ELEV;
+      if (rE >= e) return;
+      const drop = e-rE;
+      const C = [p.x, p.y+2*HH], B = [p.x+HW, p.y+HH];
+      const dx = HW*0.58, dy = HH*0.58 + drop;
+      const pts = [C, B, [B[0]+dx,B[1]+dy], [C[0]+dx,C[1]+dy]];
+      drawTextureQuad(tg, pts, tileTexture(top,'top',variant,'slope'));
+      const gx = (C[0]+B[0])/2, gy = (C[1]+B[1])/2;
+      const grd = tg.createLinearGradient(gx, gy, gx+dx, gy+dy);
+      grd.addColorStop(0,'rgba(255,245,210,.12)');
+      grd.addColorStop(.55,'rgba(45,28,14,.05)');
+      grd.addColorStop(1,'rgba(28,16,7,.32)');
+      tg.fillStyle = grd;
+      tg.beginPath(); pts.forEach((q,i) => i ? tg.lineTo(q[0],q[1]) : tg.moveTo(q[0],q[1])); tg.closePath(); tg.fill();
+      tg.strokeStyle = 'rgba(45,26,12,.26)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(C[0],C[1]); tg.lineTo(B[0],B[1]); tg.lineTo(B[0]+dx,B[1]+dy); tg.lineTo(C[0]+dx,C[1]+dy); tg.closePath(); tg.stroke();
+      tg.strokeStyle = 'rgba(255,242,208,.18)';
+      tg.beginPath(); tg.moveTo(C[0],C[1]); tg.lineTo(B[0],B[1]); tg.stroke();
+    }
+  }
+
+  for (let s=0; s<=2*(N-1); s++){
+    const x0 = Math.max(0, s-(N-1));
+    const x1 = Math.min(N-1, s);
+    for (let x=x0; x<=x1; x++){
+      const y = s-x;
+      slope(x,y,'y');
+      slope(x,y,'x');
+    }
+  }
+
+  // ── Dual-grid pass: blend terrain-type boundaries ─────────────────────
+  const typeColor = { water:'#4b8aa8', rock:'#b08766', trail:'#dbc08a', sand:'#d2a76b' };
+  for (let i=1;i<N;i++) for (let j=1;j<N;j++){
+    const kinds = [
+      terrainKindAt(i-1,j-1), terrainKindAt(i,j-1),
+      terrainKindAt(i-1,j),   terrainKindAt(i,j)
+    ];
+    const counts = {};
+    kinds.forEach(k => counts[k] = (counts[k]||0)+1);
+    if (Object.keys(counts).length < 2) continue;
+    let blendKind = 'sand';
+    if (counts.water) blendKind = 'water';
+    else if (counts.rock) blendKind = 'rock';
+    else if (counts.trail) blendKind = 'trail';
+    const cx = OX + (i-j)*HW;
+    const cy = (i+j)*HH + TERRAIN_PAD;
+    const pts = [[cx,cy-HH],[cx+HW,cy],[cx,cy+HH],[cx-HW,cy]];
+    drawTextureQuad(tg, pts, tileTexture(typeColor[blendKind],'top',Math.floor(hash(i,j)*3),blendKind), 0.34);
+    tg.strokeStyle = blendKind === 'water' ? 'rgba(220,248,255,.20)' : 'rgba(60,35,18,.10)';
+    tg.lineWidth = 1;
+    tg.beginPath(); tg.moveTo(pts[0][0],pts[0][1]); pts.slice(1).forEach(q => tg.lineTo(q[0],q[1])); tg.closePath(); tg.stroke();
+  }
+
+  terrainCanvas = c;
+}
+
+function drawTerrain(){
+  const dx = Math.floor(ox - OX);
+  const dy = Math.floor(oy - TERRAIN_PAD);
+  const srcX = Math.max(0, -dx);
+  const srcY = Math.max(0, -dy);
+  const dstX = dx + srcX;
+  const dstY = dy + srcY;
+  const srcW = Math.min(terrainCanvas.width - srcX, W - dstX + 2);
+  const srcH = Math.min(terrainCanvas.height - srcY, H - dstY + 2);
+  if (srcW <= 0 || srcH <= 0) return;
+  g.drawImage(terrainCanvas, srcX, srcY, srcW, srcH, dstX, dstY, srcW, srcH);
+}
+
+function drawWater(){
+  const t = performance.now()/1000;
+  for (const tile of waterTiles){
+    const p = W2S(tile.x+0.5, tile.y+0.5);
+    if (p.x < -60 || p.x > W+60 || p.y < -40 || p.y > H+60) continue;
+    const a = 0.18 + 0.14*Math.sin(t*1.6 + tile.x*0.8 + tile.y*0.5);
+    g.strokeStyle = `rgba(210,245,255,${a})`;
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.ellipse(p.x, p.y, 13 + Math.sin(t+tile.x)*2, 4.4, 0, 0, Math.PI*2);
+    g.stroke();
+    if (hash(tile.x,tile.y) < 0.3){
+      g.fillStyle = `rgba(255,255,255,${0.18+a})`;
+      g.beginPath(); g.arc(p.x-6, p.y-2, 1.3, 0, 6.28); g.fill();
+    }
+  }
+}
+
+function drawGroundHalo(){
+  const s = currentStation();
+  // Pillar ground glow.
+  if (s){
+    const p = W2S(s.x,s.y);
+    const night = state.hour >= 19 || state.hour < 5.5;
+    const grd = g.createRadialGradient(p.x,p.y,2,p.x,p.y,60);
+    grd.addColorStop(0, night ? 'rgba(255,140,40,.24)' : 'rgba(255,250,220,.18)');
+    grd.addColorStop(1, 'rgba(255,140,40,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.ellipse(p.x,p.y,60,30,0,0,Math.PI*2); g.fill();
+  }
+  // Campfire ground glow.
+  const cp = W2S(CAMP.x,CAMP.y);
+  const fg = g.createRadialGradient(cp.x,cp.y,2,cp.x,cp.y,46);
+  fg.addColorStop(0,'rgba(255,170,60,.22)'); fg.addColorStop(1,'rgba(255,130,30,0)');
+  g.fillStyle = fg;
+  g.beginPath(); g.ellipse(cp.x,cp.y,46,23,0,0,Math.PI*2); g.fill();
+}
+
+function drawEntities(){
+  const items = [];
+  const t = performance.now()/1000;
+
+  for (const d of decor){
+    items.push({ d:d.x+d.y, fn:() => drawDecor(d,t) });
+  }
+  for (const p of people){
+    items.push({ d:p.x+p.y, fn:() => drawPerson(p,t) });
+  }
+  for (const n of woodNodes){
+    items.push({ d:n.x+n.y, fn:() => drawWoodNode(n,t) });
+  }
+  for (const st of structures){
+    items.push({ d:st.x+st.y, fn:() => drawStructure(st,t) });
+  }
+  for (const r of raiders){
+    items.push({ d:r.x+r.y, fn:() => drawRaider(r,t) });
+  }
+  for (const m of manna){
+    items.push({ d:m.x+m.y, fn:() => drawManna(m,t) });
+  }
+  for (let i=0;i<STATIONS.length;i++){
+    const s = STATIONS[i];
+    items.push({ d:s.x+s.y, fn:() => drawStation(s,i,t) });
+  }
+  items.push({ d:state.player.x+state.player.y, fn:() => drawPlayer(t) });
+
+  items.sort((a,b) => a.d-b.d);
+  for (const item of items) item.fn();
+}
+
+function drawDecor(d,t){
+  const p = W2S(d.x,d.y);
+  if (p.x < -90 || p.x > W+90 || p.y < -100 || p.y > H+90) return;
+  if (d.kind === 'palm') drawPalm(p,d,t);
+  else if (d.kind === 'rock') drawRock(p,d);
+  else if (d.kind === 'tent') drawTent(p,d);
+  else if (d.kind === 'market') drawMarket(p,d,t);
+  else if (d.kind === 'fire') drawFire(p,d,t);
+  else if (d.kind === 'crate') drawCrate(p,d);
+  else if (d.kind === 'cactus') drawCactus(p,d);
+  else if (d.kind === 'agave') drawAgave(p,d);
+  else if (d.kind === 'tuft') drawTuft(p,d);
+  else if (d.kind === 'pebble') drawPebble(p,d);
+  else drawShrub(p,d);
+}
+
+function shadow(p, w=12, h=5){
+  g.fillStyle = 'rgba(40,22,10,.22)';
+  g.beginPath(); g.ellipse(p.x, p.y+2, w, h, 0, 0, Math.PI*2); g.fill();
+}
+
+function drawPalm(p,d,t){
+  shadow(p, 16, 6);
+  const s = d.s;
+  g.strokeStyle = '#6b4526'; g.lineWidth = 4*s; g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(p.x,p.y);
+  g.quadraticCurveTo(p.x+4*s, p.y-25*s, p.x+9*s, p.y-48*s);
+  g.stroke();
+  const sway = Math.sin(t*0.8 + d.h)*3;
+  g.strokeStyle = '#4f8a3f'; g.lineWidth = 3*s;
+  for (let i=0;i<7;i++){
+    const a = i/7*Math.PI*2 + d.h;
+    g.beginPath();
+    g.moveTo(p.x+9*s, p.y-48*s);
+    g.quadraticCurveTo(
+      p.x+9*s + Math.cos(a)*13*s, p.y-52*s + Math.sin(a)*4*s,
+      p.x+9*s + Math.cos(a)*23*s + sway, p.y-44*s + Math.sin(a)*9*s
+    );
+    g.stroke();
+  }
+  g.fillStyle = '#3f7333';
+  g.beginPath(); g.arc(p.x+9*s, p.y-48*s, 4*s, 0, 6.28); g.fill();
+}
+
+function drawRock(p,d){
+  shadow(p, 16*d.s, 6*d.s);
+  const s = d.s;
+  g.fillStyle = '#8c7a66';
+  g.beginPath();
+  g.moveTo(p.x-17*s,p.y-2); g.lineTo(p.x-8*s,p.y-17*s); g.lineTo(p.x+5*s,p.y-19*s); g.lineTo(p.x+14*s,p.y-6*s); g.lineTo(p.x+7*s,p.y+3); g.closePath(); g.fill();
+  g.fillStyle = '#a08c76';
+  g.beginPath();
+  g.moveTo(p.x+2*s,p.y-15*s); g.lineTo(p.x+14*s,p.y-6*s); g.lineTo(p.x+7*s,p.y+3); g.lineTo(p.x-1*s,p.y-2); g.closePath(); g.fill();
+  g.fillStyle = '#b7a58e';
+  g.beginPath();
+  g.moveTo(p.x-8*s,p.y-17*s); g.lineTo(p.x+2*s,p.y-20*s); g.lineTo(p.x+7*s,p.y-12*s); g.lineTo(p.x-2*s,p.y-9*s); g.closePath(); g.fill();
+}
+
+function drawShrub(p,d){
+  shadow(p, 8*d.s, 3*d.s);
+  g.strokeStyle = '#93803b'; g.lineWidth = 1.5;
+  for (let i=0;i<6;i++){
+    const a = i/6*Math.PI*2 + d.h;
+    g.beginPath();
+    g.moveTo(p.x,p.y);
+    g.lineTo(p.x+Math.cos(a)*7*d.s, p.y-Math.abs(Math.sin(a))*9*d.s-2);
+    g.stroke();
+  }
+  g.fillStyle = '#7d8f4a';
+  g.beginPath(); g.ellipse(p.x,p.y-9*d.s,8*d.s,3.5*d.s,0,0,6.28); g.fill();
+}
+
+function drawTuft(p,d){
+  g.strokeStyle = '#b8933f'; g.lineWidth = 1.5; g.lineCap = 'round';
+  for (let i=0;i<5;i++){
+    g.beginPath();
+    g.moveTo(p.x+i*2-4, p.y);
+    g.lineTo(p.x+i*3-6, p.y-(6*d.s+i%2*3));
+    g.stroke();
+  }
+}
+
+function drawAgave(p,d){
+  g.lineWidth = 3.4*d.s; g.lineCap = 'round';
+  for (let i=0;i<7;i++){
+    const a = i/6*2.4-1.2;
+    g.strokeStyle = i%2 ? '#4a9482' : '#5fae9a';
+    g.beginPath();
+    g.moveTo(p.x,p.y);
+    g.lineTo(p.x+Math.sin(a)*14*d.s, p.y-Math.cos(a)*12*d.s);
+    g.stroke();
+  }
+}
+
+function drawCactus(p,d){
+  const s = d.s;
+  g.strokeStyle = '#4f8a66'; g.lineWidth = 5*s; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(p.x,p.y); g.lineTo(p.x,p.y-24*s); g.stroke();
+  g.lineWidth = 4*s;
+  g.beginPath(); g.moveTo(p.x,p.y-9*s); g.lineTo(p.x-8*s,p.y-9*s); g.lineTo(p.x-8*s,p.y-17*s); g.stroke();
+  if (d.h > 3){ g.beginPath(); g.moveTo(p.x,p.y-14*s); g.lineTo(p.x+8*s,p.y-14*s); g.lineTo(p.x+8*s,p.y-21*s); g.stroke(); }
+}
+
+function drawPebble(p,d){
+  g.fillStyle = '#9a8a78';
+  g.beginPath(); g.ellipse(p.x,p.y,3*d.s,1.7*d.s,0,0,6.28); g.fill();
+}
+
+function drawTent(p,d){
+  const s = d.s;
+  shadow(p, 20*s, 7*s);
+  const x = p.x, y = p.y;
+  g.fillStyle = '#e8dcc0';
+  g.beginPath(); g.moveTo(x-20*s,y); g.lineTo(x,y+9*s); g.lineTo(x,y-23*s); g.closePath(); g.fill();
+  g.fillStyle = '#cdbf9c';
+  g.beginPath(); g.moveTo(x+20*s,y); g.lineTo(x,y+9*s); g.lineTo(x,y-23*s); g.closePath(); g.fill();
+  g.strokeStyle = '#6b5334'; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(x,y-23*s); g.lineTo(x,y+9*s); g.stroke();
+  g.fillStyle = '#4b3520';
+  g.beginPath(); g.moveTo(x-3*s,y+2*s); g.lineTo(x,y+9*s); g.lineTo(x+8*s,y+2*s); g.closePath(); g.fill();
+}
+
+function drawMarket(p,d,t){
+  const s = d.s;
+  shadow(p, 24, 8);
+  g.strokeStyle = '#6b4524'; g.lineWidth = 3;
+  for (const dx of [-18,18]){
+    g.beginPath(); g.moveTo(p.x+dx,p.y); g.lineTo(p.x+dx,p.y-24); g.stroke();
+  }
+  g.fillStyle = '#a8482f';
+  g.beginPath(); g.moveTo(p.x-26,p.y-24); g.lineTo(p.x,p.y-14); g.lineTo(p.x+26,p.y-24); g.lineTo(p.x,p.y-34); g.closePath(); g.fill();
+  const stripes = ['#e8b84a','#a8482f','#e8b84a','#a8482f'];
+  for (let i=0;i<4;i++){
+    g.fillStyle = stripes[i];
+    g.globalAlpha = 0.85;
+    const x0 = p.x-26 + i*13;
+    g.beginPath(); g.moveTo(x0,p.y-24 - (i%2)*2); g.lineTo(x0+13,p.y-30); g.lineTo(x0+13,p.y-22); g.lineTo(x0,p.y-18); g.closePath(); g.fill();
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = '#7a4a24';
+  g.fillRect(p.x-22,p.y-10,44,10);
+  g.fillStyle = '#d8c9a8';
+  for (let i=0;i<5;i++){
+    g.beginPath(); g.arc(p.x-16+i*8,p.y-13,2.6,0,6.28); g.fill();
+  }
+}
+
+function drawCrate(p,d){
+  const s = d.s;
+  g.fillStyle = '#7a4a24'; g.fillRect(p.x-5*s,p.y-9*s,10*s,9*s);
+  g.strokeStyle = '#a8783c'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(p.x-5*s,p.y-5*s); g.lineTo(p.x+5*s,p.y-5*s); g.stroke();
+}
+
+function drawFire(p,d,t){
+  const flick = 1 + Math.sin(t*12)*0.12 + Math.sin(t*19)*0.06;
+  shadow(p, 16, 6);
+  g.strokeStyle = '#5a3a1d'; g.lineWidth = 3.5;
+  g.beginPath(); g.moveTo(p.x-10,p.y+2); g.lineTo(p.x+10,p.y-2); g.stroke();
+  g.beginPath(); g.moveTo(p.x-3,p.y-2); g.lineTo(p.x+6,p.y+4); g.stroke();
+  g.fillStyle = '#e87424';
+  g.beginPath();
+  g.moveTo(p.x,p.y-28*flick);
+  g.quadraticCurveTo(p.x+11,p.y-15,p.x+5,p.y+1);
+  g.quadraticCurveTo(p.x,p.y+4,p.x-5,p.y+1);
+  g.quadraticCurveTo(p.x-12,p.y-14,p.x,p.y-28*flick);
+  g.fill();
+  g.fillStyle = '#ffc24a';
+  g.beginPath();
+  g.moveTo(p.x,p.y-19*flick);
+  g.quadraticCurveTo(p.x+6,p.y-10,p.x+2,p.y+1);
+  g.quadraticCurveTo(p.x,p.y+2,p.x-2,p.y+1);
+  g.quadraticCurveTo(p.x-6,p.y-9,p.x,p.y-19*flick);
+  g.fill();
+  g.globalCompositeOperation = 'lighter';
+  const grd = g.createRadialGradient(p.x,p.y-10,1,p.x,p.y-10,34);
+  grd.addColorStop(0,'rgba(255,180,70,.22)'); grd.addColorStop(1,'rgba(255,120,20,0)');
+  g.fillStyle = grd; g.beginPath(); g.arc(p.x,p.y-10,34,0,6.28); g.fill();
+  g.globalCompositeOperation = 'source-over';
+}
+
+function drawPerson(p,t){
+  const s = W2S(p.x,p.y);
+  if (s.x < -30 || s.x > W+30 || s.y < -40 || s.y > H+40) return;
+  const bob = p.sick ? Math.sin(p.phase*0.4)*0.4 : Math.sin(p.phase)*1.2;
+  shadow(s, 6, 2.6);
+  const trait = TRAITS[p.trait] || TRAITS.ordinary;
+  // Trait ring on the ground.
+  g.strokeStyle = trait.color;
+  g.globalAlpha = p.trait === 'ordinary' ? 0.28 : 0.65;
+  g.lineWidth = 1.4;
+  g.beginPath(); g.ellipse(s.x, s.y, 7.5, 3.4, 0, 0, Math.PI*2); g.stroke();
+  g.globalAlpha = 1;
+  g.fillStyle = p.sick ? '#9a8f7a' : p.col;
+  g.beginPath();
+  g.moveTo(s.x-4.5, s.y-13+bob); g.lineTo(s.x+4.5, s.y-13+bob);
+  g.lineTo(s.x+5.5, s.y+1); g.lineTo(s.x-5.5, s.y+1); g.closePath(); g.fill();
+  g.fillStyle = p.sick ? '#b8a98e' : '#d9b08a';
+  g.beginPath(); g.arc(s.x, s.y-16+bob, 3.4, 0, 6.28); g.fill();
+  g.fillStyle = '#4b3520';
+  g.fillRect(s.x-3.6, s.y-19.5+bob, 7.2, 2.2);
+  if (p.carry > 0 || p.woodCarry > 0){
+    g.fillStyle = p.woodCarry > 0 ? '#a8783c' : '#ffe27a';
+    g.beginPath(); g.arc(s.x+5, s.y-13+bob, 2.4, 0, 6.28); g.fill();
+  }
+  if (p.hoard > 0){
+    g.fillStyle = '#e0a24a';
+    g.beginPath(); g.arc(s.x-5, s.y-11+bob, 2.6, 0, 6.28); g.fill();
+  }
+  if (p.sick){
+    g.fillStyle = '#8fbf5f';
+    g.font = '700 8px Georgia, serif';
+    g.textAlign = 'center';
+    g.fillText('✚', s.x, s.y-23+bob);
+  }
+}
+
+function drawWoodNode(n,t){
+  const p = W2S(n.x,n.y);
+  if (p.x < -60 || p.x > W+60 || p.y < -60 || p.y > H+60) return;
+  shadow(p, 18, 6);
+  const sway = Math.sin(t*0.7 + n.h)*2;
+  g.strokeStyle = '#5a3d22'; g.lineWidth = 4; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(p.x,p.y); g.lineTo(p.x+5, p.y-23); g.stroke();
+  g.fillStyle = '#4f7a3a';
+  g.beginPath(); g.ellipse(p.x+5+sway, p.y-27, 22, 7, -0.12, 0, 6.28); g.fill();
+  g.fillStyle = '#6b9a4a';
+  g.beginPath(); g.ellipse(p.x+2+sway, p.y-30, 16, 5, 0.1, 0, 6.28); g.fill();
+  g.fillStyle = '#3f6430';
+  g.beginPath(); g.ellipse(p.x+9+sway, p.y-24, 13, 4.5, -0.2, 0, 6.28); g.fill();
+  if (n.wood > 0){
+    g.fillStyle = 'rgba(20,12,7,.65)';
+    g.fillRect(p.x-13, p.y-42, 26, 11);
+    g.fillStyle = '#c99a5a';
+    g.font = '700 9px Georgia, serif';
+    g.textAlign = 'center';
+    g.fillText(`${n.wood} wood`, p.x, p.y-34);
+  }
+}
+
+function drawStructure(st,t){
+  const p = W2S(st.x,st.y);
+  if (p.x < -80 || p.x > W+80 || p.y < -100 || p.y > H+80) return;
+  if (st.kind === 'tent'){
+    drawTent(p, { s:1.05, h:0 }, t);
+  } else if (st.kind === 'wall'){
+    shadow(p, 18, 6);
+    g.strokeStyle = '#6b4524'; g.lineWidth = 3;
+    for (let i=-1;i<=1;i++){
+      const x = p.x + i*8;
+      g.beginPath(); g.moveTo(x, p.y+2); g.lineTo(x, p.y-19); g.stroke();
+    }
+    g.fillStyle = '#8a5a2a';
+    g.fillRect(p.x-14, p.y-15, 28, 4);
+    g.fillRect(p.x-14, p.y-8, 28, 4);
+    g.fillStyle = '#a8783c';
+    g.fillRect(p.x-14, p.y-19, 28, 2);
+  } else if (st.kind === 'tower'){
+    shadow(p, 16, 6);
+    g.strokeStyle = '#6b4524'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(p.x-9,p.y); g.lineTo(p.x-6,p.y-38); g.stroke();
+    g.beginPath(); g.moveTo(p.x+9,p.y); g.lineTo(p.x+6,p.y-38); g.stroke();
+    g.beginPath(); g.moveTo(p.x-4,p.y-4); g.lineTo(p.x-3,p.y-34); g.stroke();
+    g.beginPath(); g.moveTo(p.x+4,p.y-4); g.lineTo(p.x+3,p.y-34); g.stroke();
+    g.fillStyle = '#8a5a2a';
+    g.fillRect(p.x-12, p.y-42, 24, 5);
+    g.fillStyle = '#a8783c';
+    g.beginPath(); g.moveTo(p.x-14,p.y-42); g.lineTo(p.x,p.y-50); g.lineTo(p.x+14,p.y-42); g.closePath(); g.fill();
+    g.fillStyle = '#e0b24a';
+    g.beginPath(); g.moveTo(p.x+10,p.y-48); g.lineTo(p.x+16,p.y-45); g.lineTo(p.x+10,p.y-42); g.closePath(); g.fill();
+  }
+}
+
+function drawRaider(r,t){
+  const p = W2S(r.x,r.y);
+  if (p.x < -40 || p.x > W+40 || p.y < -40 || p.y > H+40) return;
+  const bob = Math.sin(t*8 + r.phase)*1.4;
+  shadow(p, 7, 3);
+  g.fillStyle = '#7a2a22';
+  g.beginPath();
+  g.moveTo(p.x-4.5,p.y-13+bob); g.lineTo(p.x+4.5,p.y-13+bob);
+  g.lineTo(p.x+5.5,p.y+1); g.lineTo(p.x-5.5,p.y+1); g.closePath(); g.fill();
+  g.fillStyle = '#d9b08a';
+  g.beginPath(); g.arc(p.x,p.y-16+bob,3.4,0,6.28); g.fill();
+  g.strokeStyle = '#ddd'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(p.x+6,p.y-5); g.lineTo(p.x+12,p.y-17); g.stroke();
+  const w = 18, hpk = clamp(r.hp/r.maxHp,0,1);
+  g.fillStyle = 'rgba(20,10,8,.8)';
+  g.fillRect(p.x-w/2, p.y-28, w, 3);
+  g.fillStyle = hpk > 0.5 ? '#e0a24a' : '#e0584a';
+  g.fillRect(p.x-w/2, p.y-28, w*hpk, 3);
+  if (r.loot > 0){
+    g.fillStyle = '#ffe27a';
+    g.beginPath(); g.arc(p.x-5,p.y-10,2.4,0,6.28); g.fill();
+  }
+}
+
+function drawBuildGhost(){
+  if (!state.buildMode || !state.mouseWorld) return;
+  const { x, y } = state.mouseWorld;
+  const p = W2S(x,y);
+  const invalid = blocked(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y) > CAMP_RADIUS;
+  g.globalAlpha = 0.55;
+  g.strokeStyle = invalid ? '#e0584a' : '#f2cc6b';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(p.x,p.y); g.lineTo(p.x+HW,p.y+HH); g.lineTo(p.x,p.y+2*HH); g.lineTo(p.x-HW,p.y+HH); g.closePath();
+  g.stroke();
+  g.fillStyle = invalid ? 'rgba(224,88,74,.15)' : 'rgba(242,204,107,.15)';
+  g.fill();
+  g.globalAlpha = 1;
+}
+
+function drawPlayer(t){
+  const p = state.player;
+  const s = W2S(p.x,p.y);
+  const bob = p.moving ? Math.abs(Math.sin(t*9))*2.2 : Math.sin(t*1.8)*0.8;
+  shadow(s, 10, 4.4);
+  // robe
+  g.fillStyle = '#3f5f9a';
+  g.beginPath();
+  g.moveTo(s.x-6, s.y-22-bob); g.lineTo(s.x+6, s.y-22-bob);
+  g.lineTo(s.x+8, s.y+1); g.lineTo(s.x-8, s.y+1); g.closePath(); g.fill();
+  g.fillStyle = '#2f487c';
+  g.beginPath();
+  g.moveTo(s.x-6, s.y-22-bob); g.lineTo(s.x-1, s.y-22-bob); g.lineTo(s.x-2, s.y+1); g.lineTo(s.x-8, s.y+1); g.closePath(); g.fill();
+  // sash
+  g.fillStyle = '#b8862f'; g.fillRect(s.x-6, s.y-15-bob, 12, 2.4);
+  // head + headwrap
+  g.fillStyle = '#e0b890';
+  g.beginPath(); g.arc(s.x, s.y-27-bob, 4.6, 0, 6.28); g.fill();
+  g.fillStyle = '#f2e6cf';
+  g.beginPath(); g.arc(s.x, s.y-29.5-bob, 4.8, Math.PI, Math.PI*2); g.fill();
+  g.fillStyle = '#ddd0b5';
+  g.fillRect(s.x-5, s.y-29-bob, 10, 2);
+  // beard
+  g.fillStyle = '#2a1a10';
+  g.beginPath(); g.moveTo(s.x-2.5,s.y-24-bob); g.lineTo(s.x+2.5,s.y-24-bob); g.lineTo(s.x,s.y-20-bob); g.closePath(); g.fill();
+  // staff
+  g.strokeStyle = '#6b4524'; g.lineWidth = 2.2; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(s.x+9, s.y+1); g.lineTo(s.x+10, s.y-34-bob); g.quadraticCurveTo(s.x+10,s.y-38,s.x+13,s.y-36); g.stroke();
+}
+
+function drawManna(m,t){
+  const p = W2S(m.x,m.y);
+  if (p.x < -30 || p.x > W+30 || p.y < -30 || p.y > H+30) return;
+  const bob = Math.sin(t*3 + m.seed)*2;
+  const glow = 0.5 + 0.5*Math.sin(t*2.4 + m.seed);
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = `rgba(255,235,150,${0.10+0.10*glow})`;
+  g.beginPath(); g.arc(p.x,p.y-5+bob,10,0,6.28); g.fill();
+  g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#fff4bc';
+  g.beginPath();
+  g.moveTo(p.x,p.y-9+bob); g.lineTo(p.x+4,p.y-5+bob); g.lineTo(p.x,p.y-1+bob); g.lineTo(p.x-4,p.y-5+bob); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(255,255,230,.55)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(p.x-4,p.y-5+bob); g.lineTo(p.x+4,p.y-5+bob); g.stroke();
+}
+
+function drawStation(s,i,t){
+  const p = W2S(s.x,s.y);
+  if (p.x < -120 || p.x > W+120 || p.y < -140 || p.y > H+80) return;
+  const active = state.stationIndex === i;
+  const visited = state.visited.has(i);
+  shadow(p, 22, 8);
+
+  // Standing stones and a small altar.
+  const base = s.color;
+  g.fillStyle = '#6f6252';
+  g.fillRect(p.x-20,p.y-15,9,15);
+  g.fillRect(p.x+11,p.y-15,9,15);
+  g.fillStyle = '#8a7a66';
+  g.beginPath(); g.moveTo(p.x-20,p.y-15); g.lineTo(p.x-15.5,p.y-20); g.lineTo(p.x-11,p.y-15); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(p.x+11,p.y-15); g.lineTo(p.x+15.5,p.y-20); g.lineTo(p.x+20,p.y-15); g.closePath(); g.fill();
+  g.strokeStyle = base; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(p.x-15,p.y-19); g.lineTo(p.x-15,p.y-33); g.stroke();
+  g.beginPath(); g.moveTo(p.x+15,p.y-19); g.lineTo(p.x+15,p.y-33); g.stroke();
+  g.fillStyle = base;
+  g.beginPath(); g.moveTo(p.x-15,p.y-33); g.lineTo(p.x-8,p.y-30); g.lineTo(p.x-15,p.y-27); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(p.x+15,p.y-33); g.lineTo(p.x+22,p.y-30); g.lineTo(p.x+15,p.y-27); g.closePath(); g.fill();
+  g.fillStyle = '#8a7a66';
+  g.fillRect(p.x-8,p.y-6,16,6);
+  g.fillStyle = '#a89882';
+  g.fillRect(p.x-6,p.y-9,12,3);
+
+  // Special landmarks.
+  if (s.id === 'sinai'){
+    g.fillStyle = '#6a5a7f';
+    g.beginPath(); g.moveTo(p.x-46,p.y+2); g.lineTo(p.x-22,p.y-58); g.lineTo(p.x-4,p.y+2); g.closePath(); g.fill();
+    g.fillStyle = '#7f6e96';
+    g.beginPath(); g.moveTo(p.x-22,p.y-58); g.lineTo(p.x-4,p.y+2); g.lineTo(p.x+4,p.y-38); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(240,230,255,.55)';
+    g.beginPath(); g.arc(p.x-22,p.y-62,3.5,0,6.28); g.fill();
+  } else if (s.id === 'rephidim'){
+    g.fillStyle = '#8a7a68';
+    g.beginPath(); g.moveTo(p.x-30,p.y+2); g.lineTo(p.x-24,p.y-22); g.lineTo(p.x-8,p.y-26); g.lineTo(p.x+2,p.y+2); g.closePath(); g.fill();
+    g.strokeStyle = '#4b3f34'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(p.x-16,p.y-24); g.lineTo(p.x-13,p.y-12); g.lineTo(p.x-17,p.y-2); g.stroke();
+  } else if (s.id === 'shore'){
+    g.strokeStyle = '#3f8fb0'; g.lineWidth = 2;
+    for (let i=0;i<3;i++){
+      g.beginPath(); g.arc(p.x-28+i*4,p.y+4,8+i*3,Math.PI*0.1,Math.PI*0.9); g.stroke();
+    }
+  }
+
+  // Label.
+  g.font = '600 10.5px Cinzel, Georgia, serif';
+  g.textAlign = 'center';
+  const label = s.name;
+  const y = p.y-46;
+  g.fillStyle = 'rgba(20,12,7,.72)';
+  const w = g.measureText(label).width + 14;
+  g.fillRect(p.x-w/2,y-10,w,14);
+  g.strokeStyle = active ? '#e8b84a' : 'rgba(232,184,74,.24)';
+  g.lineWidth = 1; g.strokeRect(p.x-w/2,y-10,w,14);
+  g.fillStyle = visited ? '#9dbb74' : active ? '#f6e9d0' : '#cbb894';
+  g.fillText(label, p.x, y);
+  if (visited){
+    g.fillStyle = '#9dbb74';
+    g.beginPath(); g.arc(p.x+w/2-5,y-3,2.4,0,6.28); g.fill();
+  }
+}
+
+function drawPillarBase(s,t){
+  const p = W2S(s.x,s.y);
+  const night = state.hour >= 19 || state.hour < 5.5;
+  const h = 104 + Math.sin(t*1.2)*4;
+  g.globalCompositeOperation = 'lighter';
+
+  const grd = g.createLinearGradient(p.x, p.y, p.x, p.y-h);
+  if (night){
+    grd.addColorStop(0,'rgba(255,120,30,.55)');
+    grd.addColorStop(0.35,'rgba(255,160,50,.35)');
+    grd.addColorStop(1,'rgba(255,80,20,0)');
+  } else {
+    grd.addColorStop(0,'rgba(255,255,240,.48)');
+    grd.addColorStop(0.55,'rgba(230,245,255,.24)');
+    grd.addColorStop(1,'rgba(220,240,255,0)');
+  }
+  g.fillStyle = grd;
+  g.fillRect(p.x-9, p.y-h, 18, h);
+
+  for (let i=0;i<6;i++){
+    const yy = p.y - 12 - i*16 - Math.sin(t*1.4+i)*3;
+    const r = (night ? 6 : 8) + i*1.2 + Math.sin(t*2+i)*1.5;
+    g.fillStyle = night ? `rgba(255,${120+i*12},40,${0.16-i*0.018})` : `rgba(255,255,245,${0.20-i*0.022})`;
+    g.beginPath(); g.arc(p.x + Math.sin(t+i)*3, yy, r, 0, 6.28); g.fill();
+  }
+  if (night){
+    g.fillStyle = 'rgba(255,210,120,.9)';
+    g.beginPath(); g.arc(p.x, p.y-10, 4.5+Math.sin(t*9)*1.2, 0, 6.28); g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+
+function applyDayTint(){
+  const h = state.hour;
+  let tint = 0;
+  if (h >= 21 || h < 4.5) tint = 0.58;
+  else if (h >= 18) tint = (h-18)/3*0.58;
+  else if (h >= 4.5 && h < 7) tint = (7-h)/2.5*0.58;
+  else if (h >= 17) tint = (h-17)/1*0.12;
+  if (tint <= 0.01) return;
+  g.globalCompositeOperation = 'multiply';
+  const k = tint/0.58;
+  g.fillStyle = `rgb(${Math.round(255-k*185)},${Math.round(255-k*172)},${Math.round(255-k*112)})`;
+  g.fillRect(0,0,W,H);
+  g.globalCompositeOperation = 'source-over';
+}
+
+function drawPops(){
+  if (!pops.length) return;
+  g.textAlign = 'center';
+  g.font = '700 13px Georgia, serif';
+  for (const p of pops){
+    const s = W2S(p.x,p.y);
+    const a = Math.min(1,p.t*2.2);
+    g.globalAlpha = a;
+    g.fillStyle = p.color;
+    g.shadowColor = '#000'; g.shadowBlur = 4;
+    g.fillText(p.text, s.x, s.y - 28 - (p.max-p.t)*26);
+    g.shadowBlur = 0;
+  }
+  g.globalAlpha = 1;
+}
+
+function drawParticles(){
+  if (!particles.length) return;
+  g.globalCompositeOperation = 'lighter';
+  for (const q of particles){
+    g.globalAlpha = Math.max(0, q.t*2);
+    g.fillStyle = q.color;
+    g.beginPath(); g.arc(q.sx,q.sy,1.8,0,6.28); g.fill();
+  }
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+function draw(){
+  const p = state.player;
+  const psx = (p.x-p.y)*HW;
+  const psy = (p.x+p.y)*HH - groundElev(p.x,p.y);
+  camX += (psx-camX)*0.12;
+  camY += (psy-camY)*0.12;
+  ox = W/2 - camX;
+  oy = H/2 - camY;
+
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.clearRect(0,0,W,H);
+  g.fillStyle = '#a87c4c';
+  g.fillRect(0,0,W,H);
+
+  drawTerrain();
+  drawWater();
+  drawGroundHalo();
+  drawEntities();
+  drawBuildGhost();
+  applyDayTint();
+  const tNow = performance.now()/1000;
+  const s = currentStation();
+  if (s) drawPillarBase(s, tNow);
+  drawFx(tNow);
+  drawPops();
+  drawParticles();
+
+  if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'end'){
+    g.fillStyle = 'rgba(14,9,5,.30)';
+    g.fillRect(0,0,W,H);
+  }
+}
+
+/* ------------------------------- HUD --------------------------------- */
+
+function updateHud(force){
+  const now = performance.now();
+  if (!force && now - state.lastHud < 110) return;
+  state.lastHud = now;
+
+  const quota = state.day % 7 === 6 ? QUOTA*2 : QUOTA;
+  const remaining = Math.max(0, Math.ceil((24 - state.hour) / 24 * MONTH_LENGTH / Math.max(1, state.speed)));
+  $('hudManna').textContent = state.manna;
+  $('hudQuota').textContent = state.day % 7 === 0 ? 'Sabbath' : quota;
+  $('hudYear').textContent = yearOfMonth();
+  $('hudMonth').textContent = monthOfYear();
+  $('hudClock').textContent = remaining + 's';
+  $('hudSilver').textContent = state.silver;
+  const cw = $('hudCampWater');
+  cw.textContent = Math.round(state.campWater);
+  cw.style.color = state.campWater < 18 ? '#e0584a' : '';
+  cw.style.fontWeight = state.campWater < 18 ? '700' : '';
+
+  $('yearNum').textContent = yearOfMonth();
+  $('monthLabel').textContent = `OF 40 · MONTH ${monthOfYear()}/12`;
+  const s = currentStation();
+  if (s){
+    $('stationName').textContent = s.name;
+    const d = dist(state.player, s);
+    const dx = s.x - state.player.x;
+    const dy = s.y - state.player.y;
+    const bearing = Math.atan2(dx, -dy);
+    const degrees = (bearing * 180 / Math.PI + 360) % 360;
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    const cardinal = dirs[Math.round(degrees/45) % 8];
+    const req = stationRequirements();
+    $('stationMeta').textContent = d < 4
+      ? `Needs ${req.manna} manna · ${req.water} water · ${req.faith}% faith`
+      : d < 10
+        ? `${Math.round(d*10)}m ${cardinal} · needs ${req.manna} manna / ${req.water} water / ${req.faith}% faith`
+        : `${Math.round(d*10)}m ${cardinal} · Wadi Rum`;
+    $('compassCardinal').textContent = cardinal;
+    $('compassArrow').style.transform = `rotate(${degrees}deg)`;
+  } else {
+    $('stationName').textContent = 'The Promised Land';
+    $('stationMeta').textContent = 'All eight stations are behind you.';
+    $('compassCardinal').textContent = '—';
+    $('compassArrow').style.transform = 'rotate(0deg)';
+  }
+
+  const vitalAlerts = [
+    { key:'health',  row:'vitalHealth',  bar:'bHealth',  val:'vHealthVal',  value:state.health,     low:55, critical:25 },
+    { key:'hunger',  row:'vitalHunger',  bar:'bHunger',  val:'vHungerVal',  value:state.hunger,     low:40, critical:15 },
+    { key:'water',   row:'vitalWater',   bar:'bWater',   val:'vWaterVal',   value:state.hydration,  low:40, critical:15 },
+    { key:'warmth',  row:'vitalWarmth',  bar:'bWarmth',  val:'vWarmthVal',  value:state.warmth,     low:45, critical:15 },
+    { key:'stamina', row:'vitalStamina', bar:'bStamina', val:'vStaminaVal', value:state.stamina,    low:25, critical:10 },
+    { key:'faith',   row:'vitalFaith',   bar:'bFaith',   val:'vFaithVal',   value:state.faith,      low:50, critical:25 },
+    { key:'campwater', row:'vitalCampWater', bar:'bCampWater', val:'vCampWaterVal', value:state.campWater, low:18, critical:6 }
+  ];
+  let anyVital = false;
+  for (const v of vitalAlerts){
+    const row = $(v.row), bar = $(v.bar), val = $(v.val);
+    const show = v.value < v.low;
+    if (row){
+      row.hidden = !show;
+      row.classList.toggle('low', show && v.value > v.critical);
+      row.classList.toggle('critical', show && v.value <= v.critical);
+    }
+    if (show) anyVital = true;
+    if (bar) bar.style.width = clamp(v.value,0,100) + '%';
+    if (val) val.textContent = Math.round(v.value);
+  }
+  $('vitals').hidden = !anyVital;
+
+  $('rSkin').textContent = state.waterskin;
+  $('rQuota').textContent = state.day % 7 === 0 ? 'Sabbath' : quota;
+  const order = orderInfo();
+  state.order = order.label;
+  $('rSouls').textContent = totalPopulation().toLocaleString();
+  $('rOrder').textContent = order.label;
+  $('rOrder').style.color = order.color;
+  $('rWood').textContent = state.wood;
+  $('rHoard').textContent = totalHoard();
+  $('rLivestock').textContent = totalLivestock().toLocaleString();
+
+  $('btnEat').disabled = state.manna < 2;
+  $('btnDrink').disabled = state.waterskin <= 0;
+  $('btnInteract').disabled = !state.interaction;
+  $('btnSpeed').textContent = '×' + state.speed;
+}
+
+/* ------------------------------- map --------------------------------- */
+
+function drawMap(){
+  const c = $('mapCanvas');
+  const mg = c.getContext('2d');
+  const mw = c.width, mh = c.height;
+  mg.clearRect(0,0,mw,mh);
+  const bg = mg.createLinearGradient(0,0,0,mh);
+  bg.addColorStop(0,'#d8bd8a'); bg.addColorStop(1,'#b9955e');
+  mg.fillStyle = bg; mg.fillRect(0,0,mw,mh);
+  mg.fillStyle = 'rgba(120,80,40,.08)';
+  for (let i=0;i<900;i++){
+    mg.fillRect((i*97)%mw, (i*53)%mh, 1.4, 1.4);
+  }
+
+  const margin = 34;
+  const scale = Math.min((mw-margin*2)/N, (mh-margin*2)/N);
+  const mx = x => margin + x*scale;
+  const my = y => margin + y*scale;
+
+  // Explored ground.
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
+    if (!state.explored.has(x*N+y)) continue;
+    let col = '#cdb07a';
+    if (WATER[x][y]) col = '#679ab0';
+    else if (HT[x][y] > 0) col = '#a98b6a';
+    else if (TRAIL[x][y]) col = '#dcc490';
+    mg.fillStyle = col;
+    mg.fillRect(mx(x),my(y),scale+0.5,scale+0.5);
+  }
+
+  // Fog over unexplored.
+  mg.fillStyle = 'rgba(24,16,10,.80)';
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
+    if (state.explored.has(x*N+y)) continue;
+    mg.fillRect(mx(x),my(y),scale+0.5,scale+0.5);
+  }
+
+  // Journey line.
+  mg.strokeStyle = 'rgba(232,184,74,.28)';
+  mg.lineWidth = 1.5; mg.setLineDash([4,4]);
+  mg.beginPath();
+  STATIONS.forEach((st,i) => i ? mg.lineTo(mx(st.x),my(st.y)) : mg.moveTo(mx(st.x),my(st.y)));
+  mg.stroke(); mg.setLineDash([]);
+
+  // Stations.
+  STATIONS.forEach((st,i) => {
+    const x = mx(st.x), y = my(st.y);
+    const known = state.explored.has(Math.floor(st.x)*N+Math.floor(st.y)) || state.visited.has(i);
+    if (!known){
+      mg.fillStyle = '#6b5a44';
+      mg.beginPath(); mg.arc(x,y,4.5,0,6.28); mg.fill();
+      return;
+    }
+    const active = state.stationIndex === i;
+    const visited = state.visited.has(i);
+    mg.fillStyle = visited ? '#9dbb74' : active ? '#e8b84a' : st.color;
+    mg.beginPath(); mg.arc(x,y,active?7:5,0,6.28); mg.fill();
+    if (active){
+      mg.strokeStyle = 'rgba(232,184,74,.55)';
+      mg.lineWidth = 2;
+      mg.beginPath(); mg.arc(x,y,11,0,6.28); mg.stroke();
+    }
+    mg.font = '600 11px Cinzel, Georgia, serif';
+    mg.textAlign = 'left';
+    mg.fillStyle = '#332112';
+    mg.fillText(st.name, x+9, y+3.5);
+  });
+
+  // Player.
+  const px = mx(state.player.x), py = my(state.player.y);
+  mg.fillStyle = '#f6e9d0';
+  mg.beginPath(); mg.arc(px,py,5,0,6.28); mg.fill();
+  mg.strokeStyle = '#2a1a10'; mg.lineWidth = 1.6; mg.stroke();
+  mg.fillStyle = '#2a1a10';
+  mg.font = '600 11px Cinzel, Georgia, serif';
+  mg.textAlign = 'center';
+  mg.fillText('Moses', px, py-11);
+
+  // Compass rose.
+  mg.strokeStyle = 'rgba(60,40,20,.45)';
+  mg.fillStyle = 'rgba(60,40,20,.65)';
+  mg.lineWidth = 1;
+  mg.beginPath(); mg.arc(mw-40,42,18,0,6.28); mg.stroke();
+  mg.beginPath(); mg.moveTo(mw-40,20); mg.lineTo(mw-35,42); mg.lineTo(mw-40,37); mg.lineTo(mw-45,42); mg.closePath(); mg.fill();
+  mg.font = '10px Georgia, serif'; mg.textAlign = 'center';
+  mg.fillText('N', mw-40, 17);
+}
+
+/* ------------------------------ input -------------------------------- */
+
+function act(name){
+  if (name === 'eat') eat();
+  else if (name === 'drink') drink();
+  else if (name === 'interact') interact();
+  else if (name === 'wait') waitHour();
+  else if (name === 'map') openMap();
+  else if (name === 'camp') openCamp();
+  else if (name === 'speed'){ setSpeed(state.speed === 1 ? 2 : state.speed === 2 ? 4 : 1); updateHud(true); }
+}
+
+$('actions').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  playSfx('click', 0.18);
+  act(btn.dataset.act);
+});
+
+document.addEventListener('keydown', e => {
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if (key === 'Escape'){
+    if (state.buildMode) cancelBuild();
+    else if (state.mode === 'camp') closeCamp();
+    else if (state.mode === 'about') closeAbout();
+    else if (state.mode === 'credits') closeCredits();
+    else if (state.mode === 'map') closeMap();
+    else if (state.mode === 'market') closeMarket();
+    else if (state.mode === 'playing' || state.mode === 'paused') openPause();
+    return;
+  }
+  if (state.mode === 'station' && (key === 'Enter' || key === ' ')) { closeStation(); return; }
+  if (state.mode === 'about' && (key === 'Escape' || key === 'i')) { closeAbout(); return; }
+  if (state.mode === 'credits' && (key === 'Escape' || key === 'c')) { closeCredits(); return; }
+  if (state.mode === 'map' && (key === 'm' || key === 'Escape')) { closeMap(); return; }
+  if (state.mode !== 'playing') return;
+
+  if (['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift'].includes(key)){
+    state.keys[key] = true;
+  }
+  if (key === 'f') eat();
+  else if (key === 'r') drink();
+  else if (key === 'e') interact();
+  else if (key === 'm') openMap();
+  else if (key === 'c' || key === 'b') openCamp();
+  else if (key === '1') setSpeed(1);
+  else if (key === '2') setSpeed(2);
+  else if (key === '3') setSpeed(4);
+});
+
+document.addEventListener('keyup', e => {
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  state.keys[key] = false;
+});
+window.addEventListener('blur', () => { state.keys = {}; });
+
+cv.addEventListener('pointerdown', e => {
+  if (state.mode !== 'playing') return;
+  const r = cv.getBoundingClientRect();
+  const sx = e.clientX - r.left;
+  const sy = e.clientY - r.top;
+  const w = screenToWorld(sx, sy);
+  const x = clamp(w.x, 1, N-2);
+  const y = clamp(w.y, 1, N-2);
+  if (state.buildMode){
+    placeStructure(w.x, w.y);
+    return;
+  }
+  if (!blocked(x,y)){
+    state.player.tx = x; state.player.ty = y;
+    state.keys = {};
+    playSfx('click', 0.12);
+  }
+});
+
+cv.addEventListener('pointermove', e => {
+  if (state.mode !== 'playing') return;
+  const r = cv.getBoundingClientRect();
+  state.mouseWorld = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+});
+
+/* ------------------------------ overlays ----------------------------- */
+
+$('menuBegin').addEventListener('click', startGame);
+$('menuContinue').addEventListener('click', loadGame);
+$('stationContinue').addEventListener('click', closeStation);
+$('btnPause').addEventListener('click', openPause);
+$('btnMute').addEventListener('click', () => setMuted(!state.muted));
+$('btnMap').addEventListener('click', () => state.mode === 'playing' && openMap());
+$('btnAbout').addEventListener('click', openAbout);
+$('btnCredits').addEventListener('click', openCredits);
+$('aboutClose').addEventListener('click', closeAbout);
+$('creditsClose').addEventListener('click', closeCredits);
+$('musicToggle').addEventListener('click', () => {
+  state.musicOn = !state.musicOn;
+  applyMusic();
+  updateMusicToggle();
+});
+$('mapClose').addEventListener('click', closeMap);
+$('campClose').addEventListener('click', closeCamp);
+document.querySelectorAll('#buildButtons button').forEach(btn => {
+  btn.addEventListener('click', () => startBuild(btn.dataset.build));
+});
+$('pauseResume').addEventListener('click', closePause);
+$('pauseSave').addEventListener('click', () => { saveGame(); $('saveHint').textContent = 'Journey saved.'; closePause(); });
+$('pauseMute').addEventListener('click', () => setMuted(!state.muted));
+$('pauseRestart').addEventListener('click', () => {
+  $('pauseOverlay').classList.remove('open');
+  localStorage.removeItem(SAVE_KEY);
+  startGame();
+});
+$('endRestart').addEventListener('click', () => { $('endOverlay').classList.remove('open'); startGame(); });
+
+$('mSell').addEventListener('click', () => {
+  if (state.manna < 5) return;
+  state.manna -= 5; state.silver += 10; state.score += 5;
+  say('You sell five measures of manna at the market.');
+  playSfx('coins', 0.3); updateMarket(); updateHud(true);
+});
+$('mWater').addEventListener('click', () => {
+  if (state.silver < 8) return;
+  state.silver -= 8; state.campWater = clamp(state.campWater + 30, 0, 100);
+  say('You buy water for the camp.');
+  playSfx('water', 0.3); updateMarket(); updateHud(true);
+});
+$('mTithe').addEventListener('click', () => {
+  if (state.silver < 10) return;
+  state.silver -= 10; state.faith = clamp(state.faith + 8, 0, 100);
+  say('You tithe silver to the Lord. Faith strengthens.');
+  playSfx('coins', 0.3); updateMarket(); updateHud(true);
+});
+$('mClose').addEventListener('click', closeMarket);
+
+/* -------------------------------- loop ------------------------------- */
+
+function frame(ts){
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0);
+  last = ts;
+  if (state.mode === 'playing') update(dt);
+  else updatePeople(dt * 0.5);
+  if (state.mode === 'map') drawMap();
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function boot(){
+  resize();
+  buildTerrain();
+  buildDecor();
+  buildTerrainCanvas();
+  state.explored = new Set();
+  state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
+  camX = (CAMP.x-CAMP.y)*HW;
+  camY = (CAMP.x+CAMP.y)*HH;
+  revealAround(CAMP.x, CAMP.y, 6);
+  renderLog();
+  renderTribeStats();
+  setSpeed(1);
+  updateHud(true);
+
+  const cont = $('menuContinue');
+  if (hasSave()){
+    cont.hidden = false;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); } catch (_) {}
+    const savedMonth = (saved.v || 1) < 2 ? ((saved.day || 1)-1)*MONTHS_PER_YEAR+1 : (saved.day || 1);
+    const savedYear = Math.min(TOTAL_YEARS, Math.floor((savedMonth-1)/MONTHS_PER_YEAR)+1);
+    cont.textContent = `Continue Year ${savedYear}`;
+    $('saveHint').textContent = 'A previous journey is saved in this browser.';
+  } else {
+    cont.hidden = true;
+  }
+  document.body.classList.add('menu-open');
+  requestAnimationFrame(frame);
+}
+
+boot();

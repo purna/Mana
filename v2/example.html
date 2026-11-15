@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wilderness: The Exodus Protocol (Iso Prototype)</title>
+<link rel="icon" href="data:,">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--ink:#f6e9d0;--panel:rgba(30,20,12,.8);--gold:#e8b84a;--bg:#2a1d14}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#f6e9d0;--panel:rgba(30,20,12,.8);--bg:#2a1d14}}
+:root[data-theme="dark"]{--ink:#f6e9d0;--panel:rgba(30,20,12,.8);--bg:#2a1d14}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:13px system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+#hud{position:absolute;top:calc(env(safe-area-inset-top,0px) + 6px);left:6px;right:6px;background:var(--panel);border-radius:10px;padding:6px 10px}
+.row{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bar{height:8px;background:#0006;border-radius:4px;margin:5px 0;overflow:hidden}.bar i{display:block;height:100%;width:80%;background:#7fc46b}
+#log{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 62px);font-size:12px;text-shadow:0 1px 2px #000;pointer-events:none}
+#bar{position:absolute;left:6px;right:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);display:flex;gap:6px}
+button{flex:1;padding:12px 4px;border:0;border-radius:10px;background:var(--panel);color:var(--ink);font:600 11px system-ui;line-height:1.1;border:1px solid #e8b84a55}
+button:active{background:#6a4a20}
+#ov{position:absolute;inset:0;background:#120c08d9;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+#ov div{max-width:380px}h1{font-size:22px;color:var(--gold);margin:0 0 8px}#ov p{line-height:1.45;margin:8px 0;text-align:left}
+#ov button{flex:none;padding:12px 28px;margin-top:10px;background:var(--gold);color:#2a1d14}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><div class="row"><b id="dy"></b><span id="ph"></span></div>
+<div class="bar"><i id="fb"></i></div>
+<div class="row"><span id="ft"></span><span id="rs"></span></div></div>
+<div id="log"></div>
+<div id="bar"><button id="b1">Strike (E)</button><button id="b2">Pray (Q)</button><button id="b3">Overview</button><button id="b6">Build</button><button id="b5">Shofar (R)</button><button id="b4">×1</button></div>
+<div id="ov"><div><h1>Wilderness: The Exodus Protocol</h1>
+<p>Test prototype · isometric. You are Moses. Keep the people fed, watered and faithful for <b>one week</b> (Day 1–7).</p>
+<p>• <b>Tap</b> the ground to walk (or WASD). Gather glowing <b>Manna</b> from dawn until 10:00, before it melts.<br>
+• Find rocks that shimmer, then <b>Strike</b> them with the staff for water.<br>
+• At dusk everyone eats and drinks. Shortfalls crush <b>Faith</b>.<br>
+• Open <b>Overview</b> to see traits, then tap a citizen to counsel them. Greedy hoarders rot manna; murmurers spread unrest.<br>
+• Day 6 gives double Manna. Save it for the Sabbath (Day 7: none falls).<br>
+• <b>Pray</b> near the pillar to restore Faith. At 0% they build the Golden Calf.<br>• Chain Manna pickups for a <b>streak bonus</b>.<br>• From Day 2, <b>Amalekite raiders</b> strike at night and steal Manna. Tap them to chase them down (devout citizens help), or sound the <b>Shofar</b> to rally everyone, speeding up the whole camp for 8s.<br>• Tap trees for <b>wood</b>, then press <b>Build</b> and tap near camp: Watchtowers (6 wood, max 4) stop raiders in range; the Tabernacle (20 wood) gives Faith +5 and steady recovery.<br>• Some springs run <b>bitter</b>: strike beside them again with 2 wood to sweeten them. On Days 3 and 5, <b>quail</b> fly in at noon. Grab them before nightfall.</p>
+<button id="go">Begin</button></div></div>
+<script>
+const N=36,hw=30,hh=15,C=[18,18],R=Math.random;
+const cv=document.getElementById('c'),g=cv.getContext('2d'),$=i=>document.getElementById(i);
+let W,H,S,ox=0,oy=0,T=[],HT=[];
+function rs(){const d=devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',rs);rs();
+const P=(x,y)=>[(x-y)*hw+ox,(x+y)*hh+oy];
+const hash=(x,y)=>{let h=Math.sin(x*127.1+y*311.7)*43758.5;return h-Math.floor(h)};
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TC={greedy:'#f2c230',lazy:'#8fb0c0',murmurer:'#e0584c',faithful:'#6cc4ff'};
+const TN={greedy:'Greedy',lazy:'Lazy',murmurer:'Murmurer',faithful:'Devout',normal:'Ordinary'};
+function init(){
+ S={hour:5.2,day:1,mx:C[0]+3,my:C[1]+3,cx:C[0]+3,cy:C[1]+3,tx:null,ty:null,faith:80,manna:0,blessed:0,water:30,speed:1,
+ rocks:[],trees:[],tents:[],cits:[],mannas:[],springs:[],log:[],run:1,prayCd:0,tact:0,keys:{},pend:null,f25:0,raids:[],pops:[],streak:0,st:0,score:0,rally:0,rcd:0,wood:0,towers:[],tab:null,bm:0};
+ for(let i=0;i<5;i++){const a=i/5*6.28+R()*.8,r=8+R()*8;S.rocks.push({x:cl(C[0]+Math.cos(a)*r,3,N-4),y:cl(C[1]+Math.sin(a)*r,3,N-4),on:0})}
+ for(let i=0;i<34;i++){const t={x:2+R()*(N-4),y:2+R()*(N-4)};if(Math.hypot(t.x-C[0],t.y-C[1])>6)S.trees.push(t)}
+ for(let i=0;i<10;i++){const a=i/10*6.28;S.tents.push({x:C[0]+Math.cos(a)*5.5,y:C[1]+Math.sin(a)*5.5})}
+ const tr=[];[['greedy',6],['lazy',6],['murmurer',5],['faithful',5],['normal',8]].forEach(([k,n])=>{for(let i=0;i<n;i++)tr.push(k)});
+ tr.sort(()=>R()-.5);
+ tr.forEach((k,i)=>{const h=S.tents[i%10];S.cits.push({x:h.x+R()*2-1,y:h.y+R()*2-1,tr:k,hx:h.x+1,hy:h.y+1,hoard:0,w:R()*3,wx:null,wy:null,tg:null,lz:0,col:['#d8c9a8','#b9805a','#a9a07a','#c7b08a','#8f7a5c'][i%5]})});
+ HT=[];T=[];const dn=(x,y)=>Math.sin(x*.42+Math.sin(y*.23)*2.2)+Math.sin((x*.7+y)*.19+1)*.8;
+ for(let x=0;x<N;x++){HT[x]=[];for(let y=0;y<N;y++)HT[x][y]=0}
+ for(let i=0;i<9;i++){const a=i/9*6.28+R()*.5,rr=15+R()*3,mx=C[0]+Math.cos(a)*rr,my=C[1]+Math.sin(a)*rr,rad=2.2+R()*1.6;if(S.rocks.some(k=>Math.hypot(k.x-mx,k.y-my)<rad+3))continue;
+  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const d=Math.hypot(x-mx,y-my)/rad+hash(x,y)*.25;if(d<1)HT[x][y]=Math.max(HT[x][y],d<.35?4:d<.6?3:d<.8?2:1)}}
+ const pal=['#c79b5e','#d2a96d','#dcb97f','#e6c892','#efd8a6'];
+ for(let x=0;x<N;x++){T[x]=[];for(let y=0;y<N;y++){const v=dn(x,y),h=hash(x,y),near=Math.hypot(x-C[0],y-C[1])<6,wd=Math.abs(y-(9+5*Math.sin(x*.22)))<1.1;let c=pal[cl(Math.floor((v+2.2)/4.4*5),0,4)];if(wd)c=h<.5?'#b8935e':'#a98456';if(near)c=h<.5?'#c9a066':'#c19760';T[x][y]=c}}
+ S.trees=S.trees.filter(t=>!blk(t.x,t.y));S.decor=[];
+ for(let i=0;i<170;i++){const x=1+R()*(N-2),y=1+R()*(N-2);if(blk(x,y)||Math.hypot(x-C[0],y-C[1])<4.5||S.rocks.some(k=>Math.hypot(k.x-x,k.y-y)<1.5))continue;const r=R();S.decor.push({x,y,k:r<.2?'cactus':r<.42?'agave':r<.78?'tuft':'pebble',s:.7+R()*.6,h:R()})}
+ for(let i=0;i<12;i++){const x=3+R()*30,y=9+5*Math.sin(x*.22)+R()*3-1.5;if(!blk(x,y))S.decor.push({x,y,k:'palm',s:.8+R()*.4,h:R()})}
+ say('Dawn nears. Manna falls at 06:00.');
+}
+function pop(x,y,txt,col){S.pops.push({x,y,t:1.2,txt,col})}
+function say(t){S.log.push(t);if(S.log.length>3)S.log.shift();$('log').innerHTML=S.log.join('<br>')}
+function mv(c,tx,ty,sp,dt){const dx=tx-c.x,dy=ty-c.y,d=Math.hypot(dx,dy);if(d>.05){const s=Math.min(d,sp*dt),nx=c.x+dx/d*s,ny=c.y+dy/d*s;if(c.raid||!blk(nx,ny)){c.x=nx;c.y=ny}else if(!blk(nx,c.y))c.x=nx;else if(!blk(c.x,ny))c.y=ny}return d}
+function update(dt){
+ const s=S,pv=s.hour,X=h=>pv<h&&s.hour>=h;s.hour+=dt/4;
+ const wk=((s.day-1)%7)+1,M={x:s.mx,y:s.my};
+ const m0x=s.mx,m0y=s.my;let kx=(s.keys.d||s.keys.ArrowRight?1:0)-(s.keys.a||s.keys.ArrowLeft?1:0),ky=(s.keys.s||s.keys.ArrowDown?1:0)-(s.keys.w||s.keys.ArrowUp?1:0);
+ if(kx||ky){s.tx=null;s.pend=null;const wx=kx+ky,wy=ky-kx,d=Math.hypot(wx,wy);s.mx+=wx/d*5*dt;s.my+=wy/d*5*dt}
+ if(s.pend){s.tx=s.pend.x;s.ty=s.pend.y;if(dist(M,s.pend)<(s.pend.raid?1.3:2)){if(s.pend.tree){const p=s.pend;s.trees=s.trees.filter(t=>t!==p);s.wood+=3;pop(p.x,p.y,'+3 wood','#c99a5a')}else if(!s.pend.raid)counsel(s.pend);s.pend=null;s.tx=null}}
+ if(s.tx!=null){const m={x:s.mx,y:s.my};if(mv(m,s.tx,s.ty,5,dt)<.1)s.tx=null;s.mx=m.x;s.my=m.y}
+ if(blk(s.mx,s.my)){s.mx=m0x;s.my=m0y}s.mx=cl(s.mx,1,N-2);s.my=cl(s.my,1,N-2);
+ s.st-=dt;s.pops=s.pops.filter(p=>(p.t-=dt)>0);
+ s.mannas=s.mannas.filter(m=>{if(Math.hypot(m.x-s.mx,m.y-s.my)<1){s.streak=s.st>0?s.streak+1:1;s.st=1.5;const b=s.streak>=5?2:1;s.manna+=b;s.score+=b;pop(m.x,m.y,'+'+b+(s.streak>=3?' ×'+s.streak:''),'#ffe27a');return false}return true});
+ if(X(12)&&(s.day==3||s.day==5)){for(let i=0;i<25;i++){const a=R()*6.28,r=2.5+R()*8;s.mannas.push({x:cl(C[0]+Math.cos(a)*r,1,N-2),y:cl(C[1]+Math.sin(a)*r,1,N-2),cl:null,q:1})}say('Quail fly in from the sea! Gather them before nightfall.')}if(X(20))s.mannas=s.mannas.filter(m=>!m.q);
+ if(X(21)&&s.day>=2&&wk!=7){const n=Math.min(5,1+Math.floor(s.day/2));for(let i=0;i<n;i++){const a=R()*6.28;s.raids.push({x:cl(C[0]+Math.cos(a)*17,1,N-2),y:cl(C[1]+Math.sin(a)*17,1,N-2),loot:0,flee:0,raid:1})}say('Amalekite raiders approach! Tap them, or sound the Shofar!')}
+ s.raids=s.raids.filter(r=>{const d=Math.hypot(r.x-C[0],r.y-C[1]);
+  if(!r.flee){mv(r,C[0],C[1],2.4,dt);if(d<2.5){r.loot=Math.min(10,s.manna);s.manna-=r.loot;r.flee=1;if(r.loot)say('A raider stole '+r.loot+' Manna!')}}
+  else{const a=Math.atan2(r.y-C[1],r.x-C[0]);mv(r,r.x+Math.cos(a)*10,r.y+Math.sin(a)*10,3,dt);if(d>17)return false}
+  if(Math.hypot(r.x-s.mx,r.y-s.my)<1.3||s.towers.some(t=>Math.hypot(t.x-r.x,t.y-r.y)<4.5)||s.cits.some(c=>(c.tr=='faithful'||s.rally>0)&&Math.hypot(c.x-r.x,c.y-r.y)<1.2)){s.manna+=r.loot;s.faith=Math.min(100,s.faith+2);s.score+=5;pop(r.x,r.y,'Defeated!'+(r.loot?' +'+r.loot:''),'#ff8a6a');return false}
+  return true});
+ if(X(6)&&wk!=7){const mult=s.faith>=50?1:s.faith>=25?.6:.3,n=Math.round((wk==6?80:40)*mult);
+  for(let i=0;i<n;i++){const a=R()*6.28,r=2.5+R()*7;s.mannas.push({x:cl(C[0]+Math.cos(a)*r,1,N-2),y:cl(C[1]+Math.sin(a)*r,1,N-2),cl:null})}
+  say(wk==6?'Double Manna falls! Gather for the Sabbath.':mult<1?'Little Manna falls: their faith is thin.':'Manna covers the ground. Gather it!');}
+ if(X(10)&&s.mannas.length){say(s.mannas.length+' Manna melted in the sun.');s.mannas=[]}
+ const dawn=s.hour>=6&&s.hour<10,night=s.hour>=20||s.hour<5;
+ for(const c of s.cits){
+  if(X(6))c.lz=c.tr=='lazy'&&R()<.75;
+  let sp=c.tr=='faithful'?3.2:c.tr=='lazy'?1.8:2.6;
+  if(s.rally>0){sp*=2;c.lz=0}const ra=s.rally>0?s.raids[0]:null;if(ra)mv(c,ra.x,ra.y,sp,dt);else if((dawn||s.mannas.some(m=>m.q))&&s.mannas.length&&!c.lz){
+   if(!c.tg||!s.mannas.includes(c.tg)){c.tg=null;let b=1e9;for(const m of s.mannas){if(m.cl&&m.cl!==c&&m.cl.tg===m)continue;const d=dist(c,m);if(d<b){b=d;c.tg=m}}if(c.tg)c.tg.cl=c}
+   if(c.tg&&mv(c,c.tg.x,c.tg.y,sp,dt)<.5){if(c.tr=='greedy'&&R()<.7){c.hoard++;pop(c.x,c.y,'hoarded!','#e0584c')}else{s.manna++;s.score++}s.mannas=s.mannas.filter(m=>m!==c.tg);c.tg=null}
+  }else if(night)mv(c,c.hx,c.hy,2,dt);
+  else{c.w-=dt;if(c.w<=0){c.w=3+R()*4;const r=c.tr=='lazy'?1:4;c.wx=cl(c.hx+R()*2*r-r,1,N-2);c.wy=cl(c.hy+R()*2*r-r,1,N-2)}if(c.wx!=null)mv(c,c.wx,c.wy,1.4,dt)}
+ }
+ const cnt=k=>s.cits.filter(c=>c.tr==k).length,hoard=s.cits.reduce((a,c)=>a+c.hoard,0);
+ let df=.08*cnt('faithful')-.05*cnt('murmurer')-.015*cnt('lazy')-.015*hoard+(wk==7?.1:0)+(s.tab?.2:0);
+ s.faith=cl(s.faith+df*dt,0,100);
+ for(const sp of s.springs)if(sp.t>0){sp.t-=dt;if(!sp.bitter)s.water+=1.5*dt}
+ if(s.faith<25&&!s.f25){s.f25=1;say('Whispers of idolatry! Gold is being gathered…')}if(s.faith>=30)s.f25=0;
+ s.prayCd=Math.max(0,s.prayCd-dt);s.rally=Math.max(0,s.rally-dt);s.rcd=Math.max(0,s.rcd-dt);
+ if(X(17)){const n=s.cits.length;let e=Math.min(n,s.manna);s.manna-=e;let b=Math.min(n-e,s.blessed);s.blessed-=b;e+=b;const w=Math.min(n,Math.floor(s.water));s.water-=w;
+  const lack=(n-e)+(n-w);if(lack==0){s.faith=Math.min(100,s.faith+3);say('Dusk: all are fed and watered.')}else{s.faith=Math.max(0,s.faith-lack/n*18);say('Dusk: '+(n-e)+' hungry, '+(n-w)+' thirsty. Faith falls.')}}
+ if(s.hour>=24){s.hour-=24;
+  if(hoard){s.faith=Math.max(0,s.faith-Math.min(8,hoard*.8));s.cits.forEach(c=>c.hoard=0);say('Hoarded Manna bred worms ('+hoard+'). Faith suffers.')}
+  if(wk==6&&s.manna){s.blessed+=s.manna;say('Sabbath Manna preserved: '+s.manna+' blessed.')}else if(s.manna){say(s.manna+' stored Manna spoiled overnight.')}
+  s.manna=0;s.day++}
+ if(s.faith<=0)end(0);else if(s.day>=8)end(1);
+}
+function counsel(c){const n=TN[c.tr];if(c.tr=='normal')say('This one needs no counsel.');else if(c.tr=='faithful')say('A devout soul. Praise given.');
+ else if(R()<.65){c.tr='normal';S.faith=Math.min(100,S.faith+1);say(n+' heeds your words and mends their ways.')}else{S.faith=Math.max(0,S.faith-.5);say(n+' refuses your counsel.')}}
+function strike(){const bs=S.springs.find(p=>p.bitter&&Math.hypot(p.x-S.mx,p.y-S.my)<3.5);if(bs){if(S.wood<2)return say('Bitter water! Bring 2 wood to sweeten it.');S.wood-=2;bs.bitter=0;oasis(bs.x-.5,bs.y-.5);pop(bs.x,bs.y,'Sweetened!','#7fd0ff');return say('You cast acacia wood into the water. It turns sweet.')}
+ let r=null,b=3;for(const k of S.rocks)if(!k.on){const d=Math.hypot(k.x-S.mx,k.y-S.my);if(d<b){b=d;r=k}}
+ if(r){r.on=1;const bt=R()<.4;S.springs.push({x:r.x+.5,y:r.y+.5,t:45,bitter:bt});if(!bt)oasis(r.x,r.y);say(bt?'The water is bitter (Marah)! Strike again beside it with 2 wood to sweeten it.':'You strike the rock. Water gushes out!')}else say('No rock in reach. Look for shimmering ground.')}
+function pray(){if(S.prayCd>0)return say('You are still in prayer… ('+Math.ceil(S.prayCd)+'s)');if(Math.hypot(S.mx-C[0],S.my-C[1])>6)return say('Return to the pillar to intercede.');S.faith=Math.min(100,S.faith+7);S.prayCd=15;say('You intercede for the people. Faith +7.')}
+function end(w){S.run=0;const o=$('ov');o.style.display='flex';o.innerHTML='<div><h1>'+(w?'Week survived':'The Golden Calf')+'</h1><p>'+(w?'Phase I complete: the people endured seven days, Sabbath included. Next: tribes, building and migration.':'Faith collapsed and the people built an idol. Divine favour is withdrawn.')+'</p><p><b>Score: '+(S.score+Math.round(S.faith)*3)+'</b></p><button id="go">Try again</button></div>';$('go').onclick=start}
+function start(){$('ov').style.display='none';$('b6').textContent='Build';init()}
+function dark(h){return h>=21||h<4.5?.55:h>=18&&h<21?(h-18)/3*.55:h>=4.5&&h<7?(7-h)/2.5*.55:0}
+function poly(pts,col){g.fillStyle=col;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.fill()}
+const MA=['#c9763f','#b8683a','#d68a4c','#a65b34','#c26f3a'],MB=['#a85c30','#97522c','#b87038','#8a4a28','#a55f31'],MT=['#e3ab68','#e9b777','#efc386','#f4cf96'];
+const blk=(x,y)=>{const i=Math.floor(x),j=Math.floor(y);return HT[i]&&HT[i][j]>0};
+function col(x,y){const h=HT[x][y],[px,py]=P(x,y);if(px<-hw-4||px>W+hw+4||py<-hh-h*11-4||py>H+hh*2+50)return;
+ const l1=y+1<N?HT[x][y+1]:0,l2=x+1<N?HT[x+1][y]:0;
+ for(let l=l1*2;l<h*2;l++){const a=l*5.5,b=a+5.5;poly([[px-hw,py+hh-b],[px,py+2*hh-b],[px,py+2*hh-a],[px-hw,py+hh-a]],MA[l%5])}
+ for(let l=l2*2;l<h*2;l++){const a=l*5.5,b=a+5.5;poly([[px+hw,py+hh-b],[px,py+2*hh-b],[px,py+2*hh-a],[px+hw,py+hh-a]],MB[l%5])}
+ const e=h*11;poly([[px,py-e],[px+hw,py+hh-e],[px,py+2*hh-e],[px-hw,py+hh-e]],MT[Math.min(3,h-1)])}
+function oasis(x,y){for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){const gx=Math.floor(x)+i,gy=Math.floor(y)+j;if(T[gx]&&T[gx][gy]!==undefined&&!HT[gx][gy]&&Math.hypot(i,j)<3.2)T[gx][gy]=Math.hypot(i,j)<1.6?'#7fa650':'#a0b060'}
+ S.decor.push({x:x+1.4,y:y-.8,k:'palm',s:1,h:R()},{x:x-1,y:y+1.4,k:'palm',s:.85,h:R()})}
+function draw(){
+ const s=S;s.cx+=(s.mx-s.cx)*.12;s.cy+=(s.my-s.cy)*.12;ox=W/2-(s.cx-s.cy)*hw;oy=H/2-(s.cx+s.cy)*hh;
+ g.fillStyle='#2a1d14';g.fillRect(0,0,W,H);
+ const o=[],rp=new Path2D(),rd=new Path2D();
+ for(let x=0;x<N;x++)for(let y=0;y<N;y++){if(HT[x][y]){o.push([x+y+1,()=>col(x,y)]);continue}const[px,py]=P(x,y);if(px<-hw||px>W+hw||py<-hh||py>H+40)continue;g.fillStyle=g.strokeStyle=T[x][y];g.beginPath();g.moveTo(px,py);g.lineTo(px+hw,py+hh);g.lineTo(px,py+2*hh);g.lineTo(px-hw,py+hh);g.closePath();g.fill();g.stroke();
+  if(hash(x*3.1,y*7.3)<.55){const q=hash(x,y*2)*6-3;rp.moveTo(px-hw*.55,py+hh*.9+q*.3);rp.quadraticCurveTo(px,py+hh*.5+q,px+hw*.55,py+hh*.9+q*.3);rd.moveTo(px-hw*.45,py+hh*1.15);rd.quadraticCurveTo(px,py+hh*.8+q,px+hw*.5,py+hh*1.15)}}
+ g.lineWidth=1.2;g.strokeStyle='rgba(255,244,210,.35)';g.stroke(rp);g.strokeStyle='rgba(110,70,30,.2)';g.stroke(rd);
+ const LP=['#d9a566','#c88a4e','#b2703c','#8f5530'],RP=['#c4925a','#b37a44','#9c6234','#7b4a2a'];
+ for(let i=0;i<N;i++)for(const r of[0,1]){const x=r?N-1:i,y=r?i:N-1,[px,py]=P(x,y);if(px<-hw||px>W+hw||py>H+60)continue;for(let l=0;l<4;l++){const a=l*8,b=a+8,sx=r?hw:-hw;poly([[px+sx,py+hh+a],[px,py+2*hh+a],[px,py+2*hh+b],[px+sx,py+hh+b]],(r?RP:LP)[l])}}
+ const t=performance.now()/1000;
+ for(const k of s.rocks)if(!k.on&&Math.hypot(k.x-s.mx,k.y-s.my)<8){const[px,py]=P(k.x,k.y);g.strokeStyle='rgba(120,200,255,'+(.3+.3*Math.sin(t*3))+')';g.lineWidth=2;g.beginPath();g.ellipse(px,py+4,34+4*Math.sin(t*3),16,0,0,6.28);g.stroke()}
+ for(const sp of s.springs){const[px,py]=P(sp.x,sp.y),a=sp.t>0?1:.35,r=sp.t>0?28:16;g.fillStyle=sp.bitter?'rgba(120,100,60,'+a+')':'rgba(70,150,210,'+a+')';g.beginPath();g.ellipse(px,py+6,r,r/2,0,0,6.28);g.fill()}
+ for(const m of s.mannas){const[px,py]=P(m.x,m.y),b=Math.sin(t*3+m.x*5)*2,a=s.hour>9.4?.5+.5*Math.sin(t*14):1;g.fillStyle='rgba(255,240,170,'+.25*a+')';g.beginPath();g.arc(px,py-4+b,9,0,6.28);g.fill();poly([[px,py-8+b],[px+4,py-4+b],[px,py+b],[px-4,py-4+b]],(m.q?'rgba(170,115,60,'+a+')':'rgba(255,248,200,'+a+')'))}
+ 
+ s.trees.forEach(r=>o.push([r.x+r.y,()=>{const[px,py]=P(r.x,r.y);g.strokeStyle='#5a3d22';g.lineWidth=3;g.beginPath();g.moveTo(px,py);g.lineTo(px,py-22);g.stroke();g.fillStyle='#8a9a4a';g.beginPath();g.ellipse(px,py-26,22,8,0,0,6.28);g.fill()}]));
+ s.rocks.forEach(r=>o.push([r.x+r.y,()=>{const[px,py]=P(r.x,r.y);poly([[px-16,py-16],[px,py-8],[px,py+8],[px-16,py]],'#8c7a66');poly([[px+16,py-16],[px,py-8],[px,py+8],[px+16,py]],'#a08c76');poly([[px,py-24],[px+16,py-16],[px,py-8],[px-16,py-16]],r.on?'#8fa4b4':'#b8a58e')}]));
+ s.tents.forEach(r=>o.push([r.x+r.y,()=>{const[px,py]=P(r.x,r.y);poly([[px-20,py],[px,py+10],[px,py-22]],'#e8dcc0');poly([[px+20,py],[px,py+10],[px,py-22]],'#cdbf9c')}]));
+ s.cits.forEach(c=>o.push([c.x+c.y,()=>{const[px,py]=P(c.x,c.y);g.fillStyle='#0003';g.beginPath();g.ellipse(px,py,7,3,0,0,6.28);g.fill();g.fillStyle=c.col;g.fillRect(px-4,py-13,8,13);g.fillStyle='#d9b08a';g.beginPath();g.arc(px,py-16,3.5,0,6.28);g.fill();
+  if(s.tact&&TC[c.tr]){g.strokeStyle=TC[c.tr];g.lineWidth=2.5;g.beginPath();g.ellipse(px,py,10,5,0,0,6.28);g.stroke()}if(c.hoard&&s.tact){g.fillStyle='#ffe27a';g.fillRect(px+4,py-8,4,4)}}]));
+ s.decor.forEach(d=>o.push([d.x+d.y,()=>{const[px,py]=P(d.x,d.y),z=d.s;if(px<-40||px>W+40||py<-20||py>H+70)return;g.lineCap='round';
+  if(d.k=='cactus'){g.strokeStyle='#4f8a66';g.lineWidth=6*z;g.beginPath();g.moveTo(px,py);g.lineTo(px,py-24*z);g.moveTo(px,py-9*z);g.lineTo(px-8*z,py-9*z);g.lineTo(px-8*z,py-17*z);if(d.h>.4){g.moveTo(px,py-14*z);g.lineTo(px+8*z,py-14*z);g.lineTo(px+8*z,py-21*z)}g.stroke()}
+  else if(d.k=='agave'){g.lineWidth=3.5*z;for(let i=0;i<7;i++){const a=i/6*2.4-1.2;g.strokeStyle=i%2?'#4a9482':'#5fae9a';g.beginPath();g.moveTo(px,py);g.lineTo(px+Math.sin(a)*14*z,py-Math.cos(a)*12*z);g.stroke()}}
+  else if(d.k=='tuft'){g.strokeStyle='#b8933f';g.lineWidth=1.5;for(let i=0;i<5;i++){g.beginPath();g.moveTo(px+i*2-4,py);g.lineTo(px+i*3-6,py-6*z-i%2*3);g.stroke()}}
+  else if(d.k=='pebble'){g.fillStyle='#9a8a78';g.beginPath();g.ellipse(px,py,3*z,1.6*z,0,0,6.28);g.fill()}
+  else{g.strokeStyle='#6b4a2a';g.lineWidth=4*z;g.beginPath();g.moveTo(px,py);g.quadraticCurveTo(px+5*z,py-22*z,px+8*z,py-42*z);g.stroke();g.strokeStyle='#4f9a3c';g.lineWidth=3;for(let i=0;i<7;i++){const a=i/7*6.28;g.beginPath();g.moveTo(px+8*z,py-42*z);g.quadraticCurveTo(px+8*z+Math.cos(a)*12*z,py-48*z+Math.sin(a)*3,px+8*z+Math.cos(a)*20*z,py-40*z+Math.sin(a)*6*z);g.stroke()}}
+  g.lineCap='butt'}]));
+ s.towers.forEach(t=>o.push([t.x+t.y,()=>{const[px,py]=P(t.x,t.y);g.strokeStyle='#6b4524';g.lineWidth=3;[[-10,0],[10,0],[0,6],[0,-6]].forEach(l=>{g.beginPath();g.moveTo(px+l[0],py+l[1]);g.lineTo(px+l[0],py+l[1]-28);g.stroke()});poly([[px-14,py-26],[px,py-19],[px+14,py-26],[px,py-33]],'#a87b48');poly([[px-16,py-33],[px,py-52],[px+16,py-33],[px,py-27]],'#8a3a2a')}]));
+ if(s.tab)o.push([s.tab.x+s.tab.y,()=>{const t=s.tab,[px,py]=P(t.x,t.y);poly([[px-34,py-12],[px,py+5],[px,py-26],[px-34,py-40]],'#efe6cf');poly([[px+34,py-12],[px,py+5],[px,py-26],[px+34,py-40]],'#d8cdb0');poly([[px,py-52],[px+34,py-40],[px,py-26],[px-34,py-40]],'#e8c04a');g.fillStyle='rgba(255,246,200,.5)';g.beginPath();g.arc(px,py-62,5+Math.sin(performance.now()/300)*1.5,0,6.28);g.fill()}]);
+ s.raids.forEach(r=>o.push([r.x+r.y,()=>{const[px,py]=P(r.x,r.y);g.fillStyle='#0003';g.beginPath();g.ellipse(px,py,7,3,0,0,6.28);g.fill();g.fillStyle='#7a2a22';g.fillRect(px-4,py-14,8,14);g.fillStyle='#d9b08a';g.beginPath();g.arc(px,py-17,3.5,0,6.28);g.fill();g.strokeStyle='#ddd';g.lineWidth=2;g.beginPath();g.moveTo(px+6,py-6);g.lineTo(px+12,py-18);g.stroke();if(r.loot){g.fillStyle='#ffe27a';g.fillRect(px-3,py-9,6,5)}g.strokeStyle='#e0584c';g.lineWidth=1.5;g.beginPath();g.ellipse(px,py,12,6,0,0,6.28);g.stroke()}]));
+ o.push([s.mx+s.my,()=>{const[px,py]=P(s.mx,s.my);g.fillStyle='#0004';g.beginPath();g.ellipse(px,py,9,4,0,0,6.28);g.fill();g.fillStyle='#3b5a9a';g.fillRect(px-5,py-18,10,18);g.fillStyle='#e0b890';g.beginPath();g.arc(px,py-22,4.5,0,6.28);g.fill();g.fillStyle='#eee';g.fillRect(px-3,py-20,6,4);g.strokeStyle='#6b4524';g.lineWidth=2.5;g.beginPath();g.moveTo(px+8,py);g.lineTo(px+8,py-32);g.quadraticCurveTo(px+8,py-37,px+12,py-35);g.stroke()}]);
+ o.sort((a,b)=>a[0]-b[0]).forEach(e=>e[1]());
+ s.pops.forEach(p=>{const[px,py]=P(p.x,p.y);g.globalAlpha=Math.min(1,p.t*2);g.fillStyle=p.col;g.font='bold 13px system-ui';g.textAlign='center';g.fillText(p.txt,px,py-30-(1.2-p.t)*30);g.globalAlpha=1});
+ const a=dark(s.hour);g.globalCompositeOperation='multiply';const k=a/.55;g.fillStyle='rgb('+Math.round(255-k*185)+','+Math.round(255-k*175)+','+Math.round(255-k*115)+')';g.fillRect(0,0,W,H);g.globalCompositeOperation='source-over';
+ const[cx,cy]=P(C[0],C[1]),night=s.hour>=19||s.hour<5.5;
+ if(night){const gr=g.createLinearGradient(0,cy-110,0,cy);gr.addColorStop(0,'rgba(255,120,20,0)');gr.addColorStop(1,'rgba(255,170,50,.85)');g.fillStyle=gr;g.fillRect(cx-9,cy-110,18,110);g.globalCompositeOperation='lighter';g.fillStyle='rgba(255,140,40,.15)';g.beginPath();g.arc(cx,cy-30,70+4*Math.sin(t*6),0,6.28);g.fill();g.globalCompositeOperation='source-over'}
+ else{for(let i=0;i<6;i++){g.fillStyle='rgba(255,255,255,.5)';g.beginPath();g.arc(cx+Math.sin(t+i)*5,cy-i*18,14-i,0,6.28);g.fill()}}
+}
+let hc=0;
+function hud(){const s=S,h=s.hour,wk=((s.day-1)%7)+1;
+ $('dy').textContent='Day '+Math.min(s.day,7)+'/7 · '+String(Math.floor(h)).padStart(2,'0')+':'+String(Math.floor(h%1*60)).padStart(2,'0')+(wk==6?' · Preparation Day':wk==7?' · Sabbath':'');
+ $('ph').textContent=wk==7&&h>=6&&h<20?'Sabbath rest':h>=6&&h<10?'Dawn: gather Manna!':h>=10&&h<17?'Daylight':h>=17&&h<20?'Dusk: rations':'Night';
+ $('fb').style.width=s.faith+'%';$('fb').style.background=s.faith>=75?'#7fc46b':s.faith>=50?'#d6c04a':s.faith>=25?'#e08a3a':'#d94a3a';
+ const hoard=s.cits.reduce((a,c)=>a+c.hoard,0);
+ $('ft').textContent='Faith '+Math.round(s.faith)+'% · '+(s.faith>=75?'Order':s.faith>=50?'Unrest':s.faith>=25?'Idolatry':'Rebellion');
+ $('rs').textContent='🍞'+s.manna+' ✨'+s.blessed+' 💧'+Math.floor(s.water)+' 🪵'+s.wood+(s.tact?' 🧺'+hoard:'');
+ $('b2').textContent=s.prayCd>0?'Pray ('+Math.ceil(s.prayCd)+')':'Pray (Q)';$('b5').textContent=s.rcd>0?'Shofar ('+Math.ceil(s.rcd)+')':'Shofar (R)'}
+let last=0;
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000);last=ts;if(S){if(S.run)update(dt*S.speed);draw();hud()}requestAnimationFrame(frame)}
+cv.addEventListener('pointerdown',e=>{if(!S||!S.run)return;const r=cv.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+ let best=null,bd=22;for(const c of S.cits){const[px,py]=P(c.x,c.y),d=Math.hypot(px-sx,py-8-sy);if(d<bd){bd=d;best=c}}
+ let rr=null;for(const r of S.raids){const[px,py]=P(r.x,r.y);if(Math.hypot(px-sx,py-8-sy)<28)rr=r}if(rr){S.pend=rr;return}
+ let tt=null;for(const t of S.trees){const[px,py]=P(t.x,t.y);if(Math.hypot(px-sx,py-20-sy)<26)tt=t}if(tt&&!S.bm){tt.tree=1;S.pend=tt;return}
+ if(best){S.pend=best;return}S.pend=null;const dx=(sx-ox)/hw,dy=(sy-oy)/hh,wx=(dx+dy)/2,wy=(dy-dx)/2;if(S.bm){build(wx,wy);return}S.tx=cl(wx,1,N-2);S.ty=cl(wy,1,N-2)});
+addEventListener('keydown',e=>{if(!S)return;const k=e.key.length==1?e.key.toLowerCase():e.key;S.keys[k]=1;if(k=='e')strike();if(k=='q')pray();if(k=='r')shofar();if(k=='b')$('b6').click();if(k=='Tab'||k=='v'){e.preventDefault();S.tact^=1}});
+addEventListener('keyup',e=>{if(S){const k=e.key.length==1?e.key.toLowerCase():e.key;S.keys[k]=0}});
+$('b1').onclick=()=>S&&S.run&&strike();function build(x,y){x=Math.round(x);y=Math.round(y);if(Math.hypot(x-C[0],y-C[1])>13)return say('Too far from camp.');if(blk(x,y))return say('You cannot build on solid rock.');
+ if(S.bm==1){if(S.towers.length>=4)return say('Four watchtowers is the limit.');if(S.wood<6)return say('Need 6 wood. Tap trees to chop them.');S.wood-=6;S.towers.push({x,y});pop(x,y,'Watchtower!','#c99a5a')}
+ else{if(S.tab)return say('The Tabernacle already stands.');if(S.wood<20)return say('Need 20 wood for the Tabernacle.');S.wood-=20;S.tab={x,y};S.faith=Math.min(100,S.faith+5);pop(x,y,'Tabernacle! Faith +5','#ffe27a');say('The Tabernacle is raised. The people take heart.')}}
+function shofar(){if(S.rcd>0)return say('The shofar needs a moment…');S.rally=8;S.rcd=25;say('The shofar sounds! The people rush to action.');pop(S.mx,S.my,'Shofar!','#ffd36a')}
+$('b2').onclick=()=>S&&S.run&&pray();$('b5').onclick=()=>S&&S.run&&shofar();$('b6').onclick=()=>{if(S){S.bm=(S.bm+1)%3;$('b6').textContent=['Build','Tower 6🪵','Tabernacle 20🪵'][S.bm]}};
+$('b3').onclick=()=>{if(S){S.tact^=1;$('b3').textContent=S.tact?'Normal view':'Overview'}};
+$('b4').onclick=()=>{if(S){S.speed=S.speed==1?2:S.speed==2?4:1;$('b4').textContent='×'+S.speed}};
+$('go').onclick=start;init();S.run=0;requestAnimationFrame(frame);
+</script></body></html>
