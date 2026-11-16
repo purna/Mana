@@ -1,5 +1,15 @@
 # MANNA — Changelog
 
+## Unreleased — story events and year scaling
+
+- Added scripted Moses story events:
+  - Rephidim: strike the rock and bring water to the camp.
+  - Mount Sinai: receive the Ten Commandments, then face the Golden Calf with confront/intercede/allow choices.
+  - Plains of Moab: cross the Jordan into Israel as the campaign finale.
+- Added per-year difficulty scaling: the monthly manna quota rises every four years, camp water demand rises every five, station requirements rise every six, and raids grow in number and toughness.
+- Story events persist in saves and integrate with the monthly reports and station flow.
+
+
 ## Unreleased — discipline choices
 
 - Monthly discipline now offers **Punish**, **Counsel**, **Assign** (lazy citizens) and **Forgive**, with different effects on order, faith, health and the offender.

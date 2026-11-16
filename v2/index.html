@@ -382,6 +382,15 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .report-offender-actions button.calm{border-color:#7fc4e888;color:#bfe8ff}
 .report-offender-actions button.mercy{border-color:#9dbb7488;color:#d6e8b8}
 .report-result{font-size:10.5px;color:#9dbb74;text-align:right;white-space:normal;max-width:160px}
+
+.event-list{text-align:left;font-size:12.5px;line-height:1.55;color:#e8dcc4;padding-left:22px;margin:8px 0 12px}
+.event-list li{margin:0 0 4px}
+.event-choices{display:grid;gap:7px;margin-top:12px}
+.event-choices button{padding:11px 14px;font-size:13px}
+.event-choices button.primary{font-family:Cinzel,serif;font-weight:700}
+.event-choices button.danger{border-color:#e0584a88;color:#ffb4a4}
+.event-choices button.calm{border-color:#7fc4e888;color:#bfe8ff}
+.event-note{font-size:11px;color:#cbb894;margin:8px 0 0}
 </style>
 </head>
 <body class="menu-open">
@@ -495,6 +504,17 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <p><b style="color:var(--gold)">Trial.</b> <span id="stationTrial"></span></p>
     <p style="color:var(--sage)" id="stationBlessing"></p>
     <button class="primary" id="stationContinue">Continue the journey</button>
+  </div>
+</div>
+
+<!-- Story event -->
+<div class="overlay" id="eventOverlay">
+  <div class="sheet">
+    <div class="kicker" id="eventKicker"></div>
+    <h2 id="eventTitle"></h2>
+    <p id="eventText"></p>
+    <ol id="eventList" class="event-list"></ol>
+    <div id="eventChoices" class="event-choices"></div>
   </div>
 </div>
 
@@ -660,6 +680,9 @@ const SAVE_KEY = 'manna-iso-save-v1';
 function yearOfMonth(m = state.day){ return Math.min(TOTAL_YEARS, Math.floor((m-1)/MONTHS_PER_YEAR)+1); }
 function monthOfYear(m = state.day){ return ((m-1)%MONTHS_PER_YEAR)+1; }
 function monthName(m = state.day){ return MONTH_NAMES[monthOfYear(m)-1]; }
+function currentQuota(){
+  return QUOTA + Math.floor((yearOfMonth()-1)/4)*2;
+}
 
 const STATIONS = [
   {
@@ -743,7 +766,7 @@ const HEBREW_NAMES = [
 ];
 
 const TUTORIAL_STEPS = [
-  { title:'Gather manna', text:'Walk into the glowing flakes. Manna feeds you and the camp; the monthly quota is ' + QUOTA + '.' },
+  { title:'Gather manna', text:'Walk into the glowing flakes. Manna feeds you and the camp; the monthly quota starts at 22 and grows with the years.' },
   { title:'Draw water', text:'Find a blue spring and press E. The camp water store keeps the people alive; when it is empty, you suffer too.' },
   { title:'Lead the camp', text:'Open the Camp panel with C. Review the tribes, counsel murmurers with E, and discipline hoarders.' },
   { title:'Follow the pillar', text:'The compass points to the next station. Approach the pillar to hear its story; the camp must have enough manna, water and faith.' },
@@ -1092,6 +1115,7 @@ const state = {
   campFed:false, lastFoodShort:0, lastWaterShort:0, stationWarnCd:0,
   tribeStats: seedTribeStats(),
   monthTracking:null, yearTracking:null, lastReport:null,
+  events:{ rock:false, law:false, calf:false, jordan:false },
   tutorialStep:-1, tutorialDone:false, tutorialCampSeen:false,
   buildMode:null, mouseWorld:null,
   keys:{}, log:[], explored:new Set(), exploreTimer:0,
@@ -1106,10 +1130,11 @@ let last = 0, music = null;
 function currentStation(){ return STATIONS[state.stationIndex] || null; }
 
 function stationRequirements(index = state.stationIndex){
+  const tier = Math.floor((yearOfMonth()-1)/6);
   return {
-    manna: 16 + index*3,
-    water: 18 + index*3,
-    faith: 40 + index*3
+    manna: 16 + index*3 + tier*2,
+    water: 18 + index*3 + tier*2,
+    faith: 40 + index*3 + tier*2
   };
 }
 function canEnterStation(){
@@ -1128,6 +1153,7 @@ function resetState(){
   state.wood = 0; state.sick = 0; state.rot = 0; state.calf = 0;
   state.campFed = false; state.lastFoodShort = 0; state.lastWaterShort = 0; state.stationWarnCd = 0;
   state.tribeStats = seedTribeStats();
+  state.events = { rock:false, law:false, calf:false, jordan:false };
   state.monthTracking = null; state.yearTracking = null; state.lastReport = null;
   state.tutorialStep = -1; state.tutorialDone = false; state.tutorialCampSeen = false;
   $('tutorialPanel').hidden = true;
@@ -1333,7 +1359,7 @@ function spawnManna(){
   state.mannaSpawned = true;
   const sabbath = state.day % 7 === 0;
   if (sabbath) return;
-  let count = 16 + Math.floor(yearOfMonth()/4);
+  let count = Math.max(16, Math.round(currentQuota()*0.85)) + Math.floor(yearOfMonth()/6);
   if (state.day % 7 === 6) count *= 2;
   const centers = [
     { x:CAMP.x, y:CAMP.y, r:9 },
@@ -1365,14 +1391,14 @@ function duskMeal(){
   if (state.duskDone) return;
   state.duskDone = true;
   const sabbath = state.day % 7 === 0;
-  let quota = QUOTA;
+  let quota = currentQuota();
   if (state.day % 7 === 6) quota *= 2;
-  if (sabbath) quota = Math.max(4, Math.round(QUOTA*0.6));
+  if (sabbath) quota = Math.max(4, Math.round(currentQuota()*0.6));
 
   const food = Math.min(quota, state.manna);
   state.manna -= food;
   const foodShort = quota - food;
-  const waterNeed = 30;
+  const waterNeed = 30 + Math.floor((yearOfMonth()-1)/5)*2;
   const water = Math.min(waterNeed, state.campWater);
   state.campWater -= water;
   const waterShort = waterNeed - water;
@@ -1509,7 +1535,8 @@ function buildFixList(){
   const req = stationRequirements();
   const waterNeed = Math.max(18, req.water);
   if (state.campWater < waterNeed) fixes.push(`Refill camp water (${Math.round(state.campWater)}/${waterNeed}) at a spring with E.`);
-  if (state.manna < QUOTA) fixes.push(`Gather ${QUOTA - state.manna} more manna before dusk (camp quota ${QUOTA}).`);
+  const quota = currentQuota();
+  if (state.manna < quota) fixes.push(`Gather ${quota - state.manna} more manna before dusk (camp quota ${quota}).`);
   if (state.faith < Math.max(50, req.faith)) fixes.push(`Restore faith to ${Math.max(50, req.faith)}% — counsel murmurers, tithe, or pray at the campfire.`);
   if (state.sick > 0) fixes.push(`Tend ${state.sick} sick citizens — warm them at the campfire.`);
   const hoard = totalHoard();
@@ -2371,7 +2398,8 @@ function updateRaiders(dt){
 function spawnRaid(){
   if (state.raidSpawned || state.day < 2 || state.day % 7 === 0) return;
   state.raidSpawned = true;
-  const count = Math.min(4, 1 + Math.floor(yearOfMonth()/8));
+  const count = Math.min(6, 1 + Math.floor(yearOfMonth()/6));
+  const raidHp = 95 + Math.floor(yearOfMonth()/5)*15;
   for (let i=0;i<count;i++){
     let spot = null;
     for (let a=0;a<30;a++){
@@ -2380,7 +2408,7 @@ function spawnRaid(){
       if (!blocked(x,y)){ spot = {x,y}; break; }
     }
     if (!spot) continue;
-    raiders.push({ x:spot.x, y:spot.y, hp:95, maxHp:95, loot:0, state:'raid', phase:Math.random()*6.28 });
+    raiders.push({ x:spot.x, y:spot.y, hp:raidHp, maxHp:raidHp, loot:0, state:'raid', phase:Math.random()*6.28 });
   }
   if (state.monthTracking) state.monthTracking.raids += raiders.length;
   if (raiders.length){
@@ -2792,8 +2820,7 @@ function openStation(){
   updateHud(true);
 }
 
-function closeStation(){
-  $('stationOverlay').classList.remove('open');
+function advanceStation(){
   state.stationIndex++;
   state.focusStation = null;
   state.mode = 'playing';
@@ -2806,6 +2833,143 @@ function closeStation(){
   saveGame();
   updateHud(true);
 }
+
+function closeStation(){
+  $('stationOverlay').classList.remove('open');
+  const s = state.focusStation || currentStation();
+  state.mode = 'playing';
+  if (s){
+    if (s.id === 'rephidim' && !state.events.rock){ openEvent('rephidim'); return; }
+    if (s.id === 'sinai' && !state.events.law){ openEvent('sinai'); return; }
+    if (s.id === 'sinai' && !state.events.calf){ openEvent('goldenCalf'); return; }
+    if (s.id === 'moab' && !state.events.jordan){ openEvent('moab'); return; }
+  }
+  advanceStation();
+}
+
+const STORY_EVENTS = {
+  rephidim: {
+    kicker:'Exodus 17:1-7',
+    title:'Strike the Rock',
+    text:'The people camp at Rephidim, and there is no water. They quarrel with Moses and test the Lord. God tells Moses to take the staff and strike the rock at Horeb.',
+    list:['The camp is dry and afraid.','Strike the rock, and water will come out for the people and their livestock.'],
+    choices:[{ label:'Strike the rock with the staff', action:'strikeRock', cls:'primary' }]
+  },
+  sinai: {
+    kicker:'Exodus 19-20',
+    title:'The Ten Commandments',
+    text:'Mount Sinai trembles. Moses ascends into the thick cloud, and the Lord gives the covenant to Israel.',
+    list:[
+      'You shall have no other gods before me.',
+      'Do not make or worship idols.',
+      'Do not take the name of the Lord in vain.',
+      'Remember the Sabbath and keep it holy.',
+      'Honour your father and your mother.',
+      'Do not murder.',
+      'Do not commit adultery.',
+      'Do not steal.',
+      'Do not bear false witness.',
+      'Do not covet what belongs to your neighbour.'
+    ],
+    choices:[{ label:'Receive the commandments', action:'receiveLaw', cls:'primary' }]
+  },
+  goldenCalf: {
+    kicker:'Exodus 32',
+    title:'The Golden Calf',
+    text:'While Moses is on the mountain, the people grow afraid. They gather gold and silver and build a calf to worship. The camp stands on the edge of rebellion.',
+    list:['The people need a leader. Confront the idolatry, intercede for them, or let the calf stand.'],
+    choices:[
+      { label:'Confront the idolaters (-8 wellbeing, faith restored)', action:'confrontCalf', cls:'danger' },
+      { label:'Intercede for the people (-12 silver, great mercy)', action:'intercedeCalf', cls:'calm', cost:'silver' },
+      { label:'Allow the calf (faith falls, rebellion grows)', action:'allowCalf', cls:'danger' }
+    ]
+  },
+  moab: {
+    kicker:'Deuteronomy 34 · Joshua 3',
+    title:'Cross the Jordan',
+    text:'Moses looks across the Jordan from the plains of Moab. The forty years are ended. Joshua will lead the people through the parted waters into the land promised to their fathers.',
+    list:['The pillar stands still. The Promised Land lies beyond the river.'],
+    choices:[{ label:'Cross the Jordan into Israel', action:'crossJordan', cls:'primary' }]
+  }
+};
+
+function openEvent(id){
+  const ev = STORY_EVENTS[id];
+  if (!ev) return;
+  state.mode = 'event';
+  $('eventKicker').textContent = ev.kicker;
+  $('eventTitle').textContent = ev.title;
+  $('eventText').textContent = ev.text;
+  $('eventList').innerHTML = (ev.list || []).map(item => `<li>${item}</li>`).join('');
+  $('eventChoices').innerHTML = ev.choices.map(choice => {
+    const disabled = choice.cost === 'silver' && state.silver < 12;
+    return `<button class="${choice.cls || ''}" data-event-action="${choice.action}" ${disabled ? 'disabled' : ''}>${choice.label}${disabled ? ' — not enough silver' : ''}</button>`;
+  }).join('');
+  $('eventOverlay').classList.add('open');
+  playSfx('coins', 0.2);
+}
+
+function closeEvent(){
+  $('eventOverlay').classList.remove('open');
+  if (state.mode === 'event') state.mode = 'playing';
+}
+
+function handleEventAction(action){
+  if (action === 'strikeRock'){
+    state.events.rock = true;
+    state.campWater = 100;
+    state.hydration = 100;
+    state.faith = clamp(state.faith + 6, 0, 100);
+    state.health = clamp(state.health + 8, 0, 100);
+    say('Moses strikes the rock, and water pours out for the people.');
+    burst(state.player.x, state.player.y, '#7fc4e8', 14);
+  } else if (action === 'receiveLaw'){
+    state.events.law = true;
+    state.faith = clamp(state.faith + 8, 0, 100);
+    state.health = clamp(state.health + 5, 0, 100);
+    state.score += 50;
+    say('Moses receives the Ten Commandments on Sinai.');
+    closeEvent();
+    saveGame();
+    openEvent('goldenCalf');
+    return;
+  } else if (action === 'confrontCalf'){
+    state.events.calf = true;
+    state.calf = 0;
+    state.faith = clamp(state.faith + 8, 0, 100);
+    state.health = clamp(state.health - 8, 0, 100);
+    state.score += 40;
+    say('Moses confronts the Golden Calf and calls the people back.');
+  } else if (action === 'intercedeCalf'){
+    if (state.silver < 12) return;
+    state.events.calf = true;
+    state.calf = 0;
+    state.silver -= 12;
+    state.faith = clamp(state.faith + 10, 0, 100);
+    state.health = clamp(state.health + 4, 0, 100);
+    state.score += 35;
+    say('Moses intercedes, and the Lord spares the camp.');
+  } else if (action === 'allowCalf'){
+    state.events.calf = true;
+    state.calf = clamp(state.calf + 30, 0, 100);
+    state.faith = clamp(state.faith - 15, 0, 100);
+    say('The calf remains, and disobedience spreads through the camp.');
+    if (state.calf >= 100){
+      closeEvent();
+      endGame(false, 'The Golden Calf is completed, and divine favour is withdrawn from the camp.');
+      return;
+    }
+  } else if (action === 'crossJordan'){
+    state.events.jordan = true;
+    closeEvent();
+    endGame(true, 'The waters of the Jordan part. Moses and the people cross into the Promised Land, and the forty years of wandering are ended.');
+    return;
+  }
+  saveGame();
+  closeEvent();
+  advanceStation();
+}
+
 
 function openMarket(){
   state.mode = 'market';
@@ -2889,6 +3053,8 @@ function endGame(win, reason){
   $('menuOverlay').classList.remove('open');
   $('campOverlay').classList.remove('open');
   $('reportOverlay').classList.remove('open');
+  $('eventOverlay').classList.remove('open');
+  $('eventOverlay').classList.remove('open');
   $('tutorialPanel').hidden = true;
   state.tutorialStep = -1;
   playSfx(win ? 'coins' : 'over', 0.5);
@@ -2902,7 +3068,7 @@ function saveGame(){
   try {
     const data = {
       v:2, day:state.day, hour:state.hour, stationIndex:state.stationIndex,
-      tribeStats:state.tribeStats,
+      tribeStats:state.tribeStats, events:state.events,
       visited:[...state.visited], player:{ x:state.player.x, y:state.player.y },
       health:state.health, hunger:state.hunger, hydration:state.hydration,
       warmth:state.warmth, stamina:state.stamina, faith:state.faith,
@@ -2930,6 +3096,7 @@ function loadGame(){
   if ((data.v || 1) < 2) state.day = Math.min(TOTAL_MONTHS, state.day);
   state.hour = data.hour ?? 6;
   state.tribeStats = data.tribeStats && typeof data.tribeStats === 'object' ? data.tribeStats : seedTribeStats();
+  state.events = { rock:false, law:false, calf:false, jordan:false, ...(data.events || {}) };
   state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
   state.visited = new Set(data.visited || []);
   state.player = { x:data.player?.x ?? CAMP.x, y:data.player?.y ?? CAMP.y, tx:null, ty:null, moving:false };
@@ -2966,6 +3133,7 @@ function loadGame(){
   camY = (state.player.x+state.player.y)*HH;
   setSpeed(state.speed);
   $('reportOverlay').classList.remove('open');
+  $('eventOverlay').classList.remove('open');
   $('tutorialPanel').hidden = true;
   state.tutorialStep = -1; state.tutorialDone = true;
   state.monthOffenders = [];
@@ -3931,7 +4099,7 @@ function draw(){
   drawPops();
   drawParticles();
 
-  if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'report' || state.mode === 'end'){
+  if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'report' || state.mode === 'event' || state.mode === 'end'){
     g.fillStyle = 'rgba(14,9,5,.30)';
     g.fillRect(0,0,W,H);
   }
@@ -3945,7 +4113,7 @@ function updateHud(force){
   if (!force && now - state.lastHud < 110) return;
   state.lastHud = now;
 
-  const quota = state.day % 7 === 6 ? QUOTA*2 : QUOTA;
+  const quota = state.day % 7 === 6 ? currentQuota()*2 : currentQuota();
   const remaining = Math.max(0, Math.ceil((24 - state.hour) / 24 * MONTH_LENGTH / Math.max(1, state.speed)));
   $('hudManna').textContent = state.manna;
   $('hudQuota').textContent = state.day % 7 === 0 ? 'Sabbath' : quota;
@@ -4221,6 +4389,10 @@ $('campClose').addEventListener('click', closeCamp);
 $('reportContinue').addEventListener('click', closeReport);
 $('tutorialNext').addEventListener('click', advanceTutorial);
 $('tutorialSkip').addEventListener('click', hideTutorial);
+$('eventChoices').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-event-action]');
+  if (btn && !btn.disabled) handleEventAction(btn.dataset.eventAction);
+});
 $('reportOffenders').addEventListener('click', e => {
   const btn = e.target.closest('button[data-offender]');
   if (btn) disciplineOffender(Number(btn.dataset.offender), btn.dataset.action);

@@ -34,7 +34,11 @@ A six-step in-game tutorial starts with a new game and points to the nearest man
 
 ## Time and pressure
 
-Each round is a **month**; twelve months make a year. Camp water, manna and faith gate station travel, and neglected tribes lose people and flocks. Personal vitals are shown only when low or critical.
+Each round is a **month**; twelve months make a year. Camp water, manna and faith gate station travel, and neglected tribes lose people and flocks. The manna quota, water demand, station requirements and raids all grow over the years. Personal vitals are shown only when low or critical.
+
+## Story events
+
+The journey includes scripted Moses events: striking the rock at Rephidim, receiving the Ten Commandments at Mount Sinai, confronting or interceding over the Golden Calf, and the final crossing of the Jordan into Israel from the Plains of Moab.
 
 ## Controls
 
