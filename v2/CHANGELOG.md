@@ -1,5 +1,12 @@
 # MANNA — Changelog
 
+## Unreleased — discipline choices
+
+- Monthly discipline now offers **Punish**, **Counsel**, **Assign** (lazy citizens) and **Forgive**, with different effects on order, faith, health and the offender.
+- Resolved cases show the outcome in the report instead of repeating the buttons.
+- Added a short explanation of the discipline options to the monthly report.
+
+
 ## Unreleased — sentry posts replace walls
 
 - Replaced wall panels with **Sentry posts** (4 wood). Sentries damage nearby raiders and reduce theft; watchtowers remain the heavy ranged defense.

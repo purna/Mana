@@ -374,6 +374,14 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 @media (max-width:820px){
   .tutorial-panel{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);left:8px;right:8px;width:auto}
 }
+
+.discipline-hint{font-size:10.5px;color:#cbb894;margin:0 0 6px;line-height:1.35}
+.report-offender-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.report-offender-actions button{padding:4px 7px;font-size:10px;line-height:1.1}
+.report-offender-actions button.danger{border-color:#e0584a88;color:#ffb4a4}
+.report-offender-actions button.calm{border-color:#7fc4e888;color:#bfe8ff}
+.report-offender-actions button.mercy{border-color:#9dbb7488;color:#d6e8b8}
+.report-result{font-size:10.5px;color:#9dbb74;text-align:right;white-space:normal;max-width:160px}
 </style>
 </head>
 <body class="menu-open">
@@ -533,7 +541,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
       <div class="report-block"><h3>Failures</h3><ul id="reportFailures"></ul></div>
     </div>
     <div class="report-block"><h3>Fix Next</h3><ul id="reportFixes"></ul></div>
-    <div class="report-block"><h3>Discipline</h3><div id="reportOffenders"></div></div>
+    <div class="report-block"><h3>Discipline</h3><div class="discipline-hint">Punish restores order. Counsel may reform. Assign puts the lazy to work. Forgive shows mercy, but the offence may return.</div><div id="reportOffenders"></div></div>
     <button class="primary" id="reportContinue">Continue</button>
   </div>
 </div>
@@ -1602,8 +1610,67 @@ function renderReportOffenders(report){
   el.innerHTML = report.offenders.map(o => {
     const trait = TRAITS[o.trait] || TRAITS.ordinary;
     const why = o.hoard > 0 ? `hoarded ${o.hoard} manna` : o.trait === 'murmurer' ? 'murmuring against Moses' : 'refusing work';
-    return `<div class="report-offender"><span><b style="color:${trait.color}">${o.name}</b> of ${o.tribe}<br><em>${why}</em></span><button data-offender="${o.index}">Punish</button></div>`;
+    const head = `<span><b style="color:${trait.color}">${o.name}</b> of ${o.tribe}<br><em>${why}</em></span>`;
+    if (o.resolved){
+      return `<div class="report-offender">${head}<span class="report-result">${o.result}</span></div>`;
+    }
+    const second = o.trait === 'lazy'
+      ? `<button class="calm" data-offender="${o.index}" data-action="assign" title="Assign to work">Assign</button>`
+      : `<button class="calm" data-offender="${o.index}" data-action="counsel" title="Counsel them; may reform">Counsel</button>`;
+    return `<div class="report-offender">${head}<span class="report-offender-actions">` +
+      `<button class="danger" data-offender="${o.index}" data-action="punish" title="Punish publicly: order rises, wellbeing falls">Punish</button>` +
+      second +
+      `<button class="mercy" data-offender="${o.index}" data-action="forgive" title="Forgive: mercy, but the offence may return">Forgive</button>` +
+      `</span></div>`;
   }).join('');
+}
+
+function disciplineOffender(index, action){
+  const c = people[index];
+  const report = state.lastReport;
+  if (!c || !report) return;
+  const o = report.offenders.find(x => x.index === index);
+  if (!o || o.resolved) return;
+  let result = '';
+  if (action === 'punish'){
+    c.hoard = 0;
+    c.trait = 'ordinary';
+    c.counselCd = 20;
+    state.faith = clamp(state.faith + 1.5, 0, 100);
+    state.health = clamp(state.health - 0.5, 0, 100);
+    state.score += 5;
+    result = 'Punished — order restored.';
+  } else if (action === 'counsel'){
+    c.counselCd = 20;
+    if (Math.random() < 0.65){
+      c.hoard = 0;
+      c.trait = 'faithful';
+      state.faith = clamp(state.faith + 1.2, 0, 100);
+      state.score += 3;
+      result = 'Counseled — they repented.';
+    } else {
+      state.faith = clamp(state.faith - 0.5, 0, 100);
+      result = 'Counsel refused — they remain defiant.';
+    }
+  } else if (action === 'assign'){
+    c.hoard = 0;
+    c.trait = 'ordinary';
+    c.gatheredMonth = 0;
+    c.target = null;
+    c.task = 'idle';
+    c.t = 0;
+    state.faith = clamp(state.faith + 0.3, 0, 100);
+    result = 'Assigned to work.';
+  } else if (action === 'forgive'){
+    state.health = clamp(state.health + 0.5, 0, 100);
+    state.faith = clamp(state.faith - 0.4, 0, 100);
+    result = 'Forgiven — mercy shown.';
+  }
+  o.resolved = action;
+  o.result = result;
+  say(`${c.name || c.tribe} of ${c.tribe}: ${result}`);
+  renderReportOffenders(report);
+  updateHud(true);
 }
 
 function showReport(report){
@@ -1637,22 +1704,6 @@ function closeReport(){
   updateHud(true);
 }
 
-function punishOffender(index){
-  const c = people[index];
-  if (!c || !state.lastReport) return;
-  const o = state.lastReport.offenders.find(x => x.index === index);
-  if (!o) return;
-  c.hoard = 0;
-  c.trait = 'ordinary';
-  c.counselCd = 20;
-  state.faith = clamp(state.faith + 1.5, 0, 100);
-  state.health = clamp(state.health - 0.5, 0, 100);
-  state.score += 5;
-  state.lastReport.offenders = state.lastReport.offenders.filter(x => x.index !== index);
-  say(`${c.name || c.tribe} of ${c.tribe} is disciplined before the people. Order is restored.`);
-  renderReportOffenders(state.lastReport);
-  updateHud(true);
-}
 
 function endDay(){
   // Capture discipline issues before midnight clears hoards.
@@ -4172,7 +4223,7 @@ $('tutorialNext').addEventListener('click', advanceTutorial);
 $('tutorialSkip').addEventListener('click', hideTutorial);
 $('reportOffenders').addEventListener('click', e => {
   const btn = e.target.closest('button[data-offender]');
-  if (btn) punishOffender(Number(btn.dataset.offender));
+  if (btn) disciplineOffender(Number(btn.dataset.offender), btn.dataset.action);
 });
 document.querySelectorAll('#buildButtons button').forEach(btn => {
   btn.addEventListener('click', () => startBuild(btn.dataset.build));
