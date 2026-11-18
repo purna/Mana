@@ -205,31 +205,104 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   #resources{bottom:calc(env(safe-area-inset-bottom,0px) + 118px)}
 }
 
-/* Twelve Tribes — population stats only, no selection. */
-.about-tribes{
-  margin:16px 0 4px;padding-top:12px;border-top:1px dashed rgba(232,184,74,.4)
+/* About — vertical tabs and tribe dossiers */
+.about-layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;margin:14px 0 6px;text-align:left}
+.about-rail{
+  display:flex;flex-direction:column;gap:3px;padding-right:10px;
+  border-right:1px solid rgba(232,184,74,.22);
+  max-height:min(72dvh,560px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,74,.35) transparent
 }
-.about-tribes h3{
-  font-family:Cinzel,serif;font-size:15px;letter-spacing:.14em;text-transform:uppercase;
-  color:#f2cc6b;text-align:center;margin:0 0 10px
+.about-tab{
+  appearance:none;width:100%;text-align:left;cursor:pointer;
+  border:1px solid transparent;border-radius:7px;background:none;
+  color:#cbb894;font-family:Cinzel,serif;font-size:11px;letter-spacing:.05em;
+  padding:7px 9px;transition:background .15s,color .15s,border-color .15s
 }
-.tribe-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
-.tribe-stat-card{
-  display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid rgba(232,184,74,.28);
-  border-radius:7px;background:rgba(255,255,255,.035)
+.about-tab:hover{background:rgba(232,184,74,.08);color:#f2cc6b}
+.about-tab[aria-selected="true"]{
+  background:linear-gradient(90deg,rgba(232,184,74,.2),rgba(232,184,74,.04));
+  border-color:rgba(232,184,74,.45);color:#f2cc6b
 }
-.tribe-stat-dot{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid #0006}
-.tribe-stat-name{font-family:Cinzel,serif;font-size:12px;color:#f6e9d0}
-.tribe-stat-epithet{display:block;font-size:9.5px;color:#cbb894;font-style:italic;line-height:1.15}
-.tribe-stat-pop{margin-left:auto;font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#e8b84a;white-space:nowrap}
-.tribe-stat-total{
-  grid-column:1/-1;margin-top:4px;padding-top:8px;border-top:1px solid rgba(232,184,74,.3);
-  text-align:center;font-family:Cinzel,serif;font-size:12px;letter-spacing:.06em;color:#cbb894
+.about-tab:focus-visible{outline:1px solid #e8b84a;outline-offset:-2px}
+.about-rail-label{
+  font-family:Cinzel,serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#a8916a;
+  padding:9px 4px 3px;margin-top:5px;border-top:1px solid rgba(232,184,74,.16)
 }
-.tribe-stat-total b{color:#f2cc6b;font-size:15px}
-@media (max-width:560px){
-  .tribe-stat-grid{grid-template-columns:1fr}
-  .tribe-stat-card{padding:5px 7px}
+.about-tribe-tab{display:flex;align-items:center;gap:7px;font-size:11.5px;text-transform:none}
+.about-tribe-dot{width:8px;height:8px;border-radius:50%;flex:none;border:1px solid #0006}
+.about-tribe-tab-name{flex:1;min-width:0}
+.about-tribe-tab-pop{font-size:9.5px;color:#a8916a;font-weight:400}
+.about-tribe-tab[aria-selected="true"] .about-tribe-tab-pop{color:#e8b84a}
+.about-tribe-totals{
+  margin-top:8px;padding:9px 4px 0;border-top:1px solid rgba(232,184,74,.22);
+  font-family:Cinzel,serif;font-size:9.5px;letter-spacing:.08em;color:#cbb894;line-height:1.9
+}
+.about-tribe-totals b{color:#f2cc6b;font-size:12px}
+.about-content{
+  min-width:0;max-height:min(72dvh,560px);overflow:auto;padding-right:5px;
+  scrollbar-width:thin;scrollbar-color:rgba(232,184,74,.35) transparent
+}
+.about-panel{display:none;text-align:left}
+.about-panel.active{display:block;animation:reportPanelIn .18s ease-out}
+.about-panel p{font-size:12.5px;line-height:1.5;margin:0 0 9px}
+.about-panel .keys{justify-content:flex-start;margin:4px 0 0}
+
+/* Tribe dossier */
+.tribe-report-head{display:flex;gap:10px;align-items:stretch;margin-bottom:10px}
+.tribe-report-banner{width:5px;border-radius:3px;flex:none}
+.tribe-report-head h3{font-family:Cinzel,serif;font-size:17px;letter-spacing:.04em;color:#f6e9d0;margin:0;line-height:1.2}
+.tribe-report-head h3 em{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-style:normal;color:#cbb894;margin-top:3px}
+.tribe-report-head p{font-size:12px;line-height:1.45;color:#d8c8ab;margin:6px 0 0}
+.tribe-report-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px}
+.tribe-report-stats div{border:1px solid rgba(232,184,74,.24);border-radius:6px;background:rgba(255,255,255,.035);padding:6px 7px}
+.tribe-report-stats span{display:block;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:#a8916a}
+.tribe-report-stats b{font-family:Cinzel,serif;font-size:14px;color:#f2cc6b}
+.tribe-report-meta{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:10.5px;color:#a8916a;margin-bottom:9px}
+.tribe-report-meta b{color:#d8c8ab;font-weight:600}
+.tribe-report-status{
+  display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;border:1px solid;border-radius:7px;
+  background:rgba(0,0,0,.18);padding:7px 9px;margin-bottom:10px;font-size:10.5px;line-height:1.4
+}
+.tribe-report-status b{font-family:Cinzel,serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tribe-report-status span{color:#cbb894}
+.tribe-conditions{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+.tribe-conditions span{
+  font-size:9.5px;letter-spacing:.03em;border:1px solid rgba(232,184,74,.22);border-radius:999px;
+  padding:2px 8px;color:#a8916a;background:rgba(0,0,0,.16)
+}
+.tribe-conditions b{color:#d8c8ab;font-family:Cinzel,serif;font-size:9.5px}
+.tribe-conditions .ok{border-color:rgba(157,187,116,.45)}
+.tribe-conditions .ok b{color:#b9d494}
+.tribe-conditions .bad{border-color:rgba(224,88,74,.45)}
+.tribe-conditions .bad b{color:#ff9c8c}
+.tribe-growth{font-size:10.5px;line-height:1.45;color:#a8916a;margin:0 0 11px}
+.tribe-growth b{color:#e8b84a;font-weight:600}
+.tribe-report h4{font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#e8b84a;margin:0 0 5px}
+.tribe-people{display:grid;gap:4px;margin-bottom:10px}
+.tribe-person{
+  display:flex;flex-wrap:wrap;gap:3px 8px;justify-content:space-between;
+  border-bottom:1px solid rgba(232,184,74,.14);padding:3px 1px;font-size:11.5px;color:#e8dcc4
+}
+.tribe-person b{font-family:Cinzel,serif;font-weight:600}
+.tribe-person span{color:#a8916a;font-size:10.5px}
+.tribe-verse{
+  margin:0;padding:8px 10px;border-left:2px solid rgba(232,184,74,.5);border-radius:0 6px 6px 0;
+  background:rgba(232,184,74,.06);font-size:11.5px;font-style:italic;color:#e8dcc4;line-height:1.45
+}
+.tribe-verse span{
+  display:block;margin-top:4px;font-style:normal;font-family:Cinzel,serif;
+  font-size:9.5px;letter-spacing:.08em;color:#a8916a
+}
+@media (max-width:720px){
+  .about-layout{grid-template-columns:1fr;gap:10px}
+  .about-rail{
+    flex-direction:row;max-height:none;overflow-x:auto;border-right:0;
+    border-bottom:1px solid rgba(232,184,74,.22);padding:0 0 8px;gap:5px
+  }
+  .about-rail-label,.about-tribe-totals{display:none}
+  .about-tab{width:auto;white-space:nowrap;flex:none;padding:6px 9px;font-size:10.5px;border:1px solid rgba(232,184,74,.18)}
+  .about-content{max-height:none;overflow:visible;padding-right:0}
+  .tribe-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* ---------- Colony / camp slice ---------- */
@@ -340,11 +413,33 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .report-summary span{border:1px solid rgba(232,184,74,.3);border-radius:6px;padding:4px 8px;font-size:11px;color:#cbb894;background:rgba(255,255,255,.03)}
 .report-summary b{color:#f2cc6b;font-family:Cinzel,serif;font-size:12px}
 .report-annual{font-size:12px;color:#f2cc6b;text-align:center;border:1px solid rgba(232,184,74,.28);border-radius:7px;padding:7px 10px;margin:0 0 10px;background:rgba(232,184,74,.05)}
-.report-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
 .report-block{text-align:left;margin:0 0 10px}
 .report-block h3{font-family:Cinzel,serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#f2cc6b;margin:0 0 5px}
 .report-block ul{margin:0;padding-left:18px;font-size:12px;line-height:1.45;color:#e8dcc4}
 .report-block li{margin:0 0 3px}
+
+/* Report tabs */
+.report-tabs{display:flex;gap:4px;margin:2px 0 12px;border-bottom:1px solid rgba(232,184,74,.22);overflow-x:auto;scrollbar-width:none}
+.report-tabs::-webkit-scrollbar{display:none}
+.report-tab{
+  appearance:none;background:none;border:0;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;
+  color:#cbb894;font-family:Cinzel,serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  padding:9px 11px;margin-bottom:-1px;cursor:pointer;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;transition:color .15s,background .15s,border-color .15s
+}
+.report-tab:hover{color:#f2cc6b;background:rgba(232,184,74,.07)}
+.report-tab[aria-selected="true"]{color:#f2cc6b;border-bottom-color:#e8b84a;text-shadow:0 0 12px rgba(232,184,74,.4)}
+.report-tab:focus-visible{outline:1px solid #e8b84a;outline-offset:-2px}
+.report-tab .tab-count{
+  font-family:Cinzel,serif;font-size:9.5px;line-height:1.5;min-width:17px;padding:0 5px;border-radius:999px;
+  background:rgba(232,184,74,.12);border:1px solid rgba(232,184,74,.3);color:#cbb894
+}
+.report-tab[aria-selected="true"] .tab-count{background:rgba(232,184,74,.24);border-color:rgba(232,184,74,.55);color:#f2cc6b}
+.report-tab.tab-failures[aria-selected="true"]{color:#ffb4a4;border-bottom-color:#e0584a;text-shadow:0 0 12px rgba(224,88,74,.4)}
+.report-panel{display:none;text-align:left;min-height:132px}
+.report-panel.active{display:block;animation:reportPanelIn .18s ease-out}
+@keyframes reportPanelIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.report-panel .report-block{margin-bottom:0}
 #reportSuccess li::marker{color:#9dbb74}
 #reportFailures li::marker{color:#e0584a}
 #reportFixes li::marker{color:#f2cc6b}
@@ -355,7 +450,8 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .report-empty{font-size:12px;color:#9dbb74;padding:5px 0}
 #reportContinue{position:sticky;bottom:0;z-index:3;margin-top:8px}
 @media (max-width:620px){
-  .report-columns{grid-template-columns:1fr}
+  .report-tab{flex:1;justify-content:center;padding:8px 5px;font-size:9px;letter-spacing:.02em;gap:3px}
+  .report-panel{min-height:118px}
   .report-offender{flex-wrap:wrap}
 }
 
@@ -556,12 +652,29 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <h2 id="reportTitle">Monthly Report</h2>
     <div id="reportSummary" class="report-summary"></div>
     <div id="reportAnnual" class="report-annual"></div>
-    <div class="report-columns">
-      <div class="report-block"><h3>Successes</h3><ul id="reportSuccess"></ul></div>
-      <div class="report-block"><h3>Failures</h3><ul id="reportFailures"></ul></div>
+    <div class="report-tabs" role="tablist" aria-label="Monthly report sections">
+      <button class="report-tab" role="tab" id="reportTab-successes" aria-controls="reportPanel-successes" aria-selected="true" tabindex="0" data-report-tab="successes">Successes <span class="tab-count" id="reportCount-successes">0</span></button>
+      <button class="report-tab tab-failures" role="tab" id="reportTab-failures" aria-controls="reportPanel-failures" aria-selected="false" tabindex="-1" data-report-tab="failures">Failures <span class="tab-count" id="reportCount-failures">0</span></button>
+      <button class="report-tab" role="tab" id="reportTab-fixes" aria-controls="reportPanel-fixes" aria-selected="false" tabindex="-1" data-report-tab="fixes">Fix Next <span class="tab-count" id="reportCount-fixes">0</span></button>
+      <button class="report-tab" role="tab" id="reportTab-discipline" aria-controls="reportPanel-discipline" aria-selected="false" tabindex="-1" data-report-tab="discipline">Discipline <span class="tab-count" id="reportCount-discipline">0</span></button>
     </div>
-    <div class="report-block"><h3>Fix Next</h3><ul id="reportFixes"></ul></div>
-    <div class="report-block"><h3>Discipline</h3><div class="discipline-hint">Punish restores order. Counsel may reform. Assign puts the lazy to work. Forgive shows mercy, but the offence may return.</div><div id="reportOffenders"></div></div>
+    <div class="report-panels">
+      <section class="report-panel active" role="tabpanel" id="reportPanel-successes" aria-labelledby="reportTab-successes" tabindex="0">
+        <div class="report-block"><ul id="reportSuccess"></ul></div>
+      </section>
+      <section class="report-panel" role="tabpanel" id="reportPanel-failures" aria-labelledby="reportTab-failures" tabindex="0" hidden>
+        <div class="report-block"><ul id="reportFailures"></ul></div>
+      </section>
+      <section class="report-panel" role="tabpanel" id="reportPanel-fixes" aria-labelledby="reportTab-fixes" tabindex="0" hidden>
+        <div class="report-block"><ul id="reportFixes"></ul></div>
+      </section>
+      <section class="report-panel" role="tabpanel" id="reportPanel-discipline" aria-labelledby="reportTab-discipline" tabindex="0" hidden>
+        <div class="report-block">
+          <div class="discipline-hint">Punish restores order. Counsel may reform. Assign puts the lazy to work. Forgive shows mercy, but the offence may return.</div>
+          <div id="reportOffenders"></div>
+        </div>
+      </section>
+    </div>
     <button class="primary" id="reportContinue">Continue</button>
   </div>
 </div>
@@ -612,17 +725,33 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 
 <!-- About -->
 <div class="overlay" id="aboutOverlay">
-  <div class="sheet">
+  <div class="sheet wide about-sheet">
     <div class="kicker">The Journey</div>
     <h2>Follow the Pillar</h2>
-    <p><b>Follow the Pillar.</b> A pillar of cloud by day and fire by night stands over the next station. The compass points to it. Reach the station to hear its story and receive its blessing — then the pillar moves on.</p>
-    <p><b>Survive.</b> Hunger, water, warmth, stamina and faith all matter. Manna feeds you and the camp; the waterskin carries water; the campfire restores warmth; the Sabbath restores faith.</p>
-    <p><b>Gather.</b> Touch the glowing manna flakes. The camp quota is eaten at dusk. Surplus can be sold at the market, and silver can buy water or be tithed.</p>
-    <p><b>The Camp.</b> The people need food, water and leadership. Each month brings a reckoning; shortages cost faith and lives. Reach all eight stations before the fortieth year ends.</p>
-    <div id="aboutTribes" class="about-tribes"></div>
-    <div class="keys">
-      <span><b>WASD</b> / arrows — walk</span><span><b>F</b> — eat</span><span><b>R</b> — drink</span>
-      <span><b>E</b> — draw / warm / gather / counsel</span><span><b>C</b> — camp</span><span><b>M</b> — map</span><span><b>Esc</b> — pause</span>
+    <div class="about-layout">
+      <div class="about-rail" role="tablist" aria-orientation="vertical" aria-label="Guide and tribes">
+        <button class="about-tab" role="tab" id="aboutTab-journey" aria-controls="aboutPanel-journey" aria-selected="true" tabindex="0" data-about-tab="journey">The Journey</button>
+        <div class="about-rail-label" aria-hidden="true">The Twelve Tribes</div>
+        <div id="aboutTribeTabs" class="about-tribe-tabs" role="presentation"></div>
+        <button class="about-tab" role="tab" id="aboutTab-controls" aria-controls="aboutPanel-controls" aria-selected="false" tabindex="-1" data-about-tab="controls">Controls</button>
+        <div id="aboutTribeTotals" class="about-tribe-totals"></div>
+      </div>
+      <div class="about-content">
+        <section class="about-panel active" role="tabpanel" id="aboutPanel-journey" aria-labelledby="aboutTab-journey" tabindex="0">
+          <p><b>Follow the Pillar.</b> A pillar of cloud by day and fire by night stands over the next station. The compass points to it. Reach the station to hear its story and receive its blessing — then the pillar moves on.</p>
+          <p><b>Survive.</b> Hunger, water, warmth, stamina and faith all matter. Manna feeds you and the camp; the waterskin carries water; the campfire restores warmth; the Sabbath restores faith.</p>
+          <p><b>Gather.</b> Touch the glowing manna flakes. The camp quota is eaten at dusk. Surplus can be sold at the market, and silver can buy water or be tithed.</p>
+          <p><b>The Camp.</b> The people need food, water and leadership. Each month brings a reckoning; shortages cost faith and lives. Reach all eight stations before the fortieth year ends.</p>
+        </section>
+        <div id="aboutTribePanels" role="presentation"></div>
+        <section class="about-panel" role="tabpanel" id="aboutPanel-controls" aria-labelledby="aboutTab-controls" tabindex="0" hidden>
+          <p>Move through the wilderness, tend the camp, and follow the pillar's compass. Select any tribe in the rail to open its dossier; the figures live-update as the camp changes.</p>
+          <div class="keys">
+            <span><b>WASD</b> / arrows — walk</span><span><b>F</b> — eat</span><span><b>R</b> — drink</span>
+            <span><b>E</b> — draw / warm / gather / counsel</span><span><b>C</b> — camp</span><span><b>M</b> — map</span><span><b>Esc</b> — pause</span>
+          </div>
+        </section>
+      </div>
     </div>
     <button class="primary" id="aboutClose">Return to the wilderness</button>
     <button class="ghost" id="aboutTutorial">Show tutorial</button>
@@ -744,18 +873,42 @@ const STATIONS = [
 ];
 
 const TRIBES = [
-  { name:'Reuben',   epithet:'Unstable as Water', color:'#C0392B', population:46500 },
-  { name:'Simeon',   epithet:'Swift & Fierce',    color:'#8E44AD', population:59300 },
-  { name:'Levi',     epithet:'The Priests',       color:'#2980B9', population:22000 },
-  { name:'Judah',    epithet:'Lion of Praise',    color:'#F1C40F', population:74600 },
-  { name:'Dan',      epithet:'The Serpent',       color:'#16A085', population:62700 },
-  { name:'Naphtali', epithet:'Hind Let Loose',    color:'#27AE60', population:53400 },
-  { name:'Gad',      epithet:'A Troop',           color:'#D35400', population:45650 },
-  { name:'Asher',    epithet:'Rich Bread',        color:'#B8860B', population:41500 },
-  { name:'Issachar', epithet:'Bearing Burdens',   color:'#7F8C8D', population:54400 },
-  { name:'Zebulun',  epithet:'Haven of Ships',    color:'#2E86C1', population:57400 },
-  { name:'Joseph',   epithet:'Fruitful Bough',    color:'#A04000', population:72700 },
-  { name:'Benjamin', epithet:'A Ravenous Wolf',   color:'#6C3483', population:35400 }
+  { name:'Reuben',   epithet:'Unstable as Water', color:'#C0392B', population:46500, camp:'South',
+    note:'Firstborn of Jacob, unsteady as water: quick to move, quicker to change. His camp pitches south of the tabernacle.',
+    verse:'Unstable as water, thou shalt not excel; because thou wentest up to thy father\u2019s bed.', verseRef:'Genesis 49:4' },
+  { name:'Simeon',   epithet:'Swift & Fierce',    color:'#8E44AD', population:59300, camp:'South',
+    note:'Fierce and swift, zealous without patience. He shares the southern camp with Reuben and Gad.',
+    verse:'Simeon and Levi are brethren; instruments of cruelty are in their habitations.', verseRef:'Genesis 49:5' },
+  { name:'Levi',     epithet:'The Priests',       color:'#2980B9', population:22000, camp:'Around the tabernacle',
+    note:'Set apart for service — keepers of the tabernacle, teachers of the law, and the smallest of the twelve.',
+    verse:'They shall teach Jacob thy judgments, and Israel thy law.', verseRef:'Deuteronomy 33:10' },
+  { name:'Judah',    epithet:'Lion of Praise',    color:'#F1C40F', population:74600, camp:'East',
+    note:'The lion\u2019s brood and the largest host in Israel. Leadership and praise go before the camp on the east.',
+    verse:'The sceptre shall not depart from Judah, nor a lawgiver from between his feet.', verseRef:'Genesis 49:10' },
+  { name:'Dan',      epithet:'The Serpent',       color:'#16A085', population:62700, camp:'North',
+    note:'Judge of his people, cunning as a serpent by the way. His standard leads the northern camp.',
+    verse:'Dan shall be a serpent by the way, an adder in the path.', verseRef:'Genesis 49:17' },
+  { name:'Naphtali', epithet:'Hind Let Loose',    color:'#27AE60', population:53400, camp:'North',
+    note:'A hind let loose: fleet and free upon the heights, giving goodly words.',
+    verse:'Naphtali is a hind let loose: he giveth goodly words.', verseRef:'Genesis 49:21' },
+  { name:'Gad',      epithet:'A Troop',           color:'#D35400', population:45650, camp:'South',
+    note:'A troop pressed by raiders, yet overcoming at the last. He camps in the south with Reuben and Simeon.',
+    verse:'Gad, a troop shall overcome him: but he shall overcome at the last.', verseRef:'Genesis 49:19' },
+  { name:'Asher',    epithet:'Rich Bread',        color:'#B8860B', population:41500, camp:'North',
+    note:'Rich in bread: his table yields royal dainties and supplies the camp in lean months.',
+    verse:'Out of Asher his bread shall be fat, and he shall yield royal dainties.', verseRef:'Genesis 49:20' },
+  { name:'Issachar', epithet:'Bearing Burdens',   color:'#7F8C8D', population:54400, camp:'East',
+    note:'A strong ass couching between two burdens: steadfast endurance and patient labour.',
+    verse:'Issachar is a strong ass couching down between two burdens.', verseRef:'Genesis 49:14' },
+  { name:'Zebulun',  epithet:'Haven of Ships',    color:'#2E86C1', population:57400, camp:'East',
+    note:'Dweller by the haven of the sea: trade, coin, and the increase of the shore.',
+    verse:'Zebulun shall dwell at the haven of the sea; he shall be for an haven of ships.', verseRef:'Genesis 49:13' },
+  { name:'Joseph',   epithet:'Fruitful Bough',    color:'#A04000', population:72700, camp:'West',
+    note:'A fruitful bough by a well, blessed above his brothers; his camp keeps the west.',
+    verse:'Joseph is a fruitful bough, even a fruitful bough by a well.', verseRef:'Genesis 49:22' },
+  { name:'Benjamin', epithet:'A Ravenous Wolf',   color:'#6C3483', population:35400, camp:'West',
+    note:'A ravenous wolf: in the morning he devours the prey, and at night divides the spoil.',
+    verse:'Benjamin shall ravin as a wolf: in the morning he shall devour the prey.', verseRef:'Genesis 49:27' }
 ];
 
 const HEBREW_NAMES = [
@@ -1221,21 +1374,108 @@ function renderLog(){
   $('log').innerHTML = state.log.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 }
 
+let activeAboutTab = 'journey';
+const ABOUT_TRIBES = TRIBES.map((_, i) => `tribe-${i}`);
+const ABOUT_TABS = ['journey', ...ABOUT_TRIBES, 'controls'];
+
+function selectAboutTab(name, focus){
+  if (!ABOUT_TABS.includes(name)) name = 'journey';
+  activeAboutTab = name;
+  for (const id of ABOUT_TABS){
+    const tab = $('aboutTab-' + id);
+    const panel = $('aboutPanel-' + id);
+    if (!tab || !panel) continue;
+    const on = id === name;
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    tab.tabIndex = on ? 0 : -1;
+    panel.classList.toggle('active', on);
+    panel.hidden = !on;
+  }
+  if (focus){
+    const tab = $('aboutTab-' + name);
+    if (tab) tab.focus();
+  }
+}
+
 function renderTribeStats(){
-  const el = $('aboutTribes');
-  if (!el) return;
-  const total = totalPopulation();
-  el.innerHTML = `<h3>The Twelve Tribes</h3>` +
-    `<div class="tribe-stat-grid">` +
-    TRIBES.map((t) => {
-      const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
-      return `<div class="tribe-stat-card">` +
-        `<span class="tribe-stat-dot" style="background:${t.color}"></span>` +
-        `<span class="tribe-stat-name">${t.name}<span class="tribe-stat-epithet">${t.epithet} · ${st.livestock} flocks</span></span>` +
-        `<span class="tribe-stat-pop">${st.population.toLocaleString()}</span>` +
-      `</div>`;
-    }).join('') +
-    `</div><div class="tribe-stat-total">Souls of Israel <b>${total.toLocaleString()}</b> · Flocks <b>${totalLivestock().toLocaleString()}</b></div>`;
+  const rail = $('aboutTribeTabs');
+  const panels = $('aboutTribePanels');
+  if (!rail || !panels) return;
+  const totalPop = totalPopulation();
+  const totalLive = totalLivestock();
+  const healthy = state.campFed && state.faith >= 50 && state.campWater > 0;
+  const struggling = !state.campFed || state.campWater <= 0 || state.faith < 25;
+  const status = struggling
+    ? { label:'Struggling', color:'#ff8a6a', text:'Unfed, unwatered or faithless: this tribe dwindles each month and its flocks scatter.' }
+    : healthy
+      ? { label:'Thriving', color:'#9dbb74', text:'Fed, watered and faithful: this tribe and its flocks increase month by month.' }
+      : { label:'Steady', color:'#f2cc6b', text:'The tribe endures, but growth stays slow while the camp is uneasy.' };
+  const popRate = struggling ? -0.3 : healthy ? 0.15 : 0.04;
+  const flockRate = struggling ? -3 : healthy ? 2 : 0.5;
+  const byTribe = {};
+  TRIBES.forEach(t => { byTribe[t.name] = []; });
+  for (const p of people){ if (byTribe[p.tribe]) byTribe[p.tribe].push(p); }
+
+  rail.innerHTML = TRIBES.map((t, i) => {
+    const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
+    return `<button class="about-tab about-tribe-tab" role="tab" id="aboutTab-tribe-${i}" aria-controls="aboutPanel-tribe-${i}" aria-selected="false" tabindex="-1" data-about-tab="tribe-${i}">` +
+      `<i class="about-tribe-dot" style="background:${t.color}"></i>` +
+      `<span class="about-tribe-tab-name">${t.name}</span>` +
+      `<span class="about-tribe-tab-pop">${st.population.toLocaleString()}</span>` +
+    `</button>`;
+  }).join('');
+
+  panels.innerHTML = TRIBES.map((t, i) => {
+    const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
+    const members = byTribe[t.name];
+    const share = totalPop ? (st.population / totalPop) * 100 : 0;
+    const flockShare = totalLive ? (st.livestock / totalLive) * 100 : 0;
+    const perFlock = st.livestock ? Math.round(st.population / st.livestock) : 0;
+    const roster = members.length
+      ? members.map(p => {
+          const tr = TRAITS[p.trait] || TRAITS.ordinary;
+          const notes = [tr.label];
+          if (p.sick) notes.push('sick');
+          if (p.hoard) notes.push(`hoarding ${p.hoard} manna`);
+          return `<div class="tribe-person"><b style="color:${tr.color}">${p.name}</b><span>${notes.join(' · ')}</span></div>`;
+        }).join('')
+      : '<div class="report-empty">No representative from this tribe walks with the camp.</div>';
+    return `<section class="about-panel" role="tabpanel" id="aboutPanel-tribe-${i}" aria-labelledby="aboutTab-tribe-${i}" tabindex="0" hidden>` +
+      `<div class="tribe-report">` +
+        `<div class="tribe-report-head">` +
+          `<span class="tribe-report-banner" style="background:linear-gradient(180deg,${t.color},${t.color}88)"></span>` +
+          `<div><h3>${t.name} <em>${t.epithet}</em></h3><p>${t.note}</p></div>` +
+        `</div>` +
+        `<div class="tribe-report-stats">` +
+          `<div><span>Souls</span><b>${st.population.toLocaleString()}</b></div>` +
+          `<div><span>Flocks</span><b>${st.livestock.toLocaleString()}</b></div>` +
+          `<div><span>Share of Israel</span><b>${share.toFixed(1)}%</b></div>` +
+          `<div><span>Souls per flock</span><b>${perFlock ? perFlock.toLocaleString() : '—'}</b></div>` +
+        `</div>` +
+        `<div class="tribe-report-meta"><span>Encampment <b>${t.camp}</b></span><span>Share of flocks <b>${flockShare.toFixed(1)}%</b></span></div>` +
+        `<div class="tribe-report-status" style="border-color:${status.color}55;color:${status.color}">` +
+          `<b>${status.label}</b><span>${status.text}</span>` +
+        `</div>` +
+        `<h4>Conditions for growth</h4>` +
+        `<div class="tribe-conditions">` +
+          `<span class="${state.campFed ? 'ok' : 'bad'}">Fed at dusk <b>${state.campFed ? 'yes' : 'no'}</b></span>` +
+          `<span class="${state.campWater > 0 ? 'ok' : 'bad'}">Camp water <b>${Math.round(state.campWater)}</b></span>` +
+          `<span class="${state.faith >= 50 ? 'ok' : 'bad'}">Faith <b>${Math.round(state.faith)}%</b></span>` +
+          `<span class="${state.health >= 50 ? 'ok' : 'bad'}">Wellbeing <b>${Math.round(state.health)}</b></span>` +
+        `</div>` +
+        `<p class="tribe-growth">At month's end this tribe trends ` +
+          `<b>${popRate > 0 ? '+' : ''}${popRate}%</b> (${popRate > 0 ? '+' : ''}${Math.round(st.population * popRate / 100).toLocaleString()} souls) · ` +
+          `flocks <b>${flockRate > 0 ? '+' : ''}${flockRate}%</b> (${flockRate > 0 ? '+' : ''}${Math.round(st.livestock * flockRate / 100).toLocaleString()}).` +
+        `</p>` +
+        `<h4>Representatives in camp</h4>` +
+        `<div class="tribe-people">${roster}</div>` +
+        `<blockquote class="tribe-verse">“${t.verse}”<span>${t.verseRef}</span></blockquote>` +
+      `</div>` +
+    `</section>`;
+  }).join('');
+
+  $('aboutTribeTotals').innerHTML = `Souls of Israel <b>${totalPop.toLocaleString()}</b><br>Flocks <b>${totalLive.toLocaleString()}</b>`;
+  selectAboutTab(activeAboutTab);
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1652,6 +1892,48 @@ function renderReportOffenders(report){
   }).join('');
 }
 
+const REPORT_TABS = ['successes','failures','fixes','discipline'];
+function selectReportTab(name, focus){
+  if (!REPORT_TABS.includes(name)) name = 'successes';
+  for (const id of REPORT_TABS){
+    const tab = $(`reportTab-${id}`);
+    const panel = $(`reportPanel-${id}`);
+    if (!tab || !panel) continue;
+    const on = id === name;
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    tab.tabIndex = on ? 0 : -1;
+    panel.classList.toggle('active', on);
+    panel.hidden = !on;
+  }
+  if (focus){
+    const tab = $(`reportTab-${name}`);
+    if (tab) tab.focus();
+  }
+}
+
+// Shared roving-focus behaviour for the report and guide tablists.
+function wireTablist(container, datasetKey, ids, select){
+  if (!container) return;
+  container.addEventListener('click', e => {
+    const tab = e.target.closest('button[role="tab"]');
+    if (tab && !tab.disabled && tab.dataset[datasetKey]) select(tab.dataset[datasetKey], false);
+  });
+  container.addEventListener('keydown', e => {
+    if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) return;
+    const tab = e.target.closest('button[role="tab"]');
+    if (!tab || !tab.dataset[datasetKey]) return;
+    const i = Math.max(0, ids.indexOf(tab.dataset[datasetKey]));
+    const last = ids.length - 1;
+    let next;
+    if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = i === last ? 0 : i + 1;
+    else next = i === 0 ? last : i - 1;
+    e.preventDefault();
+    select(ids[next], true);
+  });
+}
+
 function disciplineOffender(index, action){
   const c = people[index];
   const report = state.lastReport;
@@ -1718,6 +2000,11 @@ function showReport(report){
   $('reportFailures').innerHTML = report.failures.map(s => `<li>${s}</li>`).join('');
   $('reportFixes').innerHTML = report.fixes.map(s => `<li>${s}</li>`).join('');
   renderReportOffenders(report);
+  $('reportCount-successes').textContent = report.successes.length;
+  $('reportCount-failures').textContent = report.failures.length;
+  $('reportCount-fixes').textContent = report.fixes.length;
+  $('reportCount-discipline').textContent = report.offenders.length;
+  selectReportTab('successes');
   $('reportContinue').textContent = `Continue to Year ${report.nextYear}, ${MONTH_NAMES[report.nextMonth-1]}`;
   $('reportOverlay').classList.add('open');
   if (state.tutorialStep === 5) advanceTutorial();
@@ -3006,6 +3293,7 @@ function closePause(){
 function openAbout(){
   if (state.mode !== 'playing') return;
   state.mode = 'about';
+  renderTribeStats();
   $('aboutOverlay').classList.add('open');
 }
 function closeAbout(){
@@ -4397,6 +4685,8 @@ $('reportOffenders').addEventListener('click', e => {
   const btn = e.target.closest('button[data-offender]');
   if (btn) disciplineOffender(Number(btn.dataset.offender), btn.dataset.action);
 });
+wireTablist($('reportOverlay').querySelector('.report-tabs'), 'reportTab', REPORT_TABS, selectReportTab);
+wireTablist($('aboutOverlay').querySelector('.about-rail'), 'aboutTab', ABOUT_TABS, selectAboutTab);
 document.querySelectorAll('#buildButtons button').forEach(btn => {
   btn.addEventListener('click', () => startBuild(btn.dataset.build));
 });
