@@ -6,7 +6,7 @@ export default defineConfig({
   cacheDir: '.vite-cache',
   resolve: { alias: { 'three/examples/jsm/shaders/VignetteShader.js': fileURLToPath(new URL('./js/libs/shaders/VignetteShader.js', import.meta.url)) } },
   plugins: [{ name: 'copy-game-assets', closeBundle() {
-    for (const path of ['assets/audio', 'fonts', 'js/tribes.json', 'js/electricBorder.js', 'plugins/howler.min.js', 'plugins/stats.module.js', 'plugins/localforage.min.js', 'plugins/gsap.min.js', 'favicon.ico']) {
+    for (const path of ['assets/audio', 'fonts', 'js/tribes.json', 'js/iso-core.js', 'js/electricBorder.js', 'plugins/howler.min.js', 'plugins/stats.module.js', 'plugins/localforage.min.js', 'plugins/gsap.min.js', 'favicon.ico', 'manifest.webmanifest', 'sw.js']) {
       mkdirSync('dist/' + path.substring(0, path.lastIndexOf('/') + 1), { recursive: true });
       cpSync(path, 'dist/' + path, { recursive: true });
     }
