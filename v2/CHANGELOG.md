@@ -1,5 +1,15 @@
 # MANNA — Changelog
 
+## Unreleased — update prompt, resource flights, raid intel, determinism
+
+- **PWA update prompt**: a new build now waits instead of silently restarting. When an updated service worker is installed, a “A new build of the wilderness is ready” banner offers **Reload**; the worker only takes over once the player accepts.
+- **Resource flights**: gathered manna and wood now visibly arc from where they were collected to the camp stores, with a small sparkle on arrival and `+N` pops at the basket. Honouring reduced motion, flights degrade to the old text pops.
+- **Camp layout editor polish**: structure moves snap to a half-tile grid; a dashed footprint ellipse previews the true 1-unit separation on the grid, with the blocking reason shown live in the banner; added a **Redo move** button (mirrored undo/redo stacks, including blueprint restores).
+- **Raid intel**: the night-raid scout panel now shows the raiders’ approach quadrants (marked “exposed” when uncovered), an “If the defense fails” expected-loss line, and per-option failure costs on the Moses/watchtower buttons. Coverage state is also always visible in the HUD (“Cover: no cover / N/4 sides / all sides”) and in the Camp defense summary.
+- **Determinism**: raid rolls moved into `MannaCore.rollRaid` (same seed stream, same outcome). New `tests/determinism.test.mjs` verifies terrain heights across fresh sessions, save/load round-trips, migration idempotence and raid-roll determinism.
+- **Mobile share sheet**: exporting a save now uses the Web Share sheet when the device can share files, falling back to the JSON download elsewhere.
+- Tests: **40 passing** (`npm test`), build passes.
+
 ## Unreleased — story events and year scaling
 
 - Added scripted Moses story events:

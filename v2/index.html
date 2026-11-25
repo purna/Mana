@@ -360,6 +360,13 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   box-shadow:0 6px 18px #0009;white-space:nowrap
 }
 .build-banner b{color:#f2cc6b;font-family:Cinzel,serif}
+.sw-update{
+  position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);
+  z-index:60;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(48,36,20,.98),rgba(28,20,11,.96));
+  border:1px solid #e8b84a;border-radius:9px;padding:8px 12px;font-size:11.5px;color:#f7e8bf;
+  box-shadow:0 6px 18px #0009;max-width:calc(100vw - 20px)
+}
+.sw-update button{padding:6px 12px;font-size:11px}
 .raid-banner{
   position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 142px);transform:translateX(-50%);
   z-index:40;pointer-events:none;background:rgba(120,24,18,.94);border:1px solid #ff8a6a;
@@ -676,6 +683,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div class="chip">Wood <b id="rWood">0</b></div>
     <div class="chip">Hoard <b id="rHoard">0</b></div>
     <div class="chip">Flocks <b id="rLivestock">0</b></div>
+    <div class="chip">Cover <b id="rCover" style="color:#e0584a">no cover</b></div>
     <div class="chip">Waterskin <b id="rSkin">0</b>/3</div>
     <div class="chip">Camp quota <b id="rQuota">12</b></div>
   </div>
@@ -693,6 +701,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   </div>
 
   <div id="buildBanner" class="build-banner" hidden></div>
+  <div id="swUpdate" class="sw-update" hidden><span>A new build of the wilderness is ready.</span><button id="swReload">Reload</button></div>
   <div id="raidBanner" class="raid-banner" hidden>Raiders at the perimeter!</div>
   <div id="raidIndicator" class="raid-indicator" hidden><span class="raid-arrow">➤</span><span class="raid-text">Raiders</span></div>
 
@@ -896,6 +905,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
       <div class="row">
         <button id="layoutEditBtn">Move structures</button>
         <button id="layoutUndoBtn">Undo move</button>
+        <button id="layoutRedoBtn" disabled>Redo move</button>
       </div>
       <div class="blueprints" id="blueprintSlots"></div>
     </div>
@@ -909,7 +919,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div class="sheet wide roles-sheet">
     <div class="kicker" id="rolesKicker">Morning muster</div>
     <h2>Assign the tribes</h2>
-    <p id="rolesIntro" style="color:var(--dim)">Give each tribe its work for the day. Leave too many idle, or drive them too hard without camp and watch crews, and resentment will grow over the weeks.</p>
+    <p id="rolesIntro" style="color:var(--dim)">Give each tribe's work crews their tasks for the day. Leave too many idle, or drive them too hard without camp and watch crews, and resentment will grow over the weeks.</p>
     <div id="roleSummary" class="role-summary"></div>
     <div id="roleTable" class="roles-table"></div>
     <p id="roleHint" class="role-preview"></p>
@@ -939,6 +949,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
           <p><b>Survive.</b> Hunger, water, warmth, stamina and faith all matter. Manna feeds you and the camp; the waterskin carries water; the campfire restores warmth; the Sabbath restores faith.</p>
           <p><b>Gather.</b> Touch the glowing manna flakes. The camp quota is eaten at dusk. Surplus can be sold at the market, and silver can buy water or be tithed.</p>
           <p><b>The Camp.</b> The people need food, water and leadership. Each month brings a reckoning; shortages cost faith and lives. Reach all eight stations before the fortieth year ends.</p>
+          <p><b>Morning muster.</b> Each dawn, assign each tribe's work crews to manna, water, wood, camp or watch. Camp crews calm unrest; watch crews aid defense. Neglected or overworked tribes grow restless and may rebel, stealing stores and burning tents.</p>
         </section>
         <div id="aboutTribePanels" role="presentation"></div>
         <section class="about-panel" role="tabpanel" id="aboutPanel-controls" aria-labelledby="aboutTab-controls" tabindex="0" hidden>
@@ -1325,6 +1336,13 @@ function roleAllocationTotal(alloc){
   return LABOR_ROLES.reduce((sum, role) => sum + (Number(alloc?.[role.id]) || 0), 0);
 }
 
+function roleSummaryForTribe(name){
+  const alloc = state.tribeRoles?.[name] || {};
+  const parts = LABOR_ROLES.filter(role => (alloc[role.id] || 0) > 0)
+    .map(role => `${role.short} ${alloc[role.id]}`);
+  return parts.length ? parts.join(' · ') : 'No crews assigned';
+}
+
 function laborTotals(roles = state.tribeRoles || {}){
   const out = { manna:0, water:0, wood:0, camp:0, watch:0 };
   for (const t of TRIBES){
@@ -1367,7 +1385,8 @@ function beginMonthTracking(){
     defenseLosses: 0,
     flocksLost: 0,
     daysFed: 0,
-    daysShort: 0
+    daysShort: 0,
+    tribeRebellions: 0
   };
 }
 function beginYearTracking(){
@@ -1381,7 +1400,8 @@ function beginYearTracking(){
     flocksLost: 0,
     stations: 0,
     monthsFed: 0,
-    months: 0
+    months: 0,
+    tribeRebellions: 0
   };
 }
 
@@ -1455,7 +1475,7 @@ window.addEventListener('resize', resize);
 /* ------------------------------- world ------------------------------- */
 
 let HT, WATER, TRAIL, TCOLOR, TYPE, waterTiles = [];
-let decor = [], people = [], manna = [], particles = [], pops = [], tentFires = [];
+let decor = [], people = [], manna = [], particles = [], pops = [], flights = [], tentFires = [];
 let woodNodes = [], structures = [], raiders = [], buildGhost = null;
 let fx = [];
 const fxTimers = { ambient:0, pillar:0, fire:0 };
@@ -1871,7 +1891,7 @@ const state = {
   focusStation:null,
   worldSeed: DEFAULT_WORLD_SEED, blueprints:[null,null,null], raidLog:[], raidSeed:1,
   tribeRoles: seedTribeRoles(), roleDay: 0,
-  layoutEdit:null, layoutUndo:[], trial:null, haptics:true, sharedJourney:null
+  layoutEdit:null, layoutUndo:[], layoutRedo:[], trial:null, haptics:true, sharedJourney:null
 };
 
 let camX = 0, camY = 0, ox = 0, oy = 0;
@@ -1909,7 +1929,7 @@ function resetState(){
   state.tutorialStep = -1; state.tutorialDone = false; state.tutorialCampSeen = false;
   $('tutorialPanel').hidden = true;
   $('trialPanel').hidden = true;
-  state.trial = null; state.layoutEdit = null; state.layoutUndo = [];
+  state.trial = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   state.blueprints = [null, null, null]; state.raidLog = []; state.raidSeed = 1;
   state.tribeRoles = seedTribeRoles(); state.roleDay = 0;
   state.worldSeed = state.sharedJourney?.seed || DEFAULT_WORLD_SEED;
@@ -1928,7 +1948,7 @@ function resetState(){
   $('reportOverlay').classList.remove('open');
   $('raidOverlay').classList.remove('open');
   $('settingsOverlay').classList.remove('open');
-  manna = []; particles = []; pops = []; structures = []; raiders = []; buildGhost = null; tentFires = [];
+  manna = []; particles = []; pops = []; flights = []; structures = []; raiders = []; buildGhost = null; tentFires = [];
   fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
   woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
   state.player.x = CAMP.x; state.player.y = CAMP.y;
@@ -2061,7 +2081,7 @@ function renderTribeStats(){
           `<div><span>Souls per flock</span><b>${perFlock ? perFlock.toLocaleString() : '—'}</b></div>` +
           `<div><span>Unrest</span><b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
         `</div>` +
-        `<div class="tribe-report-meta"><span>Encampment <b>${t.camp}</b></span><span>Share of flocks <b>${flockShare.toFixed(1)}%</b></span></div>` +
+        `<div class="tribe-report-meta"><span>Encampment <b>${t.camp}</b></span><span>Share of flocks <b>${flockShare.toFixed(1)}%</b></span><span>Today's work <b>${roleSummaryForTribe(t.name)}</b></span></div>` +
         `<div class="tribe-report-status" style="border-color:${status.color}55;color:${status.color}">` +
           `<b>${status.label}</b><span>${status.text}</span>` +
         `</div>` +
@@ -2440,7 +2460,7 @@ function restoreTrialSnapshot(snap){
   Object.assign(state, snap.state);
   state.explored = new Set(snap.state.explored || []);
   state.visited = new Set(snap.state.visited || []);
-  state.keys = {}; state.trial = null; state.layoutEdit = null; state.layoutUndo = [];
+  state.keys = {}; state.trial = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   structures = snap.structures.map(s => ({ ...s }));
   raiders = snap.raiders.map(r => ({ ...r }));
   manna = snap.manna.map(m => ({ ...m }));
@@ -2503,10 +2523,10 @@ function startTrial(index){
   state.warmth = setup.warmth; state.stamina = setup.stamina; state.faith = setup.faith;
   state.manna = setup.manna; state.campWater = setup.campWater; state.wood = setup.wood; state.silver = setup.silver;
   state.waterskin = 0; state.sick = 0; state.rot = 0; state.calf = 0;
-  state.raidSpawned = false; state.raidDefense = null; state.buildMode = null; state.layoutEdit = null;
+  state.raidSpawned = false; state.raidDefense = null; state.buildMode = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   state.tutorialStep = -1; $('tutorialPanel').hidden = true;
   structures = setup.structures.map(s => ({ kind:s.kind, x:s.x, y:s.y, s:1 }));
-  raiders = []; manna = []; particles = []; pops = [];
+  raiders = []; manna = []; particles = []; pops = []; flights = [];
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
   people.forEach(p => {
     p.x = p.hx; p.y = p.hy; p.wx = p.hx; p.wy = p.hy; p.t = 0;
@@ -2669,6 +2689,7 @@ function buildMonthReport(){
     if (t.stolen) failures.push(`${t.stolen} manna stolen by raiders.`);
     if (t.flocksLost) failures.push(`${t.flocksLost} flocks lost or stolen.`);
   }
+  if (t.tribeRebellions) failures.push(`${t.tribeRebellions} tribal rebellion${t.tribeRebellions === 1 ? '' : 's'} broke out.`);
   if (stations) successes.push(`Stations reached: ${stations}.`);
   if (popDiff > 0) successes.push(`Population grew by ${popDiff.toLocaleString()}; flocks ${liveDiff >= 0 ? '+' : ''}${liveDiff.toLocaleString()}.`);
   else if (popDiff < 0) failures.push(`Population fell by ${Math.abs(popDiff).toLocaleString()}; flocks ${liveDiff}.`);
@@ -2689,7 +2710,7 @@ function buildMonthReport(){
   let annual = '';
   if (monthOfYear() === 12 && state.yearTracking){
     const y = state.yearTracking;
-    annual = `Year ${yearOfMonth()} complete: ${y.mannaGathered} manna gathered · ${y.waterDrawn} water carried · ${y.monthsFed}/12 months fed · ${y.raidersDefeated}/${y.raids} raiders defeated · ${y.stolen} manna stolen · ${y.flocksLost || 0} flocks lost.`;
+    annual = `Year ${yearOfMonth()} complete: ${y.mannaGathered} manna gathered · ${y.waterDrawn} water carried · ${y.monthsFed}/12 months fed · ${y.raidersDefeated}/${y.raids} raiders defeated · ${y.stolen} manna stolen · ${y.flocksLost || 0} flocks lost · ${y.tribeRebellions || 0} tribal rebellions.`;
   }
 
   return {
@@ -2995,6 +3016,7 @@ function endDay(){
       state.yearTracking.raidersDefeated += t.raidersDefeated;
       state.yearTracking.stolen += t.stolen;
       state.yearTracking.flocksLost = (state.yearTracking.flocksLost || 0) + (t.flocksLost || 0);
+      state.yearTracking.tribeRebellions = (state.yearTracking.tribeRebellions || 0) + (t.tribeRebellions || 0);
       state.yearTracking.stations += Math.max(0, state.stationIndex - t.stations);
       state.yearTracking.months++;
       if ((t.daysFed || 0) >= DAYS_PER_MONTH) state.yearTracking.monthsFed++;
@@ -3050,6 +3072,7 @@ function update(dt){
   updateManna(gameDt);
   updateFx(gameDt);
   updatePops(gameDt);
+  updateFlights(gameDt);
   updateParticles(gameDt);
   updateExplore(gameDt);
   state.stationWarnCd = Math.max(0, state.stationWarnCd - gameDt);
@@ -3152,6 +3175,7 @@ function updateManna(dt){
       state.manna++; state.score++;
       if (state.monthTracking) state.monthTracking.mannaGathered++;
       pops.push({ x:m.x, y:m.y, text:'+1 manna', color:'#ffe27a', t:1, max:1 });
+      spawnFlight(m.x, m.y, 'manna', 1, false);
       burst(m.x, m.y, '#ffe27a', 7);
       playSfx('pickup', 0.35);
       if (!state.startHinted){
@@ -3307,6 +3331,53 @@ function drawFx(t){
 }
 
 function updatePops(dt){ for (const p of pops) p.t -= dt; pops = pops.filter(p => p.t > 0); }
+
+/* Resource flights: a gathered item arcs from where it was collected to the
+   camp stores, so the gain is visible even when the basket is off-screen. */
+function spawnFlight(x,y,kind,amount,showPop){
+  const label = kind === 'manna' ? 'manna' : 'wood';
+  if (state.reducedMotion){
+    if (showPop) pops.push({ x:CAMP.x, y:CAMP.y, text:`+${amount} ${label}`, color: kind === 'manna' ? '#ffe27a' : '#c99a5a', t:0.9, max:0.9 });
+    return;
+  }
+  flights.push({ x, y, kind, amount, pop:!!showPop, t:0, max:0.85 + Math.random()*0.35, delay: Math.random()*0.15 });
+}
+function updateFlights(dt){
+  for (const f of flights){
+    if (f.delay > 0){ f.delay -= dt; continue; }
+    f.t += dt;
+    if (f.t >= f.max){
+      burst(CAMP.x, CAMP.y, f.kind === 'manna' ? '#ffe27a' : '#c99a5a', 4);
+      if (f.pop) pops.push({ x:CAMP.x, y:CAMP.y, text:`+${f.amount} ${f.kind === 'manna' ? 'manna' : 'wood'}`, color: f.kind === 'manna' ? '#ffe27a' : '#c99a5a', t:0.9, max:0.9 });
+    }
+  }
+  flights = flights.filter(f => f.t < f.max);
+}
+function drawFlights(){
+  if (!flights.length) return;
+  const camp = W2S(CAMP.x, CAMP.y);
+  g.globalAlpha = 0.55;
+  g.strokeStyle = '#f7e8bf'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(camp.x, camp.y); g.lineTo(camp.x, camp.y-30); g.stroke();
+  g.globalAlpha = 1;
+  for (const f of flights){
+    if (f.delay > 0) continue;
+    const k = Math.min(1, f.t/f.max);
+    const from = W2S(f.x, f.y);
+    const x = from.x + (camp.x-from.x)*k;
+    const y = from.y + (camp.y-from.y)*k - Math.sin(k*Math.PI)*36;
+    if (f.kind === 'manna'){
+      g.fillStyle = '#ffe27a'; g.shadowColor = '#ffe27a'; g.shadowBlur = 6;
+      g.beginPath(); g.arc(x, y, 3.4, 0, 6.28); g.fill();
+      g.shadowBlur = 0;
+    } else {
+      g.save(); g.translate(x, y); g.rotate(0.5*k);
+      g.fillStyle = '#a86f38'; g.fillRect(-4.5, -1.6, 9, 3.2);
+      g.strokeStyle = '#5d3c1c'; g.lineWidth = 0.8; g.strokeRect(-4.5, -1.6, 9, 3.2);
+      g.restore();
+    }
+  }
+}
 function updateParticles(dt){
   for (const q of particles){ q.x += q.vx*dt; q.y += q.vy*dt; q.vy += 40*dt; q.t -= dt; }
   particles = particles.filter(q => q.t > 0);
@@ -3431,13 +3502,13 @@ function depositCitizen(p){
   if (p.carry > 0){
     state.manna += p.carry;
     if (state.monthTracking) state.monthTracking.mannaGathered += p.carry;
-    if (p.carry >= 2) pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.carry} manna`, color:'#ffe27a', t:0.9, max:0.9 });
+    spawnFlight(p.x, p.y, 'manna', p.carry, p.carry >= 2);
     p.carry = 0;
   }
   if (p.woodCarry > 0){
     state.wood += p.woodCarry;
     if (state.monthTracking) state.monthTracking.woodGathered += p.woodCarry;
-    pops.push({ x:CAMP.x, y:CAMP.y, text:`+${p.woodCarry} wood`, color:'#c99a5a', t:0.9, max:0.9 });
+    spawnFlight(p.x, p.y, 'wood', p.woodCarry, true);
     p.woodCarry = 0;
   }
 }
@@ -3827,6 +3898,36 @@ function coverageSummary(){
   };
 }
 
+/* Quadrants the current raiders are approaching from, relative to the camp. */
+function raidersApproach(){
+  const quads = new Set();
+  for (const r of raiders){
+    const dx = r.x - CAMP.x, dy = r.y - CAMP.y;
+    quads.add((dy >= 0 ? 'S' : 'N') + (dx >= 0 ? 'E' : 'W'));
+  }
+  return [...quads];
+}
+
+/* Expected losses when a raid breaks through: raiders steal
+   min(manna, 2+count) and a tribe defense loses 1+floor(count/2) flocks.
+   A failed Moses/tower defense costs 1 flock plus wounds. */
+function expectedRaidLoss(){
+  const count = Math.max(1, raiders.length);
+  return {
+    manna: Math.min(state.manna, 2 + count),
+    flocks: 1 + Math.floor(count/2)
+  };
+}
+
+/* Compact one-line coverage state for the always-visible HUD chip. */
+function coverageStatus(){
+  const c = coverageSummary();
+  if (!c.towers && !c.sentries) return { text:'no cover', color:'#e0584a' };
+  const weak = c.weak.filter(q => q !== 'none');
+  if (!weak.length) return { text:'all sides', color:'#9dbb74' };
+  return { text:`${c.covered.length}/4 sides`, color: c.covered.length >= 2 ? '#d6c04a' : '#e0584a' };
+}
+
 function recordRaid(entry){
   state.raidLog.unshift({ day:state.day, at:Date.now(), ...entry });
   state.raidLog = state.raidLog.slice(0, 12);
@@ -3845,15 +3946,17 @@ function renderRaidLog(){
 function renderRaidDefense(){
   const { count } = raidPressure();
   const towers = structures.filter(s => s.kind === 'tower').length;
+  const loss = expectedRaidLoss();
   $('raidIntro').innerHTML =
     `<b>${count} raider${count === 1 ? '' : 's'}</b> are at the perimeter. ` +
     `Send a tribe, go yourself, use the watchtower, or buy them off. ` +
-    `A failed defense costs the defenders and lets the raiders take supplies and flocks.`;
+    `A failed defense costs roughly <b>${loss.manna} manna</b> and <b>${loss.flocks} flocks</b>` +
+    `${count > 1 ? ' (a failed tribe defense)' : ''}, or wounds to Moses.`;
   const mosesPct = Math.round(mosesDefenseChance()*100);
   const towerPct = Math.round(towerDefenseChance()*100);
   $('raidSpecials').innerHTML =
-    `<button data-raid-action="moses"><b>Moses alone</b><span>Free · ${mosesPct}% · risk to health and stamina</span></button>` +
-    `<button data-raid-action="tower" ${towers && state.wood >= 2 ? '' : 'disabled'}><b>Watchtower volley</b><span>${towers ? `2 wood · ${towerPct}%` : 'No watchtower built'}</span></button>` +
+    `<button data-raid-action="moses"><b>Moses alone</b><span>Free · ${mosesPct}% · if it fails: wounds + 1 flock</span></button>` +
+    `<button data-raid-action="tower" ${towers && state.wood >= 2 ? '' : 'disabled'}><b>Watchtower volley</b><span>${towers ? `2 wood · ${towerPct}%` : 'No watchtower built'} · if it fails: 1 flock</span></button>` +
     `<button data-raid-action="tribute" ${state.silver >= 6 ? '' : 'disabled'}><b>Pay tribute</b><span>6 silver · raiders withdraw, no loot</span></button>`;
 
   const cards = TRIBES.map(tribeDefenseOption).filter(Boolean);
@@ -3871,14 +3974,23 @@ function renderRaidDefense(){
   }).join('');
   const cover = coverageSummary();
   const scout = $('raidScout');
-  if (scout) scout.innerHTML =
-    `<div><b>${cover.towers} watchtower${cover.towers === 1 ? '' : 's'}</b>${cover.sentries} sentry post${cover.sentries === 1 ? '' : 's'} · +${Math.round(cover.bonus)}% defense</div>` +
-    `<div><b>Covered approaches</b>${cover.covered.length ? cover.covered.join(', ') : 'none'}</div>` +
-    `<div><b>Weak approaches</b>${cover.weak.join(', ')}</div>` +
-    `<div><b>Camp stores</b>${state.manna} manna · ${Math.round(state.campWater)} water · ${state.wood} wood</div>`;
+  if (scout){
+    const weakSet = new Set(cover.weak.filter(q => q !== 'none'));
+    const approaches = raidersApproach();
+    const approachText = approaches.length
+      ? approaches.map(q => weakSet.has(q) ? `${q} · exposed` : q).join(', ')
+      : 'scattered';
+    scout.innerHTML =
+      `<div><b>Raider approach</b>${approachText}</div>` +
+      `<div><b>${cover.towers} watchtower${cover.towers === 1 ? '' : 's'}</b>${cover.sentries} sentry post${cover.sentries === 1 ? '' : 's'} · +${Math.round(cover.bonus)}% defense</div>` +
+      `<div><b>Covered approaches</b>${cover.covered.length ? cover.covered.join(', ') : 'none'}</div>` +
+      `<div><b>Weak approaches</b>${cover.weak.join(', ')}</div>` +
+      `<div><b>If the defense fails</b>~${loss.manna} manna stolen · ${loss.flocks} flocks lost</div>` +
+      `<div><b>Camp stores</b>${state.manna} manna · ${Math.round(state.campWater)} water · ${state.wood} wood</div>`;
+  }
   $('raidHint').innerHTML =
     `Faith, watchtowers and sentry posts improve the odds. Success breaks the raid and recovers stolen manna. ` +
-    `Move structures from Camp to cover a weak side before the next raid.`;
+    `Move structures from Camp to cover a weak side before the next raid — exposed approaches are marked above.`;
   renderRaidLog();
 }
 
@@ -3936,7 +4048,7 @@ function resolveRaidDefense(action, tribeName){
     return;
   } else return;
 
-  state.raidSeed = ((state.raidSeed || 1) * 1664525 + 1013904223) >>> 0;
+  state.raidSeed = CORE.nextRaidSeed(state.raidSeed);
   const success = state.raidSeed / 4294967296 < chance;
   const loot = raiders.reduce((sum, r) => sum + (r.loot || 0), 0);
   let stolen = 0, flocksLost = 0;
@@ -3999,7 +4111,7 @@ function gatherWood(node){
   node.wood -= amount;
   state.wood += amount;
   if (state.monthTracking) state.monthTracking.woodGathered += amount;
-  pops.push({ x:node.x, y:node.y, text:`+${amount} wood`, color:'#c99a5a', t:1, max:1 });
+  spawnFlight(node.x, node.y, 'wood', amount, true);
   burst(node.x, node.y, '#c99a5a', 6);
   playSfx('click', 0.2);
   say(`You gather ${amount} acacia wood.`);
@@ -4177,6 +4289,7 @@ function updateCampUI(){
     return `<div class="camp-tribe-card">` +
       `<div class="camp-tribe-head"><i style="background:${t.color}"></i><b>${t.name}</b><span>${st.population.toLocaleString()} souls</span></div>` +
       `<div class="camp-tribe-line">Flocks <b>${st.livestock.toLocaleString()}</b> · Represented <b>${row.rep}</b> · Sick <b>${row.sick}</b> · Hoarded <b>${row.hoard}</b> · Unrest <b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
+      `<div class="camp-tribe-line">Work <b>${roleSummaryForTribe(t.name)}</b></div>` +
       `<div class="camp-tribe-traits">` +
         `<span style="color:${TRAITS.greedy.color}">Greedy <b>${tr.greedy}</b></span>` +
         `<span style="color:${TRAITS.lazy.color}">Lazy <b>${tr.lazy}</b></span>` +
@@ -4186,7 +4299,11 @@ function updateCampUI(){
       `</div>` +
     `</div>`;
   }).join('');
+  const coverNow = coverageSummary();
+  const weakNow = coverNow.weak.filter(q => q !== 'none');
   $('defenseInfo').innerHTML = `Defense: <b>${sentries}</b> sentry posts · <b>${towers}</b> watchtowers · <b>${tents}</b> tents.` +
+    ` <br>Cover: <b style="color:${coverageStatus().color}">${coverageStatus().text}</b>` +
+    (weakNow.length ? ` · weak: ${weakNow.join(', ')}` : '') +
     (state.buildMode ? ` <br>Placing: <b>${BUILD_LABELS[state.buildMode]}</b> — click the ground near camp.` : '');
   document.querySelectorAll('#buildButtons button').forEach(b => {
     const kind = b.dataset.build;
@@ -4197,6 +4314,8 @@ function updateCampUI(){
   if (layoutBtn) layoutBtn.textContent = state.layoutEdit ? 'Finish moving' : 'Move structures';
   const undoBtn = $('layoutUndoBtn');
   if (undoBtn) undoBtn.disabled = !state.layoutUndo.length;
+  const redoBtn = $('layoutRedoBtn');
+  if (redoBtn) redoBtn.disabled = !state.layoutRedo.length;
   const slots = $('blueprintSlots');
   if (slots) slots.innerHTML = state.blueprints.map((slot, i) => {
     const count = Array.isArray(slot) ? slot.length : 0;
@@ -4269,31 +4388,43 @@ function layoutSpotOk(x,y,ignore){
   if (blocked(x,y)) return 'You cannot build on rock or water.';
   for (let i=0;i<structures.length;i++){
     if (i === ignore) continue;
-    if (Math.hypot(structures[i].x-x, structures[i].y-y) < 1.0) return 'Something already stands there.';
+    if (Math.hypot(structures[i].x-x, structures[i].y-y) < 1.0) return 'Too close to another structure.';
   }
   return '';
 }
 
-function showLayoutBanner(){
+/* Structures snap to a half-tile grid so camps stay tidy and
+   share codes/save data round-trip through Math.floor cleanly. */
+function snapStructureSpot(x,y){
+  return { x: clamp(Math.round(x*2)/2, 1, N-2), y: clamp(Math.round(y*2)/2, 1, N-2) };
+}
+
+function showLayoutBanner(reason){
   const banner = $('buildBanner');
   if (!state.layoutEdit){ banner.hidden = true; return; }
   banner.hidden = false;
   const selected = state.layoutEdit.selected;
-  banner.innerHTML = selected == null
-    ? `Camp layout · click a structure to pick it up · <b>Esc</b> to finish`
-    : `Moving <b>${BUILD_LABELS[structures[selected]?.kind] || 'structure'}</b> · click clear ground · <b>Esc</b> to finish`;
+  if (selected == null){
+    banner.innerHTML = `Camp layout · click a structure to pick it up · <b>Esc</b> to finish`;
+    return;
+  }
+  const name = BUILD_LABELS[structures[selected]?.kind] || 'structure';
+  banner.innerHTML = `Moving <b>${name}</b> · click clear ground · ` +
+    (reason ? `<span style="color:#ff8a6a">${reason}</span>` : `snaps to the half-tile grid`) +
+    ` · <b>Esc</b> to finish`;
 }
 
 function openLayoutEditor(){
   if (state.mode !== 'camp' && state.mode !== 'playing') return;
   state.mode = 'playing';
   $('campOverlay').classList.remove('open');
-  state.layoutEdit = { selected:null };
+  state.layoutEdit = { selected:null, reason:'' };
   state.layoutUndo = [];
+  state.layoutRedo = [];
   state.buildMode = null;
   showLayoutBanner();
   updateHud(true);
-  say('Camp layout: click a structure to move it, or press Esc to finish.');
+  say('Camp layout: click a structure to move it, or press Esc to finish. Moves snap to the half-tile grid.');
 }
 
 function closeLayoutEditor(){
@@ -4308,10 +4439,12 @@ function closeLayoutEditor(){
 function moveStructure(index,x,y){
   const s = structures[index];
   if (!s) return false;
-  const reason = layoutSpotOk(x,y,index);
+  const spot = snapStructureSpot(x,y);
+  const reason = layoutSpotOk(spot.x,spot.y,index);
   if (reason){ say(reason); return false; }
   state.layoutUndo.push({ index, x:s.x, y:s.y });
-  s.x = x; s.y = y;
+  state.layoutRedo = [];
+  s.x = spot.x; s.y = spot.y;
   burst(x, y, '#e8b84a', 7);
   playSfx('click', 0.2);
   say(`Moved the ${(BUILD_LABELS[s.kind] || 'structure').toLowerCase()}.`);
@@ -4324,6 +4457,7 @@ function undoLayoutMove(){
   const last = state.layoutUndo.pop();
   if (!last){ say('No camp move to undo.'); return; }
   if (last.blueprint){
+    state.layoutRedo.push({ blueprint:snapshotStructures() });
     structures = last.blueprint.map(s => ({ ...s }));
     playSfx('click', 0.2);
     say('Camp blueprint restored to its previous layout.');
@@ -4332,9 +4466,30 @@ function undoLayoutMove(){
   }
   const s = structures[last.index];
   if (!s){ say('That structure is no longer there.'); return; }
+  state.layoutRedo.push({ index:last.index, x:s.x, y:s.y });
   s.x = last.x; s.y = last.y;
   playSfx('click', 0.2);
   say('Camp move undone.');
+  updateCampUI(); updateHud(true);
+}
+
+function redoLayoutMove(){
+  const next = state.layoutRedo.pop();
+  if (!next){ say('Nothing to redo.'); return; }
+  if (next.blueprint){
+    state.layoutUndo.push({ blueprint:snapshotStructures() });
+    structures = next.blueprint.map(s => ({ ...s }));
+    playSfx('click', 0.2);
+    say('Blueprint layout reapplied.');
+    updateCampUI(); updateHud(true); saveGame();
+    return;
+  }
+  const s = structures[next.index];
+  if (!s){ say('That structure is no longer there.'); return; }
+  state.layoutUndo.push({ index:next.index, x:s.x, y:s.y });
+  s.x = next.x; s.y = next.y;
+  playSfx('click', 0.2);
+  say('Camp move reapplied.');
   updateCampUI(); updateHud(true);
 }
 
@@ -4873,7 +5028,7 @@ function applySaveData(data){
   state.explored = new Set(data.explored || []);
   state.log = []; state.keys = {}; state.duskDone = false; state.nightDone = false;
   state.mannaSpawned = false; state.interaction = null; state.endShown = false;
-  manna = []; particles = []; pops = []; tentFires = [];
+  manna = []; particles = []; pops = []; flights = []; tentFires = [];
   revealAround(state.player.x, state.player.y, 5);
   camX = (state.player.x-state.player.y)*HW;
   camY = (state.player.x+state.player.y)*HH;
@@ -4913,14 +5068,27 @@ function loadGame(){
   if (found.source === 'backup') setSaveStatus('Recovered the previous save slot.', 'good');
 }
 
-function exportSave(){
-  const blob = new Blob([JSON.stringify(savePayload(), null, 2)], { type:'application/json' });
+async function exportSave(){
+  const json = JSON.stringify(savePayload(), null, 2);
+  const name = `manna-journey-year-${yearOfMonth()}.json`;
+  setSaveStatus('Journey exported.', 'good');
+  // Prefer the mobile share sheet when it can carry files; fall back to a
+  // plain download on desktop and older browsers.
+  try {
+    const file = new File([json], name, { type:'application/json' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:'MANNA journey', text:'Your MANNA wilderness journey save.' });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError'){ setSaveStatus('Share cancelled.', ''); return; }
+  }
+  const blob = new Blob([json], { type:'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `manna-journey-year-${yearOfMonth()}.json`;
+  a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
-  setSaveStatus('Journey exported.', 'good');
 }
 
 function parseSaveText(text){
@@ -5801,18 +5969,25 @@ function drawBuildGhost(){
         g.beginPath(); g.ellipse(sp.x, sp.y, HW*1.15, HH*1.15, 0, 0, 6.28); g.stroke();
         g.globalAlpha = 1;
       }
-    }
-    if (state.layoutEdit.selected != null && state.mouseWorld){
-      const { x, y } = state.mouseWorld;
-      const p = W2S(x,y);
-      const invalid = !!layoutSpotOk(x, y, state.layoutEdit.selected);
-      g.globalAlpha = 0.58;
-      g.strokeStyle = invalid ? '#e0584a' : '#e8b84a'; g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(p.x,p.y); g.lineTo(p.x+HW,p.y+HH); g.lineTo(p.x,p.y+2*HH); g.lineTo(p.x-HW,p.y+HH); g.closePath();
-      g.stroke();
-      g.fillStyle = invalid ? 'rgba(224,88,74,.15)' : 'rgba(232,184,74,.15)'; g.fill();
-      g.globalAlpha = 1;
+      if (state.mouseWorld){
+        // Footprint preview on the half-tile grid: shows the true 1-unit
+        // separation circle and keeps the banner reason in sync.
+        const spot = snapStructureSpot(state.mouseWorld.x, state.mouseWorld.y);
+        const reason = layoutSpotOk(spot.x, spot.y, state.layoutEdit.selected);
+        if (reason !== state.layoutEdit.reason){
+          state.layoutEdit.reason = reason;
+          showLayoutBanner(reason);
+        }
+        const p = W2S(spot.x, spot.y);
+        g.save();
+        g.globalAlpha = 0.35;
+        g.fillStyle = reason ? 'rgba(224,88,74,.16)' : 'rgba(242,204,107,.16)';
+        g.beginPath(); g.ellipse(p.x, p.y, HW, HH, 0, 0, 6.28); g.fill();
+        g.globalAlpha = 0.9;
+        g.strokeStyle = reason ? '#e0584a' : '#f2cc6b'; g.lineWidth = 2; g.setLineDash([5,4]);
+        g.beginPath(); g.ellipse(p.x, p.y, HW, HH, 0, 0, 6.28); g.stroke();
+        g.restore();
+      }
     }
     return;
   }
@@ -6060,6 +6235,7 @@ function draw(){
   if (s) drawPillarBase(s, tNow);
   drawFx(tNow);
   drawTutorialHint(tNow);
+  drawFlights();
   drawPops();
   drawParticles();
 
@@ -6152,6 +6328,12 @@ function updateHud(force){
   $('rWood').textContent = state.wood;
   $('rHoard').textContent = totalHoard();
   $('rLivestock').textContent = totalLivestock().toLocaleString();
+  const coverChip = $('rCover');
+  if (coverChip){
+    const cs = coverageStatus();
+    coverChip.textContent = cs.text;
+    coverChip.style.color = cs.color;
+  }
 
   $('btnEat').disabled = state.manna < 2;
   $('btnDrink').disabled = state.waterskin <= 0;
@@ -6329,8 +6511,10 @@ cv.addEventListener('pointerdown', e => {
       return;
     }
     if (state.layoutEdit.selected != null){
-      if (moveStructure(state.layoutEdit.selected, w.x, w.y)){
+      const spot = snapStructureSpot(w.x, w.y);
+      if (moveStructure(state.layoutEdit.selected, spot.x, spot.y)){
         state.layoutEdit.selected = null;
+        state.layoutEdit.reason = '';
         showLayoutBanner();
       }
       return;
@@ -6388,6 +6572,7 @@ $('layoutEditBtn').addEventListener('click', () => {
   openLayoutEditor();
 });
 $('layoutUndoBtn').addEventListener('click', undoLayoutMove);
+$('layoutRedoBtn').addEventListener('click', redoLayoutMove);
 $('blueprintSlots').addEventListener('click', e => {
   const save = e.target.closest('[data-blueprint-save]');
   const restore = e.target.closest('[data-blueprint-restore]');
@@ -6565,7 +6750,33 @@ function boot(){
   document.body.classList.add('menu-open');
   requestAnimationFrame(frame);
   if ('serviceWorker' in navigator && location.protocol !== 'file:'){
+    let swUpdateAccepted = false;
     navigator.serviceWorker.register('sw.js').catch(() => {});
+    // Prompt instead of silently restarting: when a waiting worker is
+    // installed, show the banner and skipWaiting only once the player accepts.
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (!reg) return;
+      const announce = () => {
+        if (!reg.waiting || !navigator.serviceWorker.controller) return;
+        const box = $('swUpdate');
+        if (box) box.hidden = false;
+      };
+      announce();
+      reg.addEventListener('updatefound', () => {
+        const worker = reg.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => { if (worker.state === 'installed') announce(); });
+      });
+      const btn = $('swReload');
+      if (btn) btn.addEventListener('click', () => {
+        swUpdateAccepted = true;
+        if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+        else location.reload();
+      });
+    }).catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swUpdateAccepted) location.reload();
+    });
   }
 }
 

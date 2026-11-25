@@ -14,8 +14,10 @@ npm test
 - `tests/journey.test.mjs` — journey start/guidance, station blessing/advance, eight-station victory, pillar cloud/fire and movement, survival tuning.
 - `tests/terrain.test.mjs` — 1 km section streaming, deterministic heights, wadis/massifs, vegetation, Wadi Rum projection and player-driven tile loading.
 - `tests/map.test.mjs` — explored-section records, real-DEM updates, map reset and JSON section round-trip.
+- `tests/v2-core.test.mjs` — share-code encode/decode, save migration and validation rules.
+- `tests/determinism.test.mjs` — identical terrain heights across fresh sessions, save/load JSON round-trip plus migration idempotence, and raid-roll determinism through `MannaCore.rollRaid`.
 
-Expected result: 32 passing tests. The Vite build should complete with no errors (the existing chunk-size warning is expected).
+Expected result: 40 passing tests. The Vite build should complete with no errors (the existing chunk-size warning is expected).
 
 ## Static checks
 
@@ -46,8 +48,11 @@ PY
 8. Let the day timer end; verify food reservation, market, evening choices and the next year.
 9. Pause/save, reload, continue; verify vitals and journey position restore.
 10. Open the map (`M`); confirm explored sections show the real Esri satellite basemap, unknown sections stay dark, and drag/wheel/pinch pan and zoom work. Closing the map persists exploration automatically.
-11. Check the About panel, credits, audio toggle and the faith/camp panel.
-11. Narrow the viewport to phone width; verify vitals, compass, survival buttons and on-screen arrows remain reachable.
+11. Check the About panel, credits, audio toggle and the faith/camp panel. In the HUD resources row confirm the always-visible **Cover** chip updates as you build watchtowers/sentry posts in Camp.
+12. Gather manna or wood and watch the resource flight arc to the camp stores; in Camp → Move structures, confirm moves snap to the half-tile grid, the dashed footprint shows blocking reasons, and Undo/Redo replay moves.
+13. After publishing an updated build, reload the site once: the update banner should appear while the new worker waits, and clicking **Reload** swaps to the new shell.
+14. On a phone (or DevTools device mode), export the journey from Pause → export: the share sheet should offer the save file where Web Share is available.
+15. Narrow the viewport to phone width; verify vitals, compass, survival buttons and on-screen arrows remain reachable.
 
 ## Known limitations
 

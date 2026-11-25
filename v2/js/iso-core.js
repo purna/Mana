@@ -90,6 +90,23 @@
     return Math.max(min, Math.min(max, n));
   }
 
+  /** Advance the raid linear-congruential stream by one step. */
+  function nextRaidSeed(seed) {
+    const n = Math.floor(Number(seed));
+    return ((Number.isFinite(n) ? Math.abs(n) : 1) * 1664525 + 1013904223) >>> 0;
+  }
+
+  /**
+   * Resolve one raid defense roll from the raid seed stream. Same seed and
+   * chance always give the same outcome, so raids replay identically across
+   * sessions and stay verifiable in Node tests.
+   */
+  function rollRaid(seed, chance) {
+    const next = nextRaidSeed(seed);
+    const c = Math.max(0, Math.min(1, Number(chance) || 0));
+    return { seed: next, success: next / 4294967296 < c };
+  }
+
   function clone(value) {
     if (typeof structuredClone === 'function') return structuredClone(value);
     return JSON.parse(JSON.stringify(value));
@@ -174,5 +191,7 @@
     decodeShare,
     migrateSave,
     validateSave,
+    nextRaidSeed,
+    rollRaid,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

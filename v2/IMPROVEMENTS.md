@@ -1,6 +1,12 @@
 # MANNA — Improvements
 
 ## Completed in the Exodus overhaul
+- [x] **PWA update prompt**: updated builds wait behind a “Reload” banner instead of silently swapping the shell (`sw.js` + registration).
+- [x] **Resource-flight feedback**: gathered manna and wood arc to the camp stores, with arrival sparkles and basket pops; reduced motion falls back to text pops.
+- [x] **Layout editor polish**: half-tile grid snapping, live footprint preview with blocking reasons, and undo/redo for moves and blueprint restores.
+- [x] **Raid scout intel**: approach quadrants with exposed marking, expected losses when a defense fails, per-option failure costs, and an always-visible HUD/Camp coverage chip.
+- [x] **Determinism tests**: `tests/determinism.test.mjs` covers terrain replay, save/load round-trips and the centralised raid roll (`MannaCore.rollRaid`).
+- [x] **Mobile share sheet**: save export uses the Web Share sheet where files can be shared, else downloads the JSON.
 - [x] **40-year campaign loop**: eight stations, year tracking, Pillar guidance, blessings, victory and a fortieth-year ending.
 - [x] **Pillar of Cloud & Fire**: day/night visual, fog-ignoring shaft, point light, halo, smooth movement between stations.
 - [x] **Survival layer**: wellbeing, fed, water, warmth, stamina and faith, with starvation/dehydration/cold damage and rest recovery.
