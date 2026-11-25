@@ -257,6 +257,12 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 /* Tribe dossier */
 .tribe-report-head{display:flex;gap:10px;align-items:stretch;margin-bottom:10px}
 .tribe-report-banner{width:5px;border-radius:3px;flex:none}
+.tribe-motif{margin:0 0 2px;font-family:Cinzel,serif;font-size:11px;letter-spacing:.05em;color:#f2cc6b;text-transform:uppercase}
+.report-offender > span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.report-offender .tribe-badge{width:18px;height:20px;font-size:10px}
+.about-tribe-tab .tribe-badge{width:16px;height:18px;font-size:9px}
+.raid-card .tribe-badge{width:20px;height:22px;font-size:11px;vertical-align:middle;display:inline-grid}
+.camp-tribe-head .tribe-badge{width:20px;height:22px;font-size:11px}
 .tribe-report-head h3{font-family:Cinzel,serif;font-size:17px;letter-spacing:.04em;color:#f6e9d0;margin:0;line-height:1.2}
 .tribe-report-head h3 em{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-style:normal;color:#cbb894;margin-top:3px}
 .tribe-report-head p{font-size:12px;line-height:1.45;color:#d8c8ab;margin:6px 0 0}
@@ -548,31 +554,38 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .event-choices button.calm{border-color:#7fc4e888;color:#bfe8ff}
 .event-note{font-size:11px;color:#cbb894;margin:8px 0 0}
 
-/* ---------- daily work muster ---------- */
-.roles-sheet{max-width:760px}
-.role-summary{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 10px}
-.role-summary span{border:1px solid rgba(232,184,74,.25);border-radius:999px;padding:4px 8px;font-size:10.5px;color:#cbb894;background:rgba(255,255,255,.03)}
+/* ---------- daily work muster (compact CoC-style) ---------- */
+.roles-sheet{max-width:720px}
+.role-summary{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:6px 0 10px}
+.role-summary span{border:1px solid rgba(232,184,74,.25);border-radius:999px;padding:3px 8px;font-size:10px;color:#cbb894;background:rgba(255,255,255,.03)}
 .role-summary b{color:#f2cc6b}
-.roles-table{display:grid;gap:6px;text-align:left}
-.role-row{border:1px solid rgba(232,184,74,.2);border-radius:8px;padding:7px 8px;background:rgba(255,255,255,.028)}
-.role-row-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px;font-size:11px;color:#e8dcc4}
-.role-row-head i{width:8px;height:8px;border-radius:50%;flex:none;border:1px solid #0006}
-.role-row-head b{font-family:Cinzel,serif;font-size:11.5px;color:#f2cc6b}
-.role-row-head .role-free{margin-left:auto;color:#a8916a;font-size:10px}
-.role-unrest{font-size:9.5px;padding:1px 6px;border-radius:999px;border:1px solid currentColor}
-.role-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
-.role-step{display:flex;align-items:center;justify-content:space-between;gap:3px;padding:3px 4px;border:1px solid rgba(232,184,74,.16);border-radius:6px;background:rgba(0,0,0,.16)}
-.role-step span{font-size:9px;color:#b9a784;line-height:1.1}
-.role-step b{min-width:12px;text-align:center;font-size:11px;color:#f7e8bf}
-.role-step button{width:18px;height:20px;padding:0;border-radius:4px;font-size:12px;line-height:1;display:grid;place-items:center}
-.role-step button:disabled{opacity:.25;cursor:default}
-.role-preview{font-size:10px;color:#a8916a;line-height:1.35;margin:4px 0 0}
+.roles-table{display:grid;gap:5px;text-align:left}
+.role-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border:1px solid rgba(232,184,74,.2);border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.14))}
+.role-who{display:flex;align-items:center;gap:8px;width:158px;flex:none}
+.tribe-badge{width:34px;height:38px;flex:none;display:grid;place-items:center;font-size:17px;line-height:1;
+  background:linear-gradient(180deg,var(--tc,#c9a45e),color-mix(in srgb,var(--tc,#c9a45e) 55%,#241708));
+  clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);
+  filter:saturate(.9);box-shadow:inset 0 0 0 1.5px rgba(255,244,210,.55)}
+.role-name{min-width:0}
+.role-name b{display:block;font-family:Cinzel,serif;font-size:12.5px;color:#f7e8bf;letter-spacing:.03em;white-space:nowrap}
+.unrest-bar{display:block;width:64px;height:5px;border-radius:3px;background:#0007;border:1px solid #ffffff14;overflow:hidden;margin-top:2px}
+.unrest-bar u{display:block;height:100%;background:var(--uc,#9dbb74);border-radius:3px}
+.unrest-pct{font-size:8.5px;color:#a8916a;margin-left:3px}
+.role-mini{display:flex;gap:4px;flex:1;justify-content:flex-end;flex-wrap:wrap}
+.mini-cell{display:flex;align-items:center;gap:2px;padding:2px 3px;border:1px solid rgba(232,184,74,.15);border-radius:7px;background:rgba(0,0,0,.2)}
+.mini-cell .r-ico{width:15px;text-align:center;font-size:11px}
+.mini-cell button{width:17px;height:19px;padding:0;border-radius:4px;font-size:12px;line-height:1;display:grid;place-items:center}
+.mini-cell button:disabled{opacity:.22;cursor:default}
+.mini-cell b{min-width:11px;text-align:center;font-size:11.5px;color:#f7e8bf}
+.role-count{flex:none;font-size:10px;color:#a8916a;text-align:right;min-width:32px}
+.role-preview{font-size:10px;color:#a8916a;line-height:1.35;margin:5px 0 0;text-align:center}
 @media (max-width:560px){
-  .role-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .role-step:last-child{grid-column:span 2}
+  .role-row{flex-wrap:wrap}
+  .role-who{width:auto;flex:1}
+  .role-mini{justify-content:flex-start;width:100%}
 }
 
-/* ---------- settings ---------- */
+/* ---------- settings ---------- *//* ---------- settings ---------- */
 .settings-list{display:grid;gap:7px;margin:12px 0 4px;text-align:left}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid rgba(232,184,74,.18);border-radius:8px;background:rgba(255,255,255,.025)}
 .settings-row span{font-size:13px;color:#e8dcc4}
@@ -919,7 +932,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div class="sheet wide roles-sheet">
     <div class="kicker" id="rolesKicker">Morning muster</div>
     <h2>Assign the tribes</h2>
-    <p id="rolesIntro" style="color:var(--dim)">Give each tribe's work crews their tasks for the day. Leave too many idle, or drive them too hard without camp and watch crews, and resentment will grow over the weeks.</p>
+    <p id="rolesIntro" style="color:var(--dim)">Assign each tribe's crews. Idle or overworked tribes grow resentful.</p>
     <div id="roleSummary" class="role-summary"></div>
     <div id="roleTable" class="roles-table"></div>
     <p id="roleHint" class="role-preview"></p>
@@ -1206,12 +1219,33 @@ const TRIBE_MARTIAL = {
   Zebulun:0.84, Levi:0.80
 };
 
+const TRIBE_EMBLEMS = {
+  Reuben:   { icon:'🌅', motif:'Rising sun / mandrake' },
+  Simeon:   { icon:'🏰', motif:'Walls of Shechem' },
+  Levi:     { icon:'🛡️', motif:'Priestly breastplate' },
+  Judah:    { icon:'🦁', motif:'Lion' },
+  Dan:      { icon:'⚖️', motif:'Scales of justice' },
+  Naphtali: { icon:'🦌', motif:'Hind let loose' },
+  Gad:      { icon:'⛺', motif:'Military camp' },
+  Asher:    { icon:'🫒', motif:'Olive tree' },
+  Issachar: { icon:'🐴', motif:'Bearing burdens' },
+  Zebulun:  { icon:'⛵', motif:'Haven of ships' },
+  Joseph:   { icon:'🌾', motif:'Fruitful bough' },
+  Benjamin: { icon:'🐺', motif:'Ravenous wolf' }
+};
+function tribeBadge(name, size){
+  const t = TRIBES.find(t => t.name === name);
+  const e = TRIBE_EMBLEMS[name] || { icon:'✡️', motif:'Israel' };
+  const style = size ? ` style="--tc:${t?.color || '#c9a45e'};width:${size}px;height:${Math.round(size*1.12)}px;font-size:${Math.round(size*0.5)}px"` : ` style="--tc:${t?.color || '#c9a45e'}"`;
+  return `<span class="tribe-badge"${style} title="${e.motif}">${e.icon}</span>`;
+}
+
 const LABOR_ROLES = [
-  { id:'manna', label:'Manna', short:'Manna', color:'#ffe27a', hint:'Gather flakes at dawn' },
-  { id:'water', label:'Water',  short:'Water', color:'#7fc4e8', hint:'Draw from springs' },
-  { id:'wood',  label:'Wood',   short:'Wood',  color:'#c99a5a', hint:'Cut acacia at midday' },
-  { id:'camp',  label:'Camp',   short:'Camp',  color:'#9dbb74', hint:'Keep order and rest' },
-  { id:'watch', label:'Watch',  short:'Watch', color:'#e0b24a', hint:'Guard the perimeter' }
+  { id:'manna', label:'Manna', short:'Manna', icon:'✨', color:'#ffe27a', hint:'Gather flakes at dawn' },
+  { id:'water', label:'Water',  short:'Water', icon:'💧', color:'#7fc4e8', hint:'Draw from springs' },
+  { id:'wood',  label:'Wood',   short:'Wood',  icon:'🪵', color:'#c99a5a', hint:'Cut acacia at midday' },
+  { id:'camp',  label:'Camp',   short:'Camp',  icon:'⛺', color:'#9dbb74', hint:'Keep order and rest' },
+  { id:'watch', label:'Watch',  short:'Watch', icon:'🛡️', color:'#e0b24a', hint:'Guard the perimeter' }
 ];
 
 const HEBREW_NAMES = [
@@ -2047,7 +2081,7 @@ function renderTribeStats(){
   rail.innerHTML = TRIBES.map((t, i) => {
     const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
     return `<button class="about-tab about-tribe-tab" role="tab" id="aboutTab-tribe-${i}" aria-controls="aboutPanel-tribe-${i}" aria-selected="false" tabindex="-1" data-about-tab="tribe-${i}">` +
-      `<i class="about-tribe-dot" style="background:${t.color}"></i>` +
+      `${tribeBadge(t.name, 16)}` +
       `<span class="about-tribe-tab-name">${t.name}</span>` +
       `<span class="about-tribe-tab-pop">${st.population.toLocaleString()}</span>` +
     `</button>`;
@@ -2071,8 +2105,11 @@ function renderTribeStats(){
     return `<section class="about-panel" role="tabpanel" id="aboutPanel-tribe-${i}" aria-labelledby="aboutTab-tribe-${i}" tabindex="0" hidden>` +
       `<div class="tribe-report">` +
         `<div class="tribe-report-head">` +
+          `${tribeBadge(t.name, 34)}` +
           `<span class="tribe-report-banner" style="background:linear-gradient(180deg,${t.color},${t.color}88)"></span>` +
-          `<div><h3>${t.name} <em>${t.epithet}</em></h3><p>${t.note}</p></div>` +
+          `<div><h3>${t.name} <em>${t.epithet}</em></h3>` +
+            `<p class="tribe-motif">${(TRIBE_EMBLEMS[t.name] || { icon:'✡️', motif:'Israel' }).icon} ${(TRIBE_EMBLEMS[t.name] || { motif:'Israel' }).motif}</p>` +
+            `<p>${t.note}</p></div>` +
         `</div>` +
         `<div class="tribe-report-stats">` +
           `<div><span>Souls</span><b>${st.population.toLocaleString()}</b></div>` +
@@ -2743,7 +2780,7 @@ function renderReportOffenders(report){
   el.innerHTML = report.offenders.map(o => {
     const trait = TRAITS[o.trait] || TRAITS.ordinary;
     const why = o.hoard > 0 ? `hoarded ${o.hoard} manna` : o.trait === 'murmurer' ? 'murmuring against Moses' : 'refusing work';
-    const head = `<span><b style="color:${trait.color}">${o.name}</b> of ${o.tribe}<br><em>${why}</em></span>`;
+    const head = `<span>${tribeBadge(o.tribe, 18)} <b style="color:${trait.color}">${o.name}</b> of ${o.tribe}<br><em>${why}</em></span>`;
     if (o.resolved){
       return `<div class="report-offender">${head}<span class="report-result">${o.result}</span></div>`;
     }
@@ -3965,7 +4002,7 @@ function renderRaidDefense(){
     const disabled = !o.affordable;
     return `<button class="raid-card" style="--tribe:${o.t.color}" data-raid-tribe="${o.t.name}" ${disabled ? 'disabled' : ''} ` +
       `title="${disabled ? 'Not enough manna or water' : `Send ${o.t.name} to defend`}">` +
-      `<span class="raid-card-name">${o.t.name}</span>` +
+      `<span class="raid-card-name">${tribeBadge(o.t.name, 20)} ${o.t.name}</span>` +
       `<span class="raid-card-epithet">${o.t.epithet}</span>` +
       `<span class="raid-card-stats"><span class="raid-card-chance ${chanceClass(pct)}">${pct}%</span>` +
       `<span class="raid-card-cost">${o.manna} manna · ${o.water} water</span></span>` +
@@ -4183,21 +4220,24 @@ function renderRoleMuster(){
     const used = roleAllocationTotal(alloc);
     const row = state.tribeStats[t.name] || { population:t.population, unrest:0 };
     const unrest = Math.round(row.unrest || 0);
-    const steps = LABOR_ROLES.map(role => {
+    const cells = LABOR_ROLES.map(role => {
       const n = alloc[role.id] || 0;
-      return `<div class="role-step" title="${role.hint}">` +
-        `<span>${role.short}</span>` +
+      return `<div class="mini-cell" title="${role.label} — ${role.hint}">` +
+        `<span class="r-ico">${role.icon || role.short[0]}</span>` +
         `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="-1" ${n ? '' : 'disabled'} aria-label="Fewer ${role.label} crews for ${t.name}">−</button>` +
         `<b>${n}</b>` +
         `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="1" ${used >= cap ? 'disabled' : ''} aria-label="More ${role.label} crews for ${t.name}">+</button>` +
       `</div>`;
     }).join('');
     return `<div class="role-row">` +
-      `<div class="role-row-head"><i style="background:${t.color}"></i><b>${t.name}</b>` +
-        `<span class="role-unrest" style="color:${unrestColor(unrest)}">Unrest ${unrest}%</span>` +
-        `<span class="role-free">${used}/${cap} crews${used < cap ? ` · ${cap-used} free` : ''}</span>` +
+      `<div class="role-who">${tribeBadge(t.name)}` +
+        `<div class="role-name"><b>${t.name}</b>` +
+          `<i class="unrest-bar" style="--uc:${unrestColor(unrest)}"><u style="width:${unrest}%"></u></i>` +
+          `<span class="unrest-pct">${unrest}%</span>` +
+        `</div>` +
       `</div>` +
-      `<div class="role-steps">${steps}</div>` +
+      `<div class="role-mini">${cells}</div>` +
+      `<div class="role-count">${used}/${cap}</div>` +
     `</div>`;
   }).join('');
   $('roleHint').textContent = assigned < totalCap
@@ -4287,7 +4327,7 @@ function updateCampUI(){
     const tr = row.traits;
     const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
     return `<div class="camp-tribe-card">` +
-      `<div class="camp-tribe-head"><i style="background:${t.color}"></i><b>${t.name}</b><span>${st.population.toLocaleString()} souls</span></div>` +
+      `<div class="camp-tribe-head">${tribeBadge(t.name, 20)}<b>${t.name}</b><span>${st.population.toLocaleString()} souls</span></div>` +
       `<div class="camp-tribe-line">Flocks <b>${st.livestock.toLocaleString()}</b> · Represented <b>${row.rep}</b> · Sick <b>${row.sick}</b> · Hoarded <b>${row.hoard}</b> · Unrest <b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
       `<div class="camp-tribe-line">Work <b>${roleSummaryForTribe(t.name)}</b></div>` +
       `<div class="camp-tribe-traits">` +
