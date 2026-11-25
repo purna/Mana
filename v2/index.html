@@ -415,6 +415,10 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 }
 #campOverlay .sheet{padding-bottom:16px}
 
+.app-version{position:fixed;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);z-index:35;
+  font-family:Cinzel,serif;font-size:9px;letter-spacing:.12em;color:rgba(232,220,196,.42);
+  pointer-events:none;user-select:none;text-transform:uppercase}
+
 /* Scene vignette */
 #vignette{
   position:fixed;inset:0;z-index:5;pointer-events:none;
@@ -628,7 +632,8 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .trial-card em{font-size:10px;color:#9dbb74;font-style:normal;letter-spacing:.05em;text-transform:uppercase}
 .trial-panel{position:fixed;right:8px;top:calc(env(safe-area-inset-top,0px) + 104px);width:min(330px,calc(100vw - 16px));
   z-index:39;padding:10px 12px;border:1px solid rgba(232,184,74,.55);border-radius:10px;
-  background:linear-gradient(180deg,rgba(48,36,20,.97),rgba(28,20,11,.96));box-shadow:0 6px 20px #0007}
+  background:linear-gradient(180deg,rgba(48,36,20,.97),rgba(28,20,11,.96));box-shadow:0 6px 20px #0007;
+  pointer-events:auto}
 .trial-panel[hidden]{display:none}
 .trial-kicker{font-family:Cinzel,serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#e8b84a;margin-bottom:4px}
 .trial-panel b{color:#f2cc6b;font-family:Cinzel,serif}
@@ -733,6 +738,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <button id="btnSpeed" data-act="speed">×1</button>
   </div>
 
+  <div id="appVersion" class="app-version"></div>
   <div id="buildBanner" class="build-banner" hidden></div>
   <div id="swUpdate" class="sw-update" hidden><span>A new build of the wilderness is ready.</span><button id="swReload">Reload</button></div>
   <div id="raidBanner" class="raid-banner" hidden>Raiders at the perimeter!</div>
@@ -1977,6 +1983,9 @@ function buildDecor(){
 
 /* ------------------------------ state -------------------------------- */
 
+/* Bump APP_VERSION every time a new build ships; it shows bottom-left. */
+const APP_VERSION = '2.1.0';
+
 const state = {
   mode:'menu', day:1, hour:5.25, stationIndex:0, visited:new Set(),
   player:{ x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false },
@@ -2036,7 +2045,7 @@ function resetState(){
   $('trialPanel').hidden = true;
   state.trial = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   state.blueprints = [null, null, null]; state.raidLog = []; state.raidSeed = 1;
-  state.tribeRoles = seedTribeRoles(); state.roleDay = 0; state.leviBlessDay = 0;
+  state.tribeRoles = seedTribeRoles(); state.roleDay = 0; state.leviBlessDay = 0; state.judgesYear = 0; state.pendingJudges = false;
   state.worldSeed = state.sharedJourney?.seed || DEFAULT_WORLD_SEED;
   beginMonthTracking(); beginYearTracking();
   state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
@@ -2449,6 +2458,7 @@ function dawn(){
   }
   spawnManna();
   openDailyRoles();
+  if (state.judgesYear !== yearOfMonth()) state.pendingJudges = true;
 }
 
 function spawnManna(){
@@ -3078,6 +3088,7 @@ function resolveTribeDay(){
       if (hard >= assigned) delta += 1.0;
     }
     delta -= (row.goodwill || 0) * 0.12;
+    if (state.judgesYear === yearOfMonth()) delta -= 0.25;
     if (!state.campFed) delta += 1.1;
     if (state.campWater <= 0) delta += 1.4;
     if (state.faith < 50) delta += (50 - state.faith) / 32;
@@ -3223,6 +3234,11 @@ function update(dt){
   if (tentFires.length){
     const now = performance.now()/1000;
     tentFires = tentFires.filter(f => f.until > now);
+  }
+  if (state.pendingJudges && !state.trial && !raiders.length && !state.raidDefense){
+    state.pendingJudges = false;
+    openEvent('judges');
+    return;
   }
   const gameDt = dt * state.speed;
   addGameTime(gameDt * 24 / DAY_LENGTH);
@@ -4856,6 +4872,20 @@ const STORY_EVENTS = {
       { label:'Allow the calf (faith falls, rebellion grows)', action:'allowCalf', cls:'danger' }
     ]
   },
+  judges: {
+    kicker:'Exodus 18:13-26',
+    title:'Appoint Judges',
+    text:`The people stand before Moses from morning until evening. Jethro watches and counsels: the work is too heavy for one man. "Choose able men who fear God, trustworthy and hating a bribe, and place them over the people as rulers of thousands, of hundreds, of fifties and of tens. Let them judge the people at all seasons."`,
+    list:[
+      'Judges settle small disputes in every tribe, at every season.',
+      'With local justice, resentment cools and the camp keeps order all year.'
+    ],
+    choices:[
+      { label:'Rulers over thousands, hundreds, fifties and tens (unrest −8, faith +3)', action:'judgesTiers', cls:'primary' },
+      { label:'Wise men over thousands and hundreds only (unrest −5, faith +2)', action:'judgesSimple' },
+      { label:'Moses will judge alone for now (unrest +8, faith −4)', action:'judgesDecline', cls:'danger' }
+    ]
+  },
   moab: {
     kicker:'Deuteronomy 34 · Joshua 3',
     title:'Cross the Jordan',
@@ -4887,6 +4917,31 @@ function closeEvent(){
 }
 
 function handleEventAction(action){
+  if (action === 'judgesTiers' || action === 'judgesSimple' || action === 'judgesDecline'){
+    for (const t of TRIBES){
+      const row = state.tribeStats[t.name];
+      if (!row) continue;
+      if (action === 'judgesTiers') row.unrest = clamp((row.unrest || 0) - 8, 0, 100);
+      else if (action === 'judgesSimple') row.unrest = clamp((row.unrest || 0) - 5, 0, 100);
+      else row.unrest = clamp((row.unrest || 0) + 8, 0, 100);
+    }
+    if (action === 'judgesTiers'){
+      state.faith = clamp(state.faith + 3, 0, 100);
+      state.score += 30;
+      say(`Moses appoints rulers of thousands, hundreds, fifties and tens. The hard cases come to Moses; the rest are judged in the camps.`);
+    } else if (action === 'judgesSimple'){
+      state.faith = clamp(state.faith + 2, 0, 100);
+      state.score += 20;
+      say('Moses sets wise men over thousands and hundreds to judge the people.');
+    } else {
+      state.faith = clamp(state.faith - 4, 0, 100);
+      say('Moses keeps the judging to himself. The queues before his tent grow longer, and tempers shorter.');
+    }
+    state.judgesYear = yearOfMonth();
+    saveGame();
+    closeEvent();
+    return;
+  }
   if (action === 'strikeRock'){
     state.events.rock = true;
     state.campWater = 100;
@@ -5076,6 +5131,7 @@ function savePayload(){
     monthOffenders:state.monthOffenders,
     blueprints:state.blueprints, raidLog:state.raidLog, raidSeed:state.raidSeed,
     tribeRoles:state.tribeRoles, roleDay:state.roleDay, leviBlessDay:state.leviBlessDay,
+    judgesYear:state.judgesYear,
     haptics:state.haptics !== false, sfxOn:state.sfxOn !== false, reducedMotion:!!state.reducedMotion
   };
 }
@@ -5157,6 +5213,8 @@ function applySaveData(data){
   state.tribeRoles = normalizeTribeRoles(data.tribeRoles);
   state.roleDay = Number(data.roleDay) || 0;
   state.leviBlessDay = Number(data.leviBlessDay) || 0;
+  state.judgesYear = Number(data.judgesYear) || 0;
+  state.pendingJudges = false;
   state.events = { rock:false, law:false, calf:false, jordan:false, ...(data.events || {}) };
   state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
   state.visited = new Set(data.visited || []);
@@ -6886,6 +6944,9 @@ function frame(ts){
 }
 
 function boot(){
+  const vEl = $('appVersion');
+  if (vEl) vEl.textContent = `MANNA v${APP_VERSION}`;
+  console.info(`MANNA isometric v${APP_VERSION}`);
   resize();
   loadAppSettings();
   buildTerrain();
@@ -6953,6 +7014,11 @@ function boot(){
         if (reloading) return;
         reloading = true;
         swUpdateAccepted = true;
+        const box = $('swUpdate');
+        if (box){
+          box.hidden = true;
+          box.dataset.reloading = 'true';
+        }
         try { if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); } catch (_) {}
         setTimeout(() => location.reload(), 250);
       };
