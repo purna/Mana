@@ -565,21 +565,33 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .event-choices button.calm{border-color:#7fc4e888;color:#bfe8ff}
 .event-note{font-size:11px;color:#cbb894;margin:8px 0 0}
 
-/* ---------- daily work muster (compact CoC-style) ---------- */
-.roles-sheet{max-width:800px}
-.role-summary{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:6px 0 10px}
+/* ---------- daily work muster (CoC-style deployment) ---------- */
+.roles-sheet{max-width:840px}
+.role-summary{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:6px 0 8px}
 .role-summary span{border:1px solid rgba(232,184,74,.25);border-radius:999px;padding:3px 8px;font-size:10px;color:#cbb894;background:rgba(255,255,255,.03)}
 .role-summary b{color:#f2cc6b}
+.muster-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;padding:7px 10px;
+  border:1px solid rgba(232,184,74,.35);border-radius:9px;background:linear-gradient(180deg,rgba(242,204,107,.12),rgba(0,0,0,.18));
+  font-size:11px;color:#f2dfb4;text-align:center}
+.muster-banner[hidden]{display:none}
+.muster-banner b{color:#f7e8bf}
+.muster-banner button{padding:4px 9px;font-size:10px}
+.muster-banner button[data-paste-idle]{border-color:#9dbb7488;color:#c9e0a4}
+.need-chips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:0 0 10px}
+.need-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:#cbb894}
+.need-chip b{font-size:11px}
+.need-chip.met{border-color:#9dbb7455;color:#b9d18f}
+.need-chip.warn{border-color:#e0a24a66;color:#e8c48f}
+.need-chip.short{border-color:#e0584a77;color:#ffab9e;background:rgba(224,88,74,.08)}
 .roles-table{display:grid;gap:5px;text-align:left}
-.role-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border:1px solid rgba(232,184,74,.2);border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.14))}
-.role-who{display:flex;align-items:center;gap:8px;width:150px;flex:none}
+.role-row{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid rgba(232,184,74,.2);border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.14))}
+.role-row.copy-src{border-color:#f2cc6b88;background:linear-gradient(180deg,rgba(242,204,107,.1),rgba(0,0,0,.14))}
+.role-who{display:flex;align-items:center;gap:8px;width:132px;flex:none}
 .tribe-badge{width:34px;height:38px;flex:none;display:grid;place-items:center;
   background:linear-gradient(180deg,var(--tc,#c9a45e),color-mix(in srgb,var(--tc,#c9a45e) 55%,#241708));
   clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);
   filter:saturate(.9);box-shadow:inset 0 0 0 1.5px rgba(255,244,210,.55)}
 .tribe-badge svg{width:66%;height:62%;display:block}
-.mini-cell .r-ico{width:15px;height:15px;display:grid;place-items:center}
-.mini-cell .r-ico svg{width:11px;height:11px;display:block}
 .tribe-badge .r-ico{display:contents}
 .icon-btn svg{width:20px;height:20px;display:block}
 @media (max-width:560px){
@@ -590,23 +602,42 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .unrest-bar{display:block;width:64px;height:5px;border-radius:3px;background:#0007;border:1px solid #ffffff14;overflow:hidden;margin-top:2px}
 .unrest-bar u{display:block;height:100%;background:var(--uc,#9dbb74);border-radius:3px}
 .unrest-pct{font-size:8.5px;color:#a8916a;margin-left:3px}
-.role-mini{display:flex;gap:4px;flex:1;justify-content:flex-end;flex-wrap:wrap}
-.mini-cell{display:flex;align-items:center;gap:2px;padding:2px 3px;border:1px solid rgba(232,184,74,.15);border-radius:7px;background:rgba(0,0,0,.2);min-width:82px;justify-content:center}
-.role-header{border-color:transparent;background:none;padding:0 8px 2px}
-.role-header .mini-head{display:flex;align-items:center;gap:4px;justify-content:center;min-width:82px;font-size:10px;color:#cbb894}
-.role-header .mini-head svg{width:11px;height:11px}
-.role-header .role-count{font-size:9.5px}
+.deploy{display:flex;align-items:center;gap:6px;width:118px;flex:none}
+.deploy-slider{flex:1;min-width:0;height:14px;accent-color:#f2cc6b;cursor:pointer;margin:0}
+.deploy-slider:disabled{opacity:.35;cursor:default}
+.deploy-pct{flex:none;min-width:32px;text-align:right;font-size:11px;color:#f2cc6b;font-weight:700}
+.role-mini{display:flex;gap:5px;flex:1;justify-content:flex-end;flex-wrap:wrap}
+.unit-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 5px 5px;border:1px solid rgba(232,184,74,.18);border-radius:9px;background:rgba(0,0,0,.24);min-width:62px}
+.unit-cell .u-ico{width:18px;height:18px;display:grid;place-items:center}
+.unit-cell .u-ico svg{width:14px;height:14px;display:block}
+.unit-cell .u-count{font-size:14px;line-height:1;color:#f7e8bf;min-height:14px}
+.unit-cell .u-btns{display:flex;gap:3px}
+.unit-cell .u-add{width:30px;height:24px;padding:0;border-radius:6px;font-size:15px;line-height:1;font-weight:700;
+  border-color:#f2cc6b;color:#1b1206;background:linear-gradient(180deg,#f7dc93,#d8a83f)}
+.unit-cell .u-add:hover:not(:disabled){filter:brightness(1.12)}
+.unit-cell .u-add:disabled{opacity:.25;cursor:default}
+.unit-cell .u-sub{width:20px;height:24px;padding:0;border-radius:6px;font-size:13px;line-height:1}
+.unit-cell .u-sub:disabled{opacity:.22;cursor:default}
+.unit-cell.locked{opacity:.6;background:rgba(0,0,0,.32)}
+.unit-cell.locked .u-lock{font-size:9px;color:#a8916a;letter-spacing:.02em}
+.unit-cell.locked small{font-size:8.5px;color:#a8916a;text-transform:uppercase;letter-spacing:.05em}
+.role-header{border-color:transparent;background:none;padding:0 9px 2px}
 .role-header .head-tribe{font-size:9.5px;color:#a8916a;letter-spacing:.06em;text-transform:uppercase}
-.mini-cell .r-ico{width:15px;text-align:center;font-size:11px}
-.mini-cell button{width:17px;height:19px;padding:0;border-radius:4px;font-size:12px;line-height:1;display:grid;place-items:center}
-.mini-cell button:disabled{opacity:.22;cursor:default}
-.mini-cell b{min-width:11px;text-align:center;font-size:11.5px;color:#f7e8bf}
-.role-count{flex:none;font-size:10px;color:#a8916a;text-align:right;min-width:32px}
+.role-header .mini-head{display:flex;align-items:center;gap:4px;justify-content:center;min-width:62px;font-size:10px;color:#cbb894}
+.role-header .mini-head svg{width:11px;height:11px}
+.role-actions{flex:none;width:64px;display:flex;justify-content:flex-end;align-items:center}
+.copy-btn{width:30px;height:26px;padding:0;font-size:13px;border-radius:7px}
+.copy-btn:hover{border-color:#f2cc6b99;color:#f7e8bf}
+.paste-btn{padding:5px 9px;font-size:10px;border-color:#9dbb7488;color:#c9e0a4;font-weight:700}
+.paste-btn:hover{background:rgba(157,187,116,.14)}
+.copy-chip{font-size:9px;color:#f2cc6b;letter-spacing:.08em;text-transform:uppercase}
 .role-preview{font-size:10px;color:#a8916a;line-height:1.35;margin:5px 0 0;text-align:center}
-@media (max-width:560px){
+@media (max-width:640px){
   .role-row{flex-wrap:wrap}
   .role-who{width:auto;flex:1}
-  .role-mini{justify-content:flex-start;width:100%}
+  .deploy{width:auto;flex:1 1 100%;order:3}
+  .role-mini{justify-content:flex-start;width:100%;order:4}
+  .role-actions{order:2}
 }
 
 /* ---------- settings ---------- *//* ---------- settings ---------- */
@@ -958,8 +989,10 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div class="sheet wide roles-sheet">
     <div class="kicker" id="rolesKicker">Morning muster</div>
     <h2>Assign the tribes</h2>
-    <p id="rolesIntro" style="color:var(--dim)">Assign each tribe's crews. Idle or overworked tribes grow resentful.</p>
+    <p id="rolesIntro" style="color:var(--dim)">Slide each tribe's crews to work, then tap the big buttons to set their task.</p>
+    <div id="musterBanner" class="muster-banner" hidden></div>
     <div id="roleSummary" class="role-summary"></div>
+    <div id="roleNeeds" class="need-chips"></div>
     <div id="roleTable" class="roles-table"></div>
     <p id="roleHint" class="role-preview"></p>
     <div class="share-row">
@@ -1416,6 +1449,89 @@ function tribeCrewCap(name){
   return Math.max(1, Math.min(3, Math.round(tribe.population / 28000)));
 }
 
+// Levi is set apart for service at the tabernacle and was excluded from the
+// military census (Numbers 1:47-49); its crews can never stand guard.
+function canAssignRole(tribeName, roleId){
+  if (tribeName === 'Levi' && roleId === 'watch') return false;
+  return true;
+}
+
+function musterDayInfo(){
+  const day = state.day % 7;
+  return { day, sabbath: day === 0, sixth: day === 6 };
+}
+
+// What the camp needs this day, translated into crews. Food dominates: on the
+// sixth day the Sabbath table is set from a double gather; on the Sabbath no
+// manna falls at all.
+function musterNeeds(){
+  const { sabbath, sixth } = musterDayInfo();
+  const mult = sabbath ? 0 : (sixth ? 2 : 1);
+  let quota = dailyQuota();
+  if (sixth) quota *= 2;
+  if (sabbath) quota = Math.max(2, Math.round(dailyQuota()*0.6));
+  const totals = laborTotals();
+  const yields = laborYields(totals);
+  const needs = [];
+  const foodShort = Math.max(0, quota - state.manna);
+  const mannaCrews = (foodShort > 0 && mult > 0) ? Math.ceil(foodShort*3/mult) : 0;
+  needs.push({
+    id:'manna', label: sabbath ? 'Sabbath' : (sixth ? 'Sabbath table ×2' : 'Food'),
+    text: sabbath ? 'no manna falls today'
+      : foodShort > 0 ? `${foodShort} manna short of tonight's table`
+      : 'the table is set',
+    crews: mannaCrews,
+    met: sabbath || foodShort === 0 || yields.manna >= foodShort,
+    urgent: foodShort > 0 && !sabbath
+  });
+  const waterShort = Math.max(0, dailyWaterNeed() - state.campWater);
+  needs.push({
+    id:'water', label:'Water',
+    text: waterShort > 0 ? `${waterShort} water short` : 'the wells are full',
+    crews: waterShort > 0 ? waterShort*2 : 0,
+    met: waterShort === 0 || yields.water >= waterShort,
+    urgent: waterShort > 0
+  });
+  const woodLow = state.wood < 8;
+  needs.push({
+    id:'wood', label:'Wood',
+    text: woodLow ? `wood pile low (${state.wood})` : 'the wood pile is ample',
+    crews: woodLow ? 3 : 0,
+    met: !woodLow || yields.wood >= 2,
+    urgent: woodLow
+  });
+  const raidRecent = (state.raidLog || []).some(r => state.day - (r.day || 0) <= 10);
+  needs.push({
+    id:'watch', label:'Watch',
+    text: raidRecent ? 'raiders prowl the camp' : 'no raids of late',
+    crews: raidRecent ? 2 : 0,
+    met: !raidRecent || yields.watch >= 2,
+    urgent: raidRecent
+  });
+  const avgUnrest = TRIBES.reduce((s,t) => s + Math.round(state.tribeStats?.[t.name]?.unrest || 0), 0) / TRIBES.length;
+  const campCrews = avgUnrest >= 35 ? Math.ceil(avgUnrest/18) : 0;
+  needs.push({
+    id:'camp', label:'Order',
+    text: avgUnrest >= 35 ? `the camp grumbles (${Math.round(avgUnrest)}% unrest)` : 'the camp is calm',
+    crews: campCrews,
+    met: avgUnrest < 35 || totals.camp >= campCrews,
+    urgent: avgUnrest >= 35
+  });
+  return needs;
+}
+
+// Where an idle tribe's crews should go first, given today's needs.
+function musterPriority(tribeName){
+  const { sabbath } = musterDayInfo();
+  if (sabbath) return 'camp';
+  for (const need of musterNeeds()){
+    if (need.urgent && !need.met && canAssignRole(tribeName, need.id)) return need.id;
+  }
+  const unrest = Math.round(state.tribeStats?.[tribeName]?.unrest || 0);
+  if (unrest >= 50) return 'camp';
+  return 'manna';
+}
+
 function emptyTribeRoles(){
   const out = {};
   for (const t of TRIBES) out[t.name] = { manna:0, water:0, wood:0, camp:0, watch:0 };
@@ -1434,6 +1550,7 @@ function normalizeTribeRoles(roles){
     const cap = tribeCrewCap(t.name);
     let used = 0;
     for (const role of LABOR_ROLES){
+      if (!canAssignRole(t.name, role.id)){ out[t.name][role.id] = 0; continue; }
       const n = Math.max(0, Math.min(cap - used, Math.floor(Number(src[role.id]) || 0)));
       out[t.name][role.id] = n;
       used += n;
@@ -1464,8 +1581,12 @@ function laborTotals(roles = state.tribeRoles || {}){
 }
 
 function laborYields(totals = laborTotals()){
+  const { sabbath, sixth } = musterDayInfo();
+  // Manna crews gather double on the sixth day to set the Sabbath table, and
+  // gather nothing on the Sabbath itself — no manna falls.
+  const manna = sabbath ? 0 : Math.round(totals.manna * (sixth ? 2 : 1) / 3);
   return {
-    manna: Math.round(totals.manna / 3),
+    manna,
     water: Math.round(totals.water / 2),
     wood: Math.round(totals.wood / 3),
     faith: Math.min(3, totals.camp / 8),
@@ -4342,24 +4463,41 @@ function unrestColor(u){
   return '#9dbb74';
 }
 
+let musterCopyFrom = null;
+
 function renderRoleMuster(){
   const totals = laborTotals();
   const yields = laborYields(totals);
+  const { sabbath, sixth } = musterDayInfo();
   const totalCap = TRIBES.reduce((sum, t) => sum + tribeCrewCap(t.name), 0);
   const assigned = LABOR_ROLES.reduce((sum, role) => sum + totals[role.id], 0);
+  const needs = musterNeeds();
   $('rolesKicker').textContent = `Year ${yearOfMonth()} · Month ${monthName()} · Day ${dayOfMonth()} · morning muster`;
+  $('musterBanner').hidden = !sabbath && !sixth && !musterCopyFrom;
+  $('musterBanner').innerHTML = musterCopyFrom
+    ? `<span>Copying <b>${musterCopyFrom}</b>'s plan — tap Paste on another tribe</span>` +
+      `<button data-paste-idle>Paste onto idle tribes</button><button data-copy-cancel>Done</button>`
+    : sabbath
+      ? `<span>The Sabbath — no manna falls today. Set crews to keep order and guard the camp.</span>`
+      : sixth
+        ? `<span>The sixth day — double manna falls tonight. Set twice the gatherers for the Sabbath table.</span>`
+        : '';
   $('roleSummary').innerHTML =
     `<span>Crews <b>${assigned}/${totalCap}</b></span>` +
-    `<span>Manna <b>+${yields.manna}</b></span>` +
+    `<span>Manna <b>${sabbath ? '—' : `+${yields.manna}`}</b></span>` +
     `<span>Water <b>+${yields.water}</b></span>` +
     `<span>Wood <b>+${yields.wood}</b></span>` +
     `<span>Faith <b>+${yields.faith.toFixed(1)}</b></span>` +
     `<span>Watch <b>${yields.watch}</b></span>`;
+  $('roleNeeds').innerHTML = needs.map(n =>
+    `<span class="need-chip ${n.met ? 'met' : n.urgent ? 'short' : 'warn'}" title="${n.text}">${n.label} · ${n.text}` +
+    (!n.met && n.crews && !sabbath ? ` — set <b>${n.crews}</b> crews` : '') + `</span>`).join('');
   const head = `<div class="role-row role-header">` +
     `<div class="role-who"><span class="head-tribe">Tribe</span></div>` +
+    `<div class="deploy"><span class="head-tribe">Deploy</span></div>` +
     `<div class="role-mini">${LABOR_ROLES.map(role =>
       `<span class="mini-head" title="${role.hint}">${role.icon}${role.short}</span>`).join('')}</div>` +
-    `<div class="role-count">Crews</div>` +
+    `<div class="role-actions"></div>` +
   `</div>`;
   $('roleTable').innerHTML = head + TRIBES.map(t => {
     const cap = tribeCrewCap(t.name);
@@ -4369,33 +4507,57 @@ function renderRoleMuster(){
     const unrest = Math.round(row.unrest || 0);
     const cells = LABOR_ROLES.map(role => {
       const n = alloc[role.id] || 0;
-      return `<div class="mini-cell" title="${role.label} — ${role.hint}">` +
-        `<span class="r-ico">${role.icon}</span>` +
-        `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="-1" ${n ? '' : 'disabled'} aria-label="Fewer ${role.label} crews for ${t.name}">−</button>` +
-        `<b>${n}</b>` +
-        `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="1" ${used >= cap ? 'disabled' : ''} aria-label="More ${role.label} crews for ${t.name}">+</button>` +
-      `</div>`;
+      if (!canAssignRole(t.name, role.id)){
+        return `<div class="unit-cell locked" title="Levi is set apart for service at the tabernacle and was excluded from the military census (Numbers 1:47-49). Its crews do not stand guard.">` +
+          `<span class="u-ico">${role.icon}</span>` +
+          `<span class="u-lock">✕</span>` +
+          `<small>set apart</small></div>`;
+      }
+      const mannaRest = sabbath && role.id === 'manna';
+      const canAdd = used < cap && !mannaRest;
+      const addTitle = mannaRest ? 'No manna falls on the Sabbath' : `Add ${role.label} crew`;
+      return `<div class="unit-cell" title="${role.label} — ${role.hint}">` +
+        `<span class="u-ico">${role.icon}</span>` +
+        `<b class="u-count">${n}</b>` +
+        `<div class="u-btns">` +
+          `<button class="u-sub" data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="-1" ${n ? '' : 'disabled'} aria-label="Fewer ${role.label} crews for ${t.name}">−</button>` +
+          `<button class="u-add" data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="1" ${canAdd ? '' : 'disabled'} title="${addTitle}" aria-label="More ${role.label} crews for ${t.name}">+</button>` +
+        `</div></div>`;
     }).join('');
-    return `<div class="role-row">` +
+    const isSource = musterCopyFrom === t.name;
+    const actions = isSource
+      ? `<span class="copy-chip">source</span>`
+      : musterCopyFrom
+        ? `<button class="paste-btn" data-paste-tribe="${t.name}" title="Copy ${musterCopyFrom}'s plan onto ${t.name}">Paste</button>`
+        : `<button class="copy-btn" data-copy-tribe="${t.name}" title="Copy ${t.name}'s plan to another tribe" aria-label="Copy ${t.name}'s plan">⧉</button>`;
+    return `<div class="role-row${isSource ? ' copy-src' : ''}">` +
       `<div class="role-who">${tribeBadge(t.name)}` +
         `<div class="role-name"><b>${t.name}</b>` +
           `<i class="unrest-bar" style="--uc:${unrestColor(unrest)}"><u style="width:${unrest}%"></u></i>` +
           `<span class="unrest-pct">${unrest}%</span>` +
         `</div>` +
       `</div>` +
+      `<div class="deploy">` +
+        `<input class="deploy-slider" type="range" min="0" max="${cap}" step="1" value="${used}" data-deploy-tribe="${t.name}" aria-label="Crews deployed by ${t.name}" ${musterCopyFrom ? 'disabled' : ''}>` +
+        `<span class="deploy-pct">${Math.round(used/cap*100)}%</span>` +
+      `</div>` +
       `<div class="role-mini">${cells}</div>` +
-      `<div class="role-count">${used}/${cap}</div>` +
+      `<div class="role-actions">${actions}</div>` +
     `</div>`;
   }).join('');
-  $('roleHint').textContent = assigned < totalCap
-    ? `No crews are assigned yet. Idle tribes grow resentful; camp crews calm unrest and watch crews improve raid defense.`
-    : 'All crews are assigned. Hard labour without camp or watch crews slowly breeds resentment.';
+  const idle = totalCap - assigned;
+  $('roleHint').textContent = musterCopyFrom
+    ? `Tap Paste on a tribe to stamp ${musterCopyFrom}'s plan onto it, or paste onto all idle tribes at once.`
+    : idle > 0
+      ? `${idle} crews stand idle. Idle tribes grow resentful; camp crews calm unrest and watch crews improve raid defense.`
+      : 'All crews are assigned. Hard labour without camp or watch crews slowly breeds resentment.';
 }
 
 function openDailyRoles(force = false){
   if (state.trial) return;
   if (!force && state.roleDay === state.day) return;
   if (state.roleDay !== state.day) state.tribeRoles = emptyTribeRoles();
+  musterCopyFrom = null;
   state.rolesReturn = state.mode === 'camp' ? 'camp' : 'playing';
   state.mode = 'roles';
   state.raidDefense = null;
@@ -4407,6 +4569,7 @@ function openDailyRoles(force = false){
 
 function confirmDailyRoles(){
   state.roleDay = state.day;
+  musterCopyFrom = null;
   $('rolesOverlay').classList.remove('open');
   state.mode = state.rolesReturn === 'camp' ? 'camp' : 'playing';
   if (state.mode === 'camp'){ updateCampUI(); }
@@ -4420,12 +4583,81 @@ function confirmDailyRoles(){
 function adjustRole(tribeName, roleKey, delta){
   const alloc = state.tribeRoles[tribeName];
   if (!alloc) return;
+  if (delta > 0 && !canAssignRole(tribeName, roleKey)) return;
   const cap = tribeCrewCap(tribeName);
   const used = roleAllocationTotal(alloc);
   if (delta > 0 && used >= cap) return;
   alloc[roleKey] = Math.max(0, (alloc[roleKey] || 0) + delta);
   renderRoleMuster();
   playSfx('click', 0.15);
+}
+
+// The deploy slider: set how many of a tribe's crews take up work, keeping
+// their current mix of tasks. A tribe with no plan yet is pointed at today's
+// greatest need.
+function setTribeDeploy(tribeName, target){
+  const alloc = state.tribeRoles[tribeName];
+  if (!alloc) return;
+  const cap = tribeCrewCap(tribeName);
+  target = Math.max(0, Math.min(cap, Math.round(Number(target) || 0)));
+  const used = roleAllocationTotal(alloc);
+  if (used === target) return;
+  if (target === 0){
+    for (const role of LABOR_ROLES) alloc[role.id] = 0;
+  } else if (used === 0){
+    for (const role of LABOR_ROLES) alloc[role.id] = 0;
+    alloc[musterPriority(tribeName)] = target;
+  } else if (target < used){
+    // Scale down: take from the largest crews first, keep the mix.
+    const order = LABOR_ROLES.map(r => r.id)
+      .filter(id => canAssignRole(tribeName, id))
+      .sort((a,b) => (alloc[b]||0) - (alloc[a]||0));
+    let remaining = target;
+    for (const id of order){
+      alloc[id] = Math.min(alloc[id] || 0, remaining);
+      remaining -= alloc[id];
+    }
+  } else {
+    // Scale up: grow proportionally, then fill the remainder into priority.
+    const order = LABOR_ROLES.map(r => r.id)
+      .filter(id => canAssignRole(tribeName, id))
+      .sort((a,b) => (alloc[b]||0) - (alloc[a]||0));
+    let remaining = target - used;
+    for (const id of order){
+      const add = Math.min(remaining, Math.max(1, Math.round((alloc[id]||0)/used*(target-used))));
+      alloc[id] = (alloc[id] || 0) + add;
+      remaining -= add;
+    }
+    const priority = musterPriority(tribeName);
+    while (remaining > 0 && canAssignRole(tribeName, priority)){
+      alloc[priority]++; remaining--;
+    }
+    for (const id of order){
+      if (remaining <= 0) break;
+      alloc[id]++; remaining--;
+    }
+  }
+  renderRoleMuster();
+  playSfx('click', 0.12);
+}
+
+// Stamp one tribe's plan onto another, clamped to the target's crew cap and
+// Levi's census exemption.
+function pasteMusterPlan(targetName, sourceName = musterCopyFrom){
+  const src = state.tribeRoles[sourceName];
+  const alloc = state.tribeRoles[targetName];
+  if (!src || !alloc) return;
+  const cap = tribeCrewCap(targetName);
+  let used = 0;
+  for (const role of LABOR_ROLES){
+    let n = Number(src[role.id]) || 0;
+    if (!canAssignRole(targetName, role.id)) n = 0;
+    n = Math.min(n, cap - used);
+    alloc[role.id] = n;
+    used += n;
+  }
+  renderRoleMuster();
+  playSfx('click', 0.2);
 }
 
 function updateCampUI(){
@@ -6861,8 +7093,50 @@ $('setImport').addEventListener('click', () => $('saveImport').click());
 $('campRoles').addEventListener('click', () => openDailyRoles(true));
 $('roleTable').addEventListener('click', e => {
   const btn = e.target.closest('[data-role-tribe]');
-  if (!btn) return;
-  adjustRole(btn.dataset.roleTribe, btn.dataset.roleKey, Number(btn.dataset.roleDelta));
+  if (btn){
+    adjustRole(btn.dataset.roleTribe, btn.dataset.roleKey, Number(btn.dataset.roleDelta));
+    return;
+  }
+  const copyBtn = e.target.closest('[data-copy-tribe]');
+  if (copyBtn){
+    musterCopyFrom = copyBtn.dataset.copyTribe;
+    renderRoleMuster();
+    playSfx('click', 0.15);
+    return;
+  }
+  const pasteBtn = e.target.closest('[data-paste-tribe]');
+  if (pasteBtn && musterCopyFrom){
+    pasteMusterPlan(pasteBtn.dataset.pasteTribe);
+    musterCopyFrom = null;
+    renderRoleMuster();
+    return;
+  }
+  if (e.target.closest('[data-paste-idle]') && musterCopyFrom){
+    for (const t of TRIBES){
+      if (t.name !== musterCopyFrom && !roleAllocationTotal(state.tribeRoles[t.name])){
+        pasteMusterPlan(t.name);
+      }
+    }
+    musterCopyFrom = null;
+    renderRoleMuster();
+    return;
+  }
+  if (e.target.closest('[data-copy-cancel]')){
+    musterCopyFrom = null;
+    renderRoleMuster();
+  }
+});
+$('roleTable').addEventListener('input', e => {
+  const slider = e.target.closest('[data-deploy-tribe]');
+  if (!slider) return;
+  const cap = tribeCrewCap(slider.dataset.deployTribe);
+  const pct = slider.parentElement.querySelector('.deploy-pct');
+  if (pct) pct.textContent = `${Math.round(slider.value/cap*100)}%`;
+});
+$('roleTable').addEventListener('change', e => {
+  const slider = e.target.closest('[data-deploy-tribe]');
+  if (!slider || musterCopyFrom) return;
+  setTribeDeploy(slider.dataset.deployTribe, slider.value);
 });
 $('rolesConfirm').addEventListener('click', confirmDailyRoles);
 $('mapClose').addEventListener('click', closeMap);
