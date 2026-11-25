@@ -290,6 +290,11 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .tribe-conditions .bad b{color:#ff9c8c}
 .tribe-growth{font-size:10.5px;line-height:1.45;color:#a8916a;margin:0 0 11px}
 .tribe-growth b{color:#e8b84a;font-weight:600}
+.aid-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 11px}
+.aid-list button{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:8px 9px;font-size:11.5px}
+.aid-list button small{font-size:9px;color:#a8916a;line-height:1.3}
+.aid-list button:disabled{opacity:.45;cursor:default}
+@media (max-width:560px){.aid-list{grid-template-columns:1fr}}
 .tribe-report h4{font-family:Cinzel,serif;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#e8b84a;margin:0 0 5px}
 .tribe-people{display:grid;gap:4px;margin-bottom:10px}
 .tribe-person{
@@ -367,12 +372,14 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 }
 .build-banner b{color:#f2cc6b;font-family:Cinzel,serif}
 .sw-update{
-  position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);
-  z-index:60;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(48,36,20,.98),rgba(28,20,11,.96));
-  border:1px solid #e8b84a;border-radius:9px;padding:8px 12px;font-size:11.5px;color:#f7e8bf;
-  box-shadow:0 6px 18px #0009;max-width:calc(100vw - 20px)
+  position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);
+  z-index:60;display:flex;align-items:center;justify-content:center;gap:12px;
+  background:linear-gradient(180deg,rgba(38,29,16,.97),rgba(24,18,10,.94));
+  border:1px solid rgba(224,173,79,.5);border-radius:14px;padding:8px 14px;font-size:11.5px;color:#f7e8bf;
+  box-shadow:0 12px 34px #0008, inset 0 1px rgba(255,242,196,.12);
+  max-width:calc(100vw - 20px);pointer-events:auto
 }
-.sw-update button{padding:6px 12px;font-size:11px}
+.sw-update button{padding:9px 16px;font-size:11.5px;pointer-events:auto}
 .raid-banner{
   position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 142px);transform:translateX(-50%);
   z-index:40;pointer-events:none;background:rgba(120,24,18,.94);border:1px solid #ff8a6a;
@@ -555,24 +562,37 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .event-note{font-size:11px;color:#cbb894;margin:8px 0 0}
 
 /* ---------- daily work muster (compact CoC-style) ---------- */
-.roles-sheet{max-width:720px}
+.roles-sheet{max-width:800px}
 .role-summary{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:6px 0 10px}
 .role-summary span{border:1px solid rgba(232,184,74,.25);border-radius:999px;padding:3px 8px;font-size:10px;color:#cbb894;background:rgba(255,255,255,.03)}
 .role-summary b{color:#f2cc6b}
 .roles-table{display:grid;gap:5px;text-align:left}
 .role-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border:1px solid rgba(232,184,74,.2);border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.14))}
-.role-who{display:flex;align-items:center;gap:8px;width:158px;flex:none}
-.tribe-badge{width:34px;height:38px;flex:none;display:grid;place-items:center;font-size:17px;line-height:1;
+.role-who{display:flex;align-items:center;gap:8px;width:150px;flex:none}
+.tribe-badge{width:34px;height:38px;flex:none;display:grid;place-items:center;
   background:linear-gradient(180deg,var(--tc,#c9a45e),color-mix(in srgb,var(--tc,#c9a45e) 55%,#241708));
   clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);
   filter:saturate(.9);box-shadow:inset 0 0 0 1.5px rgba(255,244,210,.55)}
+.tribe-badge svg{width:66%;height:62%;display:block}
+.mini-cell .r-ico{width:15px;height:15px;display:grid;place-items:center}
+.mini-cell .r-ico svg{width:11px;height:11px;display:block}
+.tribe-badge .r-ico{display:contents}
+.icon-btn svg{width:20px;height:20px;display:block}
+@media (max-width:560px){
+  .icon-btn svg{width:16px;height:16px}
+}
 .role-name{min-width:0}
 .role-name b{display:block;font-family:Cinzel,serif;font-size:12.5px;color:#f7e8bf;letter-spacing:.03em;white-space:nowrap}
 .unrest-bar{display:block;width:64px;height:5px;border-radius:3px;background:#0007;border:1px solid #ffffff14;overflow:hidden;margin-top:2px}
 .unrest-bar u{display:block;height:100%;background:var(--uc,#9dbb74);border-radius:3px}
 .unrest-pct{font-size:8.5px;color:#a8916a;margin-left:3px}
 .role-mini{display:flex;gap:4px;flex:1;justify-content:flex-end;flex-wrap:wrap}
-.mini-cell{display:flex;align-items:center;gap:2px;padding:2px 3px;border:1px solid rgba(232,184,74,.15);border-radius:7px;background:rgba(0,0,0,.2)}
+.mini-cell{display:flex;align-items:center;gap:2px;padding:2px 3px;border:1px solid rgba(232,184,74,.15);border-radius:7px;background:rgba(0,0,0,.2);min-width:82px;justify-content:center}
+.role-header{border-color:transparent;background:none;padding:0 8px 2px}
+.role-header .mini-head{display:flex;align-items:center;gap:4px;justify-content:center;min-width:82px;font-size:10px;color:#cbb894}
+.role-header .mini-head svg{width:11px;height:11px}
+.role-header .role-count{font-size:9.5px}
+.role-header .head-tribe{font-size:9.5px;color:#a8916a;letter-spacing:.06em;text-transform:uppercase}
 .mini-cell .r-ico{width:15px;text-align:center;font-size:11px}
 .mini-cell button{width:17px;height:19px;padding:0;border-radius:4px;font-size:12px;line-height:1;display:grid;place-items:center}
 .mini-cell button:disabled{opacity:.22;cursor:default}
@@ -737,10 +757,10 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   </div>
 
   <div class="controls-top-right" id="topBtns">
-    <button class="icon-btn" id="btnPause" title="Pause (Esc)" aria-label="Pause">❚❚</button>
-    <button class="icon-btn" id="btnMap" title="Wilderness Map (M)" aria-label="Wilderness map">▤</button>
-    <button class="icon-btn" id="btnMute" title="Toggle audio" aria-label="Toggle audio">🔊</button>
-    <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
+    <button class="icon-btn" id="btnPause" title="Pause (Esc)" aria-label="Pause"></button>
+    <button class="icon-btn" id="btnMap" title="Wilderness Map (M)" aria-label="Wilderness map"></button>
+    <button class="icon-btn" id="btnMute" title="Toggle audio" aria-label="Toggle audio"></button>
+    <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings"></button>
     <button class="icon-btn" id="btnAbout" title="About" aria-label="About">i</button>
   </div>
 </div>
@@ -937,7 +957,6 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div id="roleTable" class="roles-table"></div>
     <p id="roleHint" class="role-preview"></p>
     <div class="share-row">
-      <button id="rolesAuto">Balance all crews</button>
       <button class="primary" id="rolesConfirm">Begin the day</button>
     </div>
   </div>
@@ -1219,33 +1238,94 @@ const TRIBE_MARTIAL = {
   Zebulun:0.84, Levi:0.80
 };
 
+const SVG = (inner, vb = '0 0 24 24') => `<svg viewBox="${vb}" aria-hidden="true">${inner}</svg>`;
+const IK = '#2b1a0c', IC = '#f7e8bf', IG = '#f2cc6b', IW = '#7fc4e8', IO = '#c99a5a', IR = '#e0584a';
+
+/* Traditional tribe motifs, drawn as simple geometric SVG. */
 const TRIBE_EMBLEMS = {
-  Reuben:   { icon:'🌅', motif:'Rising sun / mandrake' },
-  Simeon:   { icon:'🏰', motif:'Walls of Shechem' },
-  Levi:     { icon:'🛡️', motif:'Priestly breastplate' },
-  Judah:    { icon:'🦁', motif:'Lion' },
-  Dan:      { icon:'⚖️', motif:'Scales of justice' },
-  Naphtali: { icon:'🦌', motif:'Hind let loose' },
-  Gad:      { icon:'⛺', motif:'Military camp' },
-  Asher:    { icon:'🫒', motif:'Olive tree' },
-  Issachar: { icon:'🐴', motif:'Bearing burdens' },
-  Zebulun:  { icon:'⛵', motif:'Haven of ships' },
-  Joseph:   { icon:'🌾', motif:'Fruitful bough' },
-  Benjamin: { icon:'🐺', motif:'Ravenous wolf' }
+  Reuben: { motif:'Rising sun / mandrake', svg:
+    `<circle cx="12" cy="14" r="5" fill="${IG}"/>` +
+    `<path d="M12 4v3M4.5 8.5l2 2M19.5 8.5l-2 2M2.5 14h3M18.5 14h3" stroke="${IC}" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<path d="M2 17h20v3H2z" fill="${IO}"/>` },
+  Simeon: { motif:'Walls of Shechem', svg:
+    `<path d="M5 21V8h3V5h2.5v3h3V5H16v3h3v13z" fill="${IC}"/>` +
+    `<path d="M10 21v-5h4v5z" fill="${IK}"/>` +
+    `<path d="M7 11h2v2H7zM15 11h2v2h-2z" fill="${IG}"/>` },
+  Levi: { motif:'Priestly breastplate', svg:
+    `<rect x="4" y="4" width="16" height="16" rx="2.5" fill="${IC}" stroke="${IK}" stroke-width="1.4"/>` +
+    `<path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16" stroke="${IK}" stroke-width="1"/>` +
+    `<rect x="10" y="6.1" width="4" height="4.2" fill="${IG}"/><rect x="5" y="11.4" width="4.3" height="4.2" fill="${IR}"/><rect x="15" y="11.4" width="4" height="4.2" fill="${IW}"/>` },
+  Judah: { motif:'Lion', svg:
+    `<path d="M12 2l1.8 3.2L17.5 4l-.6 3.6L21 9l-2.6 2.7L21 15l-3.9 1.2.4 3.7-3.7-1L12 22l-1.8-3.1-3.7 1 .4-3.7L3 15l2.6-3.3L3 9l3.9-1.4L6.3 4l3.9 1.2z" fill="${IG}"/>` +
+    `<circle cx="12" cy="12.5" r="5.6" fill="${IC}"/>` +
+    `<circle cx="10" cy="11" r="1" fill="${IK}"/><circle cx="14" cy="11" r="1" fill="${IK}"/>` +
+    `<path d="M12 13.5l1.4 2.2h-2.8z" fill="${IK}"/>` },
+  Dan: { motif:'Scales of justice', svg:
+    `<path d="M12 3v15M8 21h8" stroke="${IC}" stroke-width="1.7" stroke-linecap="round"/>` +
+    `<path d="M4 6.5h16" stroke="${IC}" stroke-width="1.7" stroke-linecap="round"/>` +
+    `<path d="M4 6.5L1.6 12a3 3 0 0 0 5.8 0zM20 6.5L17.6 12a3 3 0 0 0 5.8 0z" fill="${IG}"/>` +
+    `<rect x="10.6" y="18" width="2.8" height="2.2" fill="${IC}"/>` },
+  Naphtali: { motif:'Hind let loose', svg:
+    `<path d="M4 20c1-5 3.5-7.5 7.5-8l2-4.5" stroke="${IC}" stroke-width="1.9" stroke-linecap="round" fill="none"/>` +
+    `<path d="M13.5 7.5L12 3.5M13.5 7.5L16 4M13.5 7.5l2.8 1.2" stroke="${IG}" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<ellipse cx="8" cy="19.5" rx="5.5" ry="2" fill="${IC}"/>` +
+    `<path d="M17.5 12.5l3 4-1.4.8-3-3.6z" fill="${IC}"/>` +
+    `<path d="M5 21.5v-2M9 21.5v-2M13 21.5v-2" stroke="${IC}" stroke-width="1.4"/>` },
+  Gad: { motif:'Military camp', svg:
+    `<path d="M12 4L3 20h18z" fill="${IC}"/>` +
+    `<path d="M12 9.5L7.6 20h8.8z" fill="${IK}"/>` +
+    `<path d="M12 4V1.6h4.4l-1.2 1.2 1.2 1.2H12z" fill="${IR}"/>` },
+  Asher: { motif:'Olive tree', svg:
+    `<path d="M12 21v-5c-3-.8-5.4-3-5.4-6" stroke="${IO}" stroke-width="2" stroke-linecap="round" fill="none"/>` +
+    `<circle cx="7" cy="9" r="3.4" fill="#4f7a3a"/><circle cx="13.5" cy="6.5" r="4" fill="#6b9a4a"/><circle cx="17" cy="10.5" r="2.8" fill="#4f7a3a"/>` +
+    `<circle cx="9" cy="12.5" r="1" fill="${IK}"/><circle cx="14" cy="10" r="1" fill="${IK}"/><circle cx="16.5" cy="12.5" r="1" fill="${IK}"/>` +
+    `<path d="M10.5 21h3" stroke="${IO}" stroke-width="2" stroke-linecap="round"/>` },
+  Issachar: { motif:'Bearing burdens', svg:
+    `<path d="M6 21v-7c0-3.5 1.8-6 4.5-7l.8-4.5 2.2 3 2.2-3 .8 4.5C19 8 21 10.5 21 14v7z" fill="${IC}"/>` +
+    `<circle cx="10.2" cy="9.5" r="1" fill="${IK}"/><circle cx="14.8" cy="9.5" r="1" fill="${IK}"/>` +
+    `<path d="M9.5 13h5" stroke="${IK}" stroke-width="1.2"/>` +
+    `<path d="M6 14.5h12" stroke="${IO}" stroke-width="1.6"/>` },
+  Zebulun: { motif:'Haven of ships', svg:
+    `<path d="M3.5 14.5h17l-3 5h-11z" fill="${IC}"/>` +
+    `<path d="M12 14V3.5" stroke="${IC}" stroke-width="1.5"/>` +
+    `<path d="M12.5 4h5.5L12.5 10z" fill="${IG}"/>` +
+    `<path d="M12.5 6.5h4" stroke="${IK}" stroke-width=".8"/>` +
+    `<path d="M2 21c1.6 0 1.6-1.2 3.2-1.2S7 21 8.6 21s1.6-1.2 3.2-1.2 1.6 1.2 3.2 1.2 1.6-1.2 3.2-1.2S19.8 21 21.4 21" stroke="${IW}" stroke-width="1.3" fill="none" stroke-linecap="round"/>` },
+  Joseph: { motif:'Fruitful bough / wheat', svg:
+    `<path d="M12 21V4" stroke="${IO}" stroke-width="1.7" stroke-linecap="round"/>` +
+    `<g fill="${IG}">` +
+    `<ellipse cx="10" cy="7" rx="1.5" ry="2.6" transform="rotate(-28 10 7)"/><ellipse cx="14" cy="7" rx="1.5" ry="2.6" transform="rotate(28 14 7)"/>` +
+    `<ellipse cx="9.4" cy="10.5" rx="1.5" ry="2.6" transform="rotate(-28 9.4 10.5)"/><ellipse cx="14.6" cy="10.5" rx="1.5" ry="2.6" transform="rotate(28 14.6 10.5)"/>` +
+    `<ellipse cx="9.4" cy="14" rx="1.5" ry="2.6" transform="rotate(-28 9.4 14)"/><ellipse cx="14.6" cy="14" rx="1.5" ry="2.6" transform="rotate(28 14.6 14)"/>` +
+    `</g>` +
+    `<ellipse cx="12" cy="3.6" rx="1" ry="1.8" fill="${IC}"/>` },
+  Benjamin: { motif:'Ravenous wolf', svg:
+    `<path d="M5.5 3.5l3.2 2.8L12 5.5l3.3.8 3.2-2.8v7.4c0 5-2.9 8.6-6.5 10.6C8.4 19.5 5.5 15.9 5.5 10.9z" fill="${IC}"/>` +
+    `<path d="M5.5 3.5L8.7 6.3 7 8z" fill="${IG}"/><path d="M18.5 3.5L15.3 6.3 17 8z" fill="${IG}"/>` +
+    `<circle cx="9.5" cy="10" r="1" fill="${IK}"/><circle cx="14.5" cy="10" r="1" fill="${IK}"/>` +
+    `<path d="M12 12.5l1.5 2.5h-3z" fill="${IK}"/>` }
 };
 function tribeBadge(name, size){
   const t = TRIBES.find(t => t.name === name);
-  const e = TRIBE_EMBLEMS[name] || { icon:'✡️', motif:'Israel' };
-  const style = size ? ` style="--tc:${t?.color || '#c9a45e'};width:${size}px;height:${Math.round(size*1.12)}px;font-size:${Math.round(size*0.5)}px"` : ` style="--tc:${t?.color || '#c9a45e'}"`;
-  return `<span class="tribe-badge"${style} title="${e.motif}">${e.icon}</span>`;
+  const e = TRIBE_EMBLEMS[name];
+  const svg = e ? SVG(e.svg) : SVG(`<circle cx="12" cy="12" r="8" fill="${IG}"/>`);
+  const style = size ? ` style="--tc:${t?.color || '#c9a45e'};width:${size}px;height:${Math.round(size*1.12)}px"` : ` style="--tc:${t?.color || '#c9a45e'}"`;
+  return `<span class="tribe-badge"${style} title="${e?.motif || 'Israel'}">${svg}</span>`;
 }
 
+const ROLE_ICONS = {
+  manna: SVG(`<path d="M12 2.5l2.2 7.3 7.3 2.2-7.3 2.2L12 21.5l-2.2-7.3L2.5 12l7.3-2.2z" fill="${IG}"/><path d="M12 6.5l1.1 3.4 3.4 1.1-3.4 1.1L12 15.5l-1.1-3.4-3.4-1.1 3.4-1.1z" fill="${IC}"/><path d="M5 5l1.6 1.6M19 5l-1.6 1.6M5 19l1.6-1.6M19 19l-1.6-1.6" stroke="${IC}" stroke-width="1.4" stroke-linecap="round"/>`),
+  water: SVG(`<path d="M12 3c4.2 5.2 6.3 8.4 6.3 11.2a6.3 6.3 0 1 1-12.6 0C5.7 11.4 7.8 8.2 12 3z" fill="${IW}"/>`),
+  wood: SVG(`<rect x="2" y="8" width="19" height="9" rx="1.6" fill="${IO}"/><path d="M6 10.5v4M10 10.5v4M14 10.5v4" stroke="#8a5a2a" stroke-width="1.2"/><ellipse cx="2.9" cy="12.5" rx="1.5" ry="4.5" fill="#8a5a2a"/><ellipse cx="2.9" cy="12.5" rx=".7" ry="2.4" fill="${IO}"/><circle cx="2.9" cy="12.5" r=".7" fill="#8a5a2a"/>`),
+  camp: SVG(`<path d="M12 5L3 20h18z" fill="${IC}"/><path d="M12 9.5L7.6 20h8.8z" fill="${IK}"/>`),
+  watch: SVG(`<path d="M12 2.5l8 3v6.5c0 5-3.4 8.6-8 10.5-4.6-1.9-8-5.5-8-10.5V5.5z" fill="${IG}" stroke="${IK}" stroke-width="1.3"/><path d="M8 11h8" stroke="${IK}" stroke-width="1.6"/>`)
+};
 const LABOR_ROLES = [
-  { id:'manna', label:'Manna', short:'Manna', icon:'✨', color:'#ffe27a', hint:'Gather flakes at dawn' },
-  { id:'water', label:'Water',  short:'Water', icon:'💧', color:'#7fc4e8', hint:'Draw from springs' },
-  { id:'wood',  label:'Wood',   short:'Wood',  icon:'🪵', color:'#c99a5a', hint:'Cut acacia at midday' },
-  { id:'camp',  label:'Camp',   short:'Camp',  icon:'⛺', color:'#9dbb74', hint:'Keep order and rest' },
-  { id:'watch', label:'Watch',  short:'Watch', icon:'🛡️', color:'#e0b24a', hint:'Guard the perimeter' }
+  { id:'manna', label:'Manna', short:'Manna', icon: ROLE_ICONS.manna, color:'#ffe27a', hint:'Gather flakes at dawn' },
+  { id:'water', label:'Water',  short:'Water', icon: ROLE_ICONS.water, color:'#7fc4e8', hint:'Draw from springs' },
+  { id:'wood',  label:'Wood',   short:'Wood',  icon: ROLE_ICONS.wood, color:'#c99a5a', hint:'Cut acacia at midday' },
+  { id:'camp',  label:'Camp',   short:'Camp',  icon: ROLE_ICONS.camp, color:'#9dbb74', hint:'Keep order and rest' },
+  { id:'watch', label:'Watch',  short:'Watch', icon: ROLE_ICONS.watch, color:'#e0b24a', hint:'Guard the perimeter' }
 ];
 
 const HEBREW_NAMES = [
@@ -1336,17 +1416,8 @@ function emptyTribeRoles(){
   return out;
 }
 
-function defaultRoleAllocation(cap, index = 0){
-  const out = { manna:0, water:0, wood:0, camp:0, watch:0 };
-  const pool = ['manna','water','wood','camp','watch'];
-  for (let k=0;k<cap;k++) out[pool[(index + k) % pool.length]]++;
-  return out;
-}
-
 function seedTribeRoles(){
-  const out = {};
-  TRIBES.forEach((t, i) => { out[t.name] = defaultRoleAllocation(tribeCrewCap(t.name), i); });
-  return out;
+  return emptyTribeRoles();
 }
 
 function normalizeTribeRoles(roles){
@@ -1965,7 +2036,7 @@ function resetState(){
   $('trialPanel').hidden = true;
   state.trial = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   state.blueprints = [null, null, null]; state.raidLog = []; state.raidSeed = 1;
-  state.tribeRoles = seedTribeRoles(); state.roleDay = 0;
+  state.tribeRoles = seedTribeRoles(); state.roleDay = 0; state.leviBlessDay = 0;
   state.worldSeed = state.sharedJourney?.seed || DEFAULT_WORLD_SEED;
   beginMonthTracking(); beginYearTracking();
   state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
@@ -2059,6 +2130,36 @@ function selectAboutTab(name, focus){
   }
 }
 
+function aidTribe(name, kind){
+  const row = state.tribeStats[name];
+  if (!row) return;
+  if (kind === 'provisions'){
+    if (state.manna < 5) return;
+    state.manna -= 5;
+    row.unrest = clamp((row.unrest || 0) - 10, 0, 100);
+    row.goodwill = Math.min(10, (row.goodwill || 0) + 1);
+    say(`Provisions shared with ${name}. Resentment eases.`);
+    playSfx('coins', 0.2);
+  } else if (kind === 'flocks'){
+    if (state.silver < 12) return;
+    state.silver -= 12;
+    row.livestock = Math.max(0, Math.round((row.livestock || 0))) + 2;
+    row.goodwill = Math.min(10, (row.goodwill || 0) + 1);
+    say(`Two flocks join ${name}. Their herds grow.`);
+    playSfx('coins', 0.25);
+  } else if (kind === 'blessing'){
+    if (state.leviBlessDay === state.day) return;
+    state.leviBlessDay = state.day;
+    row.unrest = clamp((row.unrest || 0) - 12, 0, 100);
+    row.goodwill = Math.min(10, (row.goodwill || 0) + 2);
+    state.faith = clamp(state.faith + 1, 0, 100);
+    say(`Levi blesses ${name}. The tribe is comforted.`);
+    playSfx('coins', 0.3);
+  } else return;
+  updateHud(true);
+  renderTribeStats();
+}
+
 function renderTribeStats(){
   const rail = $('aboutTribeTabs');
   const panels = $('aboutTribePanels');
@@ -2108,7 +2209,7 @@ function renderTribeStats(){
           `${tribeBadge(t.name, 34)}` +
           `<span class="tribe-report-banner" style="background:linear-gradient(180deg,${t.color},${t.color}88)"></span>` +
           `<div><h3>${t.name} <em>${t.epithet}</em></h3>` +
-            `<p class="tribe-motif">${(TRIBE_EMBLEMS[t.name] || { icon:'✡️', motif:'Israel' }).icon} ${(TRIBE_EMBLEMS[t.name] || { motif:'Israel' }).motif}</p>` +
+            `<p class="tribe-motif">${(TRIBE_EMBLEMS[t.name] || { motif:'Israel' }).motif}</p>` +
             `<p>${t.note}</p></div>` +
         `</div>` +
         `<div class="tribe-report-stats">` +
@@ -2117,6 +2218,7 @@ function renderTribeStats(){
           `<div><span>Share of Israel</span><b>${share.toFixed(1)}%</b></div>` +
           `<div><span>Souls per flock</span><b>${perFlock ? perFlock.toLocaleString() : '—'}</b></div>` +
           `<div><span>Unrest</span><b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
+          `<div><span>Goodwill</span><b>${st.goodwill || 0}/10</b></div>` +
         `</div>` +
         `<div class="tribe-report-meta"><span>Encampment <b>${t.camp}</b></span><span>Share of flocks <b>${flockShare.toFixed(1)}%</b></span><span>Today's work <b>${roleSummaryForTribe(t.name)}</b></span></div>` +
         `<div class="tribe-report-status" style="border-color:${status.color}55;color:${status.color}">` +
@@ -2133,6 +2235,12 @@ function renderTribeStats(){
           `<b>${popRate > 0 ? '+' : ''}${popRate}%</b> (${popRate > 0 ? '+' : ''}${Math.round(st.population * popRate / 100).toLocaleString()} souls) · ` +
           `flocks <b>${flockRate > 0 ? '+' : ''}${flockRate}%</b> (${flockRate > 0 ? '+' : ''}${Math.round(st.livestock * flockRate / 100).toLocaleString()}).` +
         `</p>` +
+        `<h4>Aid this tribe</h4>` +
+        `<div class="aid-list">` +
+          `<button data-tribe-aid="${t.name}" data-aid="provisions" ${state.manna >= 5 ? '' : 'disabled'}>Share provisions<small>5 manna · unrest −10 · goodwill +1</small></button>` +
+          `<button data-tribe-aid="${t.name}" data-aid="flocks" ${state.silver >= 12 ? '' : 'disabled'}>Buy flocks<small>12 silver · +2 flocks · goodwill +1</small></button>` +
+          `<button data-tribe-aid="${t.name}" data-aid="blessing" ${state.leviBlessDay === state.day ? 'disabled' : ''}>Levi's blessing<small>${state.leviBlessDay === state.day ? 'Levi blessed a tribe today' : 'once a day · unrest −12 · faith +1'}</small></button>` +
+        `</div>` +
         `<h4>Representatives in camp</h4>` +
         `<div class="tribe-people">${roster}</div>` +
         `<blockquote class="tribe-verse">“${t.verse}”<span>${t.verseRef}</span></blockquote>` +
@@ -2159,6 +2267,7 @@ function loadAppSettings(){
   applyReducedMotion();
   updateMusicToggle();
   updateSettingsUI();
+  paintTopIcons();
 }
 function saveAppSettings(){
   try {
@@ -2171,6 +2280,10 @@ function saveAppSettings(){
 function applyReducedMotion(){
   document.body.classList.toggle('reduced-motion', !!state.reducedMotion);
 }
+const ICON_SPEAKER = SVG(`<path d="M4 9.5v5h4l5 4.5V5L8 9.5z" fill="${IC}"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" stroke="${IC}" stroke-width="1.7" fill="none" stroke-linecap="round"/>`);
+const ICON_MUTED = SVG(`<path d="M4 9.5v5h4l5 4.5V5L8 9.5z" fill="${IC}"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" stroke="${IR}" stroke-width="2" stroke-linecap="round"/>`);
+const ICON_GEAR = SVG(`<path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z" fill="${IC}" stroke="${IK}" stroke-width="1.4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1" stroke="${IC}" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.6" fill="${IK}"/>`);
+
 function updateSettingsUI(){
   const pairs = [
     ['setMusic', state.musicOn ? 'On' : 'Off'],
@@ -2185,9 +2298,18 @@ function updateSettingsUI(){
   const full = $('setFullscreen');
   if (full) full.textContent = document.fullscreenElement ? 'Exit' : 'Enter';
   const mute = $('btnMute');
-  if (mute){
-    mute.textContent = state.muted ? '🔇' : '🔊';
-    mute.setAttribute('aria-label', state.muted ? 'Unmute audio' : 'Mute audio');
+  if (mute) mute.innerHTML = state.muted ? ICON_MUTED : ICON_SPEAKER;
+  const gear = $('btnSettings');
+  if (gear && !gear.innerHTML) gear.innerHTML = ICON_GEAR;
+}
+function paintTopIcons(){
+  const icons = {
+    btnPause: SVG(`<rect x="6" y="4.5" width="4" height="15" rx="1.2" fill="${IC}"/><rect x="14" y="4.5" width="4" height="15" rx="1.2" fill="${IC}"/>`),
+    btnMap: SVG(`<rect x="3" y="5" width="18" height="14" rx="1.5" fill="${IC}"/><path d="M9 5v14M15 5v14" stroke="#1d130c" stroke-width="1.4"/><path d="M5.5 9.5h1.6M12.5 8h1.6M19 10h-1.6M6 14h1.6M12.5 13h1.6M17.5 15h1.6" stroke="${IG}" stroke-width="1.3" stroke-linecap="round"/>`)
+  };
+  for (const [id, svg] of Object.entries(icons)){
+    const el = $(id);
+    if (el && !el.innerHTML) el.innerHTML = svg;
   }
 }
 
@@ -2955,6 +3077,7 @@ function resolveTribeDay(){
       delta = -0.85 - camp * 0.7 - watch * 0.35;
       if (hard >= assigned) delta += 1.0;
     }
+    delta -= (row.goodwill || 0) * 0.12;
     if (!state.campFed) delta += 1.1;
     if (state.campWater <= 0) delta += 1.4;
     if (state.faith < 50) delta += (50 - state.faith) / 32;
@@ -3029,16 +3152,18 @@ function endDay(){
     for (const t of TRIBES){
       const row = state.tribeStats[t.name];
       if (!row) continue;
+      const boost = 1 + (row.goodwill || 0) * 0.002;
       if (struggling){
-        row.population = Math.max(50, Math.round(row.population * 0.997));
-        row.livestock = Math.max(0, Math.round(row.livestock * 0.97));
+        row.population = Math.max(50, Math.round(row.population * 0.997 * boost));
+        row.livestock = Math.max(0, Math.round(row.livestock * 0.97 * boost));
       } else if (healthy){
-        row.population = Math.round(row.population * 1.0015);
-        row.livestock = Math.round(row.livestock * 1.02);
+        row.population = Math.round(row.population * 1.0015 * boost);
+        row.livestock = Math.round(row.livestock * 1.02 * boost);
       } else {
-        row.population = Math.round(row.population * 1.0004);
-        row.livestock = Math.round(row.livestock * 1.005);
+        row.population = Math.round(row.population * 1.0004 * boost);
+        row.livestock = Math.round(row.livestock * 1.005 * boost);
       }
+      row.goodwill = Math.max(0, (row.goodwill || 0) - 1);
     }
     if (healthy) say(`The tribes increase (${totalPopulation().toLocaleString()} souls); flocks multiply (${totalLivestock().toLocaleString()}).`);
     else if (struggling) say(`The tribes dwindle (${totalPopulation().toLocaleString()} souls); flocks scatter (${totalLivestock().toLocaleString()}).`);
@@ -4214,7 +4339,13 @@ function renderRoleMuster(){
     `<span>Wood <b>+${yields.wood}</b></span>` +
     `<span>Faith <b>+${yields.faith.toFixed(1)}</b></span>` +
     `<span>Watch <b>${yields.watch}</b></span>`;
-  $('roleTable').innerHTML = TRIBES.map(t => {
+  const head = `<div class="role-row role-header">` +
+    `<div class="role-who"><span class="head-tribe">Tribe</span></div>` +
+    `<div class="role-mini">${LABOR_ROLES.map(role =>
+      `<span class="mini-head" title="${role.hint}">${role.icon}${role.short}</span>`).join('')}</div>` +
+    `<div class="role-count">Crews</div>` +
+  `</div>`;
+  $('roleTable').innerHTML = head + TRIBES.map(t => {
     const cap = tribeCrewCap(t.name);
     const alloc = state.tribeRoles[t.name] || emptyTribeRoles()[t.name];
     const used = roleAllocationTotal(alloc);
@@ -4223,7 +4354,7 @@ function renderRoleMuster(){
     const cells = LABOR_ROLES.map(role => {
       const n = alloc[role.id] || 0;
       return `<div class="mini-cell" title="${role.label} — ${role.hint}">` +
-        `<span class="r-ico">${role.icon || role.short[0]}</span>` +
+        `<span class="r-ico">${role.icon}</span>` +
         `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="-1" ${n ? '' : 'disabled'} aria-label="Fewer ${role.label} crews for ${t.name}">−</button>` +
         `<b>${n}</b>` +
         `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="1" ${used >= cap ? 'disabled' : ''} aria-label="More ${role.label} crews for ${t.name}">+</button>` +
@@ -4241,13 +4372,14 @@ function renderRoleMuster(){
     `</div>`;
   }).join('');
   $('roleHint').textContent = assigned < totalCap
-    ? `${totalCap - assigned} crews are idle. Idle tribes grow resentful; camp crews calm unrest and watch crews improve raid defense.`
+    ? `No crews are assigned yet. Idle tribes grow resentful; camp crews calm unrest and watch crews improve raid defense.`
     : 'All crews are assigned. Hard labour without camp or watch crews slowly breeds resentment.';
 }
 
 function openDailyRoles(force = false){
   if (state.trial) return;
   if (!force && state.roleDay === state.day) return;
+  if (state.roleDay !== state.day) state.tribeRoles = emptyTribeRoles();
   state.rolesReturn = state.mode === 'camp' ? 'camp' : 'playing';
   state.mode = 'roles';
   state.raidDefense = null;
@@ -4278,12 +4410,6 @@ function adjustRole(tribeName, roleKey, delta){
   alloc[roleKey] = Math.max(0, (alloc[roleKey] || 0) + delta);
   renderRoleMuster();
   playSfx('click', 0.15);
-}
-
-function autoBalanceRoles(){
-  state.tribeRoles = seedTribeRoles();
-  renderRoleMuster();
-  playSfx('click', 0.2);
 }
 
 function updateCampUI(){
@@ -4949,7 +5075,7 @@ function savePayload(){
     monthTracking:state.monthTracking, yearTracking:state.yearTracking,
     monthOffenders:state.monthOffenders,
     blueprints:state.blueprints, raidLog:state.raidLog, raidSeed:state.raidSeed,
-    tribeRoles:state.tribeRoles, roleDay:state.roleDay,
+    tribeRoles:state.tribeRoles, roleDay:state.roleDay, leviBlessDay:state.leviBlessDay,
     haptics:state.haptics !== false, sfxOn:state.sfxOn !== false, reducedMotion:!!state.reducedMotion
   };
 }
@@ -5026,9 +5152,11 @@ function applySaveData(data){
     row.livestock = Math.max(0, Number(row.livestock) || 0);
     row.unrest = clamp(Number(row.unrest) || 0, 0, 100);
     row.lastRebellion = Number(row.lastRebellion) || 0;
+    row.goodwill = clamp(Number(row.goodwill) || 0, 0, 10);
   }
   state.tribeRoles = normalizeTribeRoles(data.tribeRoles);
   state.roleDay = Number(data.roleDay) || 0;
+  state.leviBlessDay = Number(data.leviBlessDay) || 0;
   state.events = { rock:false, law:false, calf:false, jordan:false, ...(data.events || {}) };
   state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
   state.visited = new Set(data.visited || []);
@@ -6625,6 +6753,10 @@ $('btnMute').addEventListener('click', () => setMuted(!state.muted));
 $('btnMap').addEventListener('click', () => state.mode === 'playing' && openMap());
 $('btnAbout').addEventListener('click', openAbout);
 $('btnSettings').addEventListener('click', openSettings);
+$('aboutTribePanels').addEventListener('click', e => {
+  const btn = e.target.closest('[data-tribe-aid]');
+  if (btn && !btn.disabled) aidTribe(btn.dataset.tribeAid, btn.dataset.aid);
+});
 $('aboutClose').addEventListener('click', closeAbout);
 $('aboutTutorial').addEventListener('click', () => { closeAbout(); beginTutorial(); });
 $('creditsClose').addEventListener('click', closeCredits);
@@ -6674,7 +6806,6 @@ $('roleTable').addEventListener('click', e => {
   if (!btn) return;
   adjustRole(btn.dataset.roleTribe, btn.dataset.roleKey, Number(btn.dataset.roleDelta));
 });
-$('rolesAuto').addEventListener('click', autoBalanceRoles);
 $('rolesConfirm').addEventListener('click', confirmDailyRoles);
 $('mapClose').addEventListener('click', closeMap);
 $('campClose').addEventListener('click', closeCamp);
@@ -6799,7 +6930,17 @@ function boot(){
       const announce = () => {
         if (!reg.waiting || !navigator.serviceWorker.controller) return;
         const box = $('swUpdate');
-        if (box) box.hidden = false;
+        if (!box) return;
+        const hud = $('journeyHud');
+        if (hud){
+          const r = hud.getBoundingClientRect();
+          box.style.width = Math.round(r.width) + 'px';
+          box.style.minHeight = Math.round(r.height) + 'px';
+          box.style.top = Math.round(r.top) + 'px';
+          box.style.left = Math.round(r.left) + 'px';
+          box.style.transform = 'none';
+        }
+        box.hidden = false;
       };
       announce();
       reg.addEventListener('updatefound', () => {
@@ -6807,12 +6948,16 @@ function boot(){
         if (!worker) return;
         worker.addEventListener('statechange', () => { if (worker.state === 'installed') announce(); });
       });
-      const btn = $('swReload');
-      if (btn) btn.addEventListener('click', () => {
+      let reloading = false;
+      const acceptUpdate = () => {
+        if (reloading) return;
+        reloading = true;
         swUpdateAccepted = true;
-        if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-        else location.reload();
-      });
+        try { if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); } catch (_) {}
+        setTimeout(() => location.reload(), 250);
+      };
+      const btn = $('swReload');
+      if (btn) btn.addEventListener('click', acceptUpdate);
     }).catch(() => {});
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (swUpdateAccepted) location.reload();

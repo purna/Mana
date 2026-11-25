@@ -1,12 +1,11 @@
 /* MANNA offline shell. Navigations are network-first so a new release is seen
-   immediately; static assets are cached after first use.
-   Updates wait for an explicit prompt: the page asks this worker to
-   skipWaiting only when the player accepts the "Reload" banner. */
+   immediately; static assets are cached after first use. Updated workers wait
+   behind the in-game banner and only swap when the player accepts. */
 const CACHE = 'manna-iso-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.ico', './js/iso-core.js'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {

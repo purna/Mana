@@ -17,3 +17,9 @@ Read this file first. Open `ARCHITECTURE.md` for runtime/asset structure, `FEATU
 - For model changes, record Blender export/validation steps and note that runtime GLB loading may require source/build integration.
 - Update `FEATURES.md`/`IMPROVEMENTS.md` for status changes, `ARCHITECTURE.md` for structure/interface changes, and `CHANGELOG.md` for meaningful shipped changes.
 - Report changed files, checks/results, affected paths, and remaining risks.
+
+## Art & content rules
+
+- **No emoji anywhere in the game UI.** Icons, motifs, badges and glyphs must be inline SVG or hand-drawn pixel-style canvas shapes. This covers tribe motifs, role icons, HUD buttons and any future iconography.
+- Tribe motifs follow the traditional emblems (rising sun, walls, breastplate, lion, scales, hind, tent, olive tree, burdens, ship, wheat sheaf, wolf) drawn as simple geometric SVG so they read at 16–34px inside shield badges.
+- Static graphics live in `assets/graphics/` (`tribes/`, `roles/`, `ui/`), one self-contained SVG per icon; the game currently renders these inline (identical markup), and the folder is the canonical source. Add a folder to the `vite.config.js` copy list before referencing files from the runtime.
