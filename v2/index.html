@@ -541,6 +541,30 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 .event-choices button.calm{border-color:#7fc4e888;color:#bfe8ff}
 .event-note{font-size:11px;color:#cbb894;margin:8px 0 0}
 
+/* ---------- daily work muster ---------- */
+.roles-sheet{max-width:760px}
+.role-summary{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 10px}
+.role-summary span{border:1px solid rgba(232,184,74,.25);border-radius:999px;padding:4px 8px;font-size:10.5px;color:#cbb894;background:rgba(255,255,255,.03)}
+.role-summary b{color:#f2cc6b}
+.roles-table{display:grid;gap:6px;text-align:left}
+.role-row{border:1px solid rgba(232,184,74,.2);border-radius:8px;padding:7px 8px;background:rgba(255,255,255,.028)}
+.role-row-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px;font-size:11px;color:#e8dcc4}
+.role-row-head i{width:8px;height:8px;border-radius:50%;flex:none;border:1px solid #0006}
+.role-row-head b{font-family:Cinzel,serif;font-size:11.5px;color:#f2cc6b}
+.role-row-head .role-free{margin-left:auto;color:#a8916a;font-size:10px}
+.role-unrest{font-size:9.5px;padding:1px 6px;border-radius:999px;border:1px solid currentColor}
+.role-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.role-step{display:flex;align-items:center;justify-content:space-between;gap:3px;padding:3px 4px;border:1px solid rgba(232,184,74,.16);border-radius:6px;background:rgba(0,0,0,.16)}
+.role-step span{font-size:9px;color:#b9a784;line-height:1.1}
+.role-step b{min-width:12px;text-align:center;font-size:11px;color:#f7e8bf}
+.role-step button{width:18px;height:20px;padding:0;border-radius:4px;font-size:12px;line-height:1;display:grid;place-items:center}
+.role-step button:disabled{opacity:.25;cursor:default}
+.role-preview{font-size:10px;color:#a8916a;line-height:1.35;margin:4px 0 0}
+@media (max-width:560px){
+  .role-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .role-step:last-child{grid-column:span 2}
+}
+
 /* ---------- settings ---------- */
 .settings-list{display:grid;gap:7px;margin:12px 0 4px;text-align:left}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid rgba(232,184,74,.18);border-radius:8px;background:rgba(255,255,255,.025)}
@@ -875,7 +899,24 @@ body.menu-open #hud{opacity:0;pointer-events:none}
       </div>
       <div class="blueprints" id="blueprintSlots"></div>
     </div>
+    <button id="campRoles">Assign today's work</button>
     <button class="primary" id="campClose">Return</button>
+  </div>
+</div>
+
+<!-- Daily work muster -->
+<div class="overlay" id="rolesOverlay">
+  <div class="sheet wide roles-sheet">
+    <div class="kicker" id="rolesKicker">Morning muster</div>
+    <h2>Assign the tribes</h2>
+    <p id="rolesIntro" style="color:var(--dim)">Give each tribe its work for the day. Leave too many idle, or drive them too hard without camp and watch crews, and resentment will grow over the weeks.</p>
+    <div id="roleSummary" class="role-summary"></div>
+    <div id="roleTable" class="roles-table"></div>
+    <p id="roleHint" class="role-preview"></p>
+    <div class="share-row">
+      <button id="rolesAuto">Balance all crews</button>
+      <button class="primary" id="rolesConfirm">Begin the day</button>
+    </div>
   </div>
 </div>
 
@@ -1154,6 +1195,14 @@ const TRIBE_MARTIAL = {
   Zebulun:0.84, Levi:0.80
 };
 
+const LABOR_ROLES = [
+  { id:'manna', label:'Manna', short:'Manna', color:'#ffe27a', hint:'Gather flakes at dawn' },
+  { id:'water', label:'Water',  short:'Water', color:'#7fc4e8', hint:'Draw from springs' },
+  { id:'wood',  label:'Wood',   short:'Wood',  color:'#c99a5a', hint:'Cut acacia at midday' },
+  { id:'camp',  label:'Camp',   short:'Camp',  color:'#9dbb74', hint:'Keep order and rest' },
+  { id:'watch', label:'Watch',  short:'Watch', color:'#e0b24a', hint:'Guard the perimeter' }
+];
+
 const HEBREW_NAMES = [
   'Aaron','Joshua','Caleb','Eleazar','Hur','Bezalel','Oholiab','Phinehas',
   'Gershom','Eliezer','Nadab','Abihu','Ithamar','Nahshon','Salmon','Korah',
@@ -1223,11 +1272,78 @@ function seedTribeStats(){
   for (const t of TRIBES){
     out[t.name] = {
       population: t.population,
-      livestock: Math.max(8, Math.round(t.population / 2000))
+      livestock: Math.max(8, Math.round(t.population / 2000)),
+      unrest: 0,
+      lastRebellion: 0
     };
   }
   return out;
 }
+function tribeCrewCap(name){
+  const tribe = TRIBES.find(t => t.name === name);
+  if (!tribe) return 1;
+  return Math.max(1, Math.min(3, Math.round(tribe.population / 28000)));
+}
+
+function emptyTribeRoles(){
+  const out = {};
+  for (const t of TRIBES) out[t.name] = { manna:0, water:0, wood:0, camp:0, watch:0 };
+  return out;
+}
+
+function defaultRoleAllocation(cap, index = 0){
+  const out = { manna:0, water:0, wood:0, camp:0, watch:0 };
+  const pool = ['manna','water','wood','camp','watch'];
+  for (let k=0;k<cap;k++) out[pool[(index + k) % pool.length]]++;
+  return out;
+}
+
+function seedTribeRoles(){
+  const out = {};
+  TRIBES.forEach((t, i) => { out[t.name] = defaultRoleAllocation(tribeCrewCap(t.name), i); });
+  return out;
+}
+
+function normalizeTribeRoles(roles){
+  if (!roles || typeof roles !== 'object' || !Object.keys(roles).length) return seedTribeRoles();
+  const out = emptyTribeRoles();
+  for (const t of TRIBES){
+    const src = roles[t.name] || {};
+    const cap = tribeCrewCap(t.name);
+    let used = 0;
+    for (const role of LABOR_ROLES){
+      const n = Math.max(0, Math.min(cap - used, Math.floor(Number(src[role.id]) || 0)));
+      out[t.name][role.id] = n;
+      used += n;
+    }
+    if (!used) out[t.name].camp = Math.min(cap, 1);
+  }
+  return out;
+}
+
+function roleAllocationTotal(alloc){
+  return LABOR_ROLES.reduce((sum, role) => sum + (Number(alloc?.[role.id]) || 0), 0);
+}
+
+function laborTotals(roles = state.tribeRoles || {}){
+  const out = { manna:0, water:0, wood:0, camp:0, watch:0 };
+  for (const t of TRIBES){
+    const alloc = roles[t.name] || {};
+    for (const role of LABOR_ROLES) out[role.id] += Number(alloc[role.id]) || 0;
+  }
+  return out;
+}
+
+function laborYields(totals = laborTotals()){
+  return {
+    manna: Math.round(totals.manna / 3),
+    water: Math.round(totals.water / 2),
+    wood: Math.round(totals.wood / 3),
+    faith: Math.min(3, totals.camp / 8),
+    watch: totals.watch
+  };
+}
+
 function totalPopulation(){
   return Object.values(state.tribeStats || {}).reduce((sum, t) => sum + (t.population || 0), 0);
 }
@@ -1754,6 +1870,7 @@ const state = {
   interaction:null, lastHud:0, started:false, endShown:false,
   focusStation:null,
   worldSeed: DEFAULT_WORLD_SEED, blueprints:[null,null,null], raidLog:[], raidSeed:1,
+  tribeRoles: seedTribeRoles(), roleDay: 0,
   layoutEdit:null, layoutUndo:[], trial:null, haptics:true, sharedJourney:null
 };
 
@@ -1794,6 +1911,7 @@ function resetState(){
   $('trialPanel').hidden = true;
   state.trial = null; state.layoutEdit = null; state.layoutUndo = [];
   state.blueprints = [null, null, null]; state.raidLog = []; state.raidSeed = 1;
+  state.tribeRoles = seedTribeRoles(); state.roleDay = 0;
   state.worldSeed = state.sharedJourney?.seed || DEFAULT_WORLD_SEED;
   beginMonthTracking(); beginYearTracking();
   state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
@@ -1941,6 +2059,7 @@ function renderTribeStats(){
           `<div><span>Flocks</span><b>${st.livestock.toLocaleString()}</b></div>` +
           `<div><span>Share of Israel</span><b>${share.toFixed(1)}%</b></div>` +
           `<div><span>Souls per flock</span><b>${perFlock ? perFlock.toLocaleString() : '—'}</b></div>` +
+          `<div><span>Unrest</span><b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
         `</div>` +
         `<div class="tribe-report-meta"><span>Encampment <b>${t.camp}</b></span><span>Share of flocks <b>${flockShare.toFixed(1)}%</b></span></div>` +
         `<div class="tribe-report-status" style="border-color:${status.color}55;color:${status.color}">` +
@@ -2146,9 +2265,11 @@ function dawn(){
     state.faith = clamp(state.faith + 7, 0, 100);
     state.health = clamp(state.health + 9, 0, 100);
     say('The Sabbath. No manna falls; the people rest and remember.');
+    openDailyRoles();
     return;
   }
   spawnManna();
+  openDailyRoles();
 }
 
 function spawnManna(){
@@ -2187,6 +2308,14 @@ function meltManna(){
 function duskMeal(){
   if (state.duskDone) return;
   state.duskDone = true;
+  const totals = laborTotals();
+  const yields = laborYields(totals);
+  const yielded = [];
+  if (yields.manna) { state.manna += yields.manna; yielded.push(`+${yields.manna} manna`); }
+  if (yields.water) { state.campWater = clamp(state.campWater + yields.water, 0, 100); yielded.push(`+${yields.water} water`); }
+  if (yields.wood) { state.wood += yields.wood; yielded.push(`+${yields.wood} wood`); }
+  if (yields.faith > 0.05){ state.faith = clamp(state.faith + yields.faith, 0, 100); yielded.push(`+${yields.faith.toFixed(1)} faith`); }
+  if (yielded.length) say(`The tribes finish their assigned work: ${yielded.join(', ')}.`);
   const sabbath = state.day % 7 === 0;
   let quota = dailyQuota();
   if (state.day % 7 === 6) quota *= 2;
@@ -2488,6 +2617,8 @@ function buildFixList(){
   if (state.wood < 10) fixes.push('Gather acacia wood for defenses — a watchtower costs 10.');
   if (!structures.some(s => s.kind === 'tower')) fixes.push('Build sentry posts or a watchtower before the next night raid (Camp → Build).');
   if (currentStation() && !canEnterStation()) fixes.push(`The next station needs ${req.manna} manna, ${req.water} water and ${req.faith}% faith.`);
+  const restless = TRIBES.filter(t => (state.tribeStats[t.name]?.unrest || 0) >= 55);
+  if (restless.length) fixes.push(`Restless tribes: ${restless.map(t => `${t.name} ${Math.round(state.tribeStats[t.name].unrest)}%`).join(', ')} — give them camp or watch crews and keep the camp fed.`);
   if (!fixes.length) fixes.push('The camp is stable. Keep following the pillar and gathering surplus.');
   return fixes.slice(0, 7);
 }
@@ -2548,6 +2679,9 @@ function buildMonthReport(){
   if (faithDiff < -1) failures.push(`Faith fell from ${Math.round(t.faith)}% to ${Math.round(state.faith)}%.`);
   else if (faithDiff > 1) successes.push(`Faith rose to ${Math.round(state.faith)}%.`);
   if (state.health < t.health - 2) failures.push(`Wellbeing fell from ${Math.round(t.health)} to ${Math.round(state.health)}.`);
+  const restless = TRIBES.filter(t => (state.tribeStats[t.name]?.unrest || 0) >= 55);
+  if (restless.length) failures.push(`Restless tribes: ${restless.map(t => `${t.name} (${Math.round(state.tribeStats[t.name].unrest)}%)`).join(', ')}.`);
+  else if (TRIBES.every(t => (state.tribeStats[t.name]?.unrest || 0) < 25)) successes.push('All twelve tribes are content with their work.');
 
   if (!successes.length) successes.push('The camp endured the month, but nothing notable was achieved.');
   if (!failures.length) failures.push('No major failures this month.');
@@ -2730,6 +2864,52 @@ function closeReport(){
 }
 
 
+function tribeRebellion(t, row){
+  const fury = Math.round(row.unrest || 0);
+  const steal = Math.min(state.manna, 2 + Math.floor(fury / 25));
+  state.manna -= steal;
+  const waterLost = Math.min(state.campWater, 3 + Math.floor(fury / 30));
+  state.campWater = clamp(state.campWater - waterLost, 0, 100);
+  state.faith = clamp(state.faith - 4, 0, 100);
+  state.health = clamp(state.health - 2, 0, 100);
+  row.unrest = Math.max(0, fury - 28);
+  row.lastRebellion = state.day;
+  const lit = igniteTents(1, `A tent is set alight as ${t.name} vents its anger.`);
+  say(`${t.name} rebels! ${steal} manna${waterLost ? ` and ${waterLost} camp water` : ''} are lost${lit ? ', and a tent burns' : ''}. Assign camp or watch crews before resentment boils over again.`);
+  playSfx('hurt', 0.35);
+  haptic([18, 35, 18]);
+  if (state.monthTracking) state.monthTracking.tribeRebellions = (state.monthTracking.tribeRebellions || 0) + 1;
+}
+
+function resolveTribeDay(){
+  for (const t of TRIBES){
+    const row = state.tribeStats[t.name];
+    if (!row) continue;
+    const alloc = state.tribeRoles[t.name] || emptyTribeRoles()[t.name];
+    const assigned = roleAllocationTotal(alloc);
+    const hard = (alloc.manna || 0) + (alloc.water || 0) + (alloc.wood || 0);
+    const camp = alloc.camp || 0;
+    const watch = alloc.watch || 0;
+    let delta;
+    if (!assigned){
+      delta = 2.6;
+    } else {
+      delta = -0.85 - camp * 0.7 - watch * 0.35;
+      if (hard >= assigned) delta += 1.0;
+    }
+    if (!state.campFed) delta += 1.1;
+    if (state.campWater <= 0) delta += 1.4;
+    if (state.faith < 50) delta += (50 - state.faith) / 32;
+    if (state.sick > 0) delta += Math.min(1.0, state.sick * 0.08);
+    delta += (Math.random() - 0.5) * 0.35;
+    row.unrest = clamp((row.unrest || 0) + delta, 0, 100);
+    if (row.unrest >= 68 && state.day - (row.lastRebellion || 0) >= 3){
+      const chance = 0.10 + (row.unrest - 68) / 90;
+      if (Math.random() < chance) tribeRebellion(t, row);
+    }
+  }
+}
+
 function endDay(){
   const monthEnd = state.day % DAYS_PER_MONTH === 0;
   // Track how many days of this week-month the camp was fed.
@@ -2751,6 +2931,7 @@ function endDay(){
     playSfx('hurt', 0.3);
   }
   if (state.rot > 0) state.rot = Math.max(0, state.rot - 2);
+  resolveTribeDay();
 
   if (state.faith < 50 && Math.random() < 0.36){
     const n = 1 + Math.floor(Math.random()*3);
@@ -3602,7 +3783,7 @@ function tribeDefenseOption(t){
   const sentries = structures.filter(s => s.kind === 'sentry').length;
   const { pressure } = raidPressure();
   const faithMod = (state.faith - 50) / 320;
-  const defenseMod = towers*0.07 + sentries*0.028;
+  const defenseMod = towers*0.07 + sentries*0.028 + Math.min(0.10, laborTotals().watch * 0.012);
   const chance = clamp(0.30 + martial*0.28 + Math.min(0.12, share*1.1) + faithMod + defenseMod - pressure, 0.18, 0.94);
   const manna = 1 + Math.round(martial*1.6);
   const water = martial >= 1.05 ? 2 : 1;
@@ -3611,13 +3792,13 @@ function tribeDefenseOption(t){
 
 function mosesDefenseChance(){
   const { pressure } = raidPressure();
-  return clamp(0.16 + state.health*0.0016 + state.stamina*0.0014 + state.faith*0.001 - pressure, 0.12, 0.78);
+  return clamp(0.16 + state.health*0.0016 + state.stamina*0.0014 + state.faith*0.001 + Math.min(0.08, laborTotals().watch * 0.009) - pressure, 0.12, 0.78);
 }
 
 function towerDefenseChance(){
   const towers = structures.filter(s => s.kind === 'tower').length;
   const { pressure } = raidPressure();
-  return clamp(0.60 + towers*0.08 + (state.faith-50)/500 - pressure, 0.30, 0.95);
+  return clamp(0.60 + towers*0.08 + (state.faith-50)/500 + Math.min(0.06, laborTotals().watch * 0.007) - pressure, 0.30, 0.95);
 }
 
 function chanceClass(pct){
@@ -3865,6 +4046,94 @@ function closeCamp(){
   if (state.buildMode) showBuildBanner();
 }
 
+function unrestColor(u){
+  if (u >= 70) return '#e0584a';
+  if (u >= 40) return '#e0a24a';
+  return '#9dbb74';
+}
+
+function renderRoleMuster(){
+  const totals = laborTotals();
+  const yields = laborYields(totals);
+  const totalCap = TRIBES.reduce((sum, t) => sum + tribeCrewCap(t.name), 0);
+  const assigned = LABOR_ROLES.reduce((sum, role) => sum + totals[role.id], 0);
+  $('rolesKicker').textContent = `Year ${yearOfMonth()} · Month ${monthName()} · Day ${dayOfMonth()} · morning muster`;
+  $('roleSummary').innerHTML =
+    `<span>Crews <b>${assigned}/${totalCap}</b></span>` +
+    `<span>Manna <b>+${yields.manna}</b></span>` +
+    `<span>Water <b>+${yields.water}</b></span>` +
+    `<span>Wood <b>+${yields.wood}</b></span>` +
+    `<span>Faith <b>+${yields.faith.toFixed(1)}</b></span>` +
+    `<span>Watch <b>${yields.watch}</b></span>`;
+  $('roleTable').innerHTML = TRIBES.map(t => {
+    const cap = tribeCrewCap(t.name);
+    const alloc = state.tribeRoles[t.name] || emptyTribeRoles()[t.name];
+    const used = roleAllocationTotal(alloc);
+    const row = state.tribeStats[t.name] || { population:t.population, unrest:0 };
+    const unrest = Math.round(row.unrest || 0);
+    const steps = LABOR_ROLES.map(role => {
+      const n = alloc[role.id] || 0;
+      return `<div class="role-step" title="${role.hint}">` +
+        `<span>${role.short}</span>` +
+        `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="-1" ${n ? '' : 'disabled'} aria-label="Fewer ${role.label} crews for ${t.name}">−</button>` +
+        `<b>${n}</b>` +
+        `<button data-role-tribe="${t.name}" data-role-key="${role.id}" data-role-delta="1" ${used >= cap ? 'disabled' : ''} aria-label="More ${role.label} crews for ${t.name}">+</button>` +
+      `</div>`;
+    }).join('');
+    return `<div class="role-row">` +
+      `<div class="role-row-head"><i style="background:${t.color}"></i><b>${t.name}</b>` +
+        `<span class="role-unrest" style="color:${unrestColor(unrest)}">Unrest ${unrest}%</span>` +
+        `<span class="role-free">${used}/${cap} crews${used < cap ? ` · ${cap-used} free` : ''}</span>` +
+      `</div>` +
+      `<div class="role-steps">${steps}</div>` +
+    `</div>`;
+  }).join('');
+  $('roleHint').textContent = assigned < totalCap
+    ? `${totalCap - assigned} crews are idle. Idle tribes grow resentful; camp crews calm unrest and watch crews improve raid defense.`
+    : 'All crews are assigned. Hard labour without camp or watch crews slowly breeds resentment.';
+}
+
+function openDailyRoles(force = false){
+  if (state.trial) return;
+  if (!force && state.roleDay === state.day) return;
+  state.rolesReturn = state.mode === 'camp' ? 'camp' : 'playing';
+  state.mode = 'roles';
+  state.raidDefense = null;
+  $('raidOverlay').classList.remove('open');
+  $('pauseOverlay').classList.remove('open');
+  renderRoleMuster();
+  $('rolesOverlay').classList.add('open');
+}
+
+function confirmDailyRoles(){
+  state.roleDay = state.day;
+  $('rolesOverlay').classList.remove('open');
+  state.mode = state.rolesReturn === 'camp' ? 'camp' : 'playing';
+  if (state.mode === 'camp'){ updateCampUI(); }
+  else {
+    say(`Day ${dayOfMonth()} begins. The tribes take up their assigned work.`);
+    updateHud(true);
+  }
+  saveGame();
+}
+
+function adjustRole(tribeName, roleKey, delta){
+  const alloc = state.tribeRoles[tribeName];
+  if (!alloc) return;
+  const cap = tribeCrewCap(tribeName);
+  const used = roleAllocationTotal(alloc);
+  if (delta > 0 && used >= cap) return;
+  alloc[roleKey] = Math.max(0, (alloc[roleKey] || 0) + delta);
+  renderRoleMuster();
+  playSfx('click', 0.15);
+}
+
+function autoBalanceRoles(){
+  state.tribeRoles = seedTribeRoles();
+  renderRoleMuster();
+  playSfx('click', 0.2);
+}
+
 function updateCampUI(){
   const counts = traitCounts();
   const hoard = totalHoard();
@@ -3907,7 +4176,7 @@ function updateCampUI(){
     const st = state.tribeStats[t.name] || { population:t.population, livestock:0 };
     return `<div class="camp-tribe-card">` +
       `<div class="camp-tribe-head"><i style="background:${t.color}"></i><b>${t.name}</b><span>${st.population.toLocaleString()} souls</span></div>` +
-      `<div class="camp-tribe-line">Flocks <b>${st.livestock.toLocaleString()}</b> · Represented <b>${row.rep}</b> · Sick <b>${row.sick}</b> · Hoarded <b>${row.hoard}</b></div>` +
+      `<div class="camp-tribe-line">Flocks <b>${st.livestock.toLocaleString()}</b> · Represented <b>${row.rep}</b> · Sick <b>${row.sick}</b> · Hoarded <b>${row.hoard}</b> · Unrest <b style="color:${unrestColor(st.unrest || 0)}">${Math.round(st.unrest || 0)}%</b></div>` +
       `<div class="camp-tribe-traits">` +
         `<span style="color:${TRAITS.greedy.color}">Greedy <b>${tr.greedy}</b></span>` +
         `<span style="color:${TRAITS.lazy.color}">Lazy <b>${tr.lazy}</b></span>` +
@@ -4485,6 +4754,7 @@ function savePayload(){
     monthTracking:state.monthTracking, yearTracking:state.yearTracking,
     monthOffenders:state.monthOffenders,
     blueprints:state.blueprints, raidLog:state.raidLog, raidSeed:state.raidSeed,
+    tribeRoles:state.tribeRoles, roleDay:state.roleDay,
     haptics:state.haptics !== false, sfxOn:state.sfxOn !== false, reducedMotion:!!state.reducedMotion
   };
 }
@@ -4555,6 +4825,15 @@ function applySaveData(data){
   state.day = clamp(state.day, 1, TOTAL_DAYS);
   state.hour = data.hour ?? 6;
   state.tribeStats = data.tribeStats && typeof data.tribeStats === 'object' ? data.tribeStats : seedTribeStats();
+  for (const t of TRIBES){
+    const row = state.tribeStats[t.name] || (state.tribeStats[t.name] = { population:t.population, livestock:Math.max(8, Math.round(t.population/2000)) });
+    row.population = Math.max(50, Number(row.population) || t.population);
+    row.livestock = Math.max(0, Number(row.livestock) || 0);
+    row.unrest = clamp(Number(row.unrest) || 0, 0, 100);
+    row.lastRebellion = Number(row.lastRebellion) || 0;
+  }
+  state.tribeRoles = normalizeTribeRoles(data.tribeRoles);
+  state.roleDay = Number(data.roleDay) || 0;
   state.events = { rock:false, law:false, calf:false, jordan:false, ...(data.events || {}) };
   state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
   state.visited = new Set(data.visited || []);
@@ -4620,6 +4899,7 @@ function applySaveData(data){
   $('menuOverlay').classList.remove('open');
   document.body.classList.remove('menu-open');
   updateHud(true);
+  if (state.hour >= 6 && state.roleDay !== state.day) openDailyRoles(true);
 }
 
 function loadGame(){
@@ -5296,7 +5576,7 @@ function drawTentFire(p, d, t, fire){
   g.restore();
 }
 
-function igniteTents(count = 1){
+function igniteTents(count = 1, reason = 'A tent is burning after the raid. It will smoulder for a while.'){
   const now = performance.now()/1000;
   const candidates = [];
   for (const st of structures) if (st.kind === 'tent') candidates.push({ ref:st, x:st.x, y:st.y });
@@ -5311,7 +5591,7 @@ function igniteTents(count = 1){
   if (lit){
     playSfx('hurt', 0.18);
     haptic(18);
-    say(`A tent is burning after the raid. It will smoulder for a while.`);
+    say(reason);
   }
   return lit;
 }
@@ -5995,6 +6275,7 @@ document.addEventListener('keydown', e => {
     if (state.mode === 'report'){ closeReport(); return; }
     if (state.layoutEdit){ closeLayoutEditor(); return; }
     if (state.mode === 'settings'){ closeSettings(); return; }
+    if (state.mode === 'roles'){ confirmDailyRoles(); return; }
     if (state.buildMode) cancelBuild();
     else if (state.mode === 'camp') closeCamp();
     else if (state.mode === 'about') closeAbout();
@@ -6005,6 +6286,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if ((e.ctrlKey || e.metaKey) && key === 'z' && state.layoutEdit){ e.preventDefault(); undoLayoutMove(); return; }
+  if (state.mode === 'roles' && (key === 'Enter' || key === ' ')) { confirmDailyRoles(); return; }
   if (state.mode === 'station' && (key === 'Enter' || key === ' ')) { closeStation(); return; }
   if (state.mode === 'about' && (key === 'Escape' || key === 'i')) { closeAbout(); return; }
   if (state.mode === 'credits' && (key === 'Escape' || key === 'c')) { closeCredits(); return; }
@@ -6161,6 +6443,14 @@ $('setTutorial').addEventListener('click', () => {
 });
 $('setExport').addEventListener('click', exportSave);
 $('setImport').addEventListener('click', () => $('saveImport').click());
+$('campRoles').addEventListener('click', () => openDailyRoles(true));
+$('roleTable').addEventListener('click', e => {
+  const btn = e.target.closest('[data-role-tribe]');
+  if (!btn) return;
+  adjustRole(btn.dataset.roleTribe, btn.dataset.roleKey, Number(btn.dataset.roleDelta));
+});
+$('rolesAuto').addEventListener('click', autoBalanceRoles);
+$('rolesConfirm').addEventListener('click', confirmDailyRoles);
 $('mapClose').addEventListener('click', closeMap);
 $('campClose').addEventListener('click', closeCamp);
 $('reportContinue').addEventListener('click', closeReport);
