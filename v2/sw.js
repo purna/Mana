@@ -5,7 +5,11 @@ const CACHE = 'manna-iso-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.ico', './js/iso-core.js'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Deliberately no skipWaiting here: the new worker must stay in the
+  // "waiting" state so the page can show the "Reload" banner. The page
+  // sends SKIP_WAITING only when the player accepts, and a stray worker
+  // that skipped waiting would make the banner a false positive.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
 });
 
 self.addEventListener('activate', (event) => {
