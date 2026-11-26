@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desert Outpost</title>
+<style>
+:root{--ui:rgba(255,247,232,.93);--tx:#3a2a1c;--ac:#b8472f;--ac2:#3f6f6a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ui:rgba(44,32,24,.93);--tx:#f6e9d6}}
+:root[data-theme="dark"]{--ui:rgba(44,32,24,.93);--tx:#f6e9d6}
+html,body{margin:0;height:100%;overflow:hidden;background:#f0d7a4;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx)}
+canvas{display:block;touch-action:none}
+#hud{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);background:var(--ui);padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.45;max-width:min(290px,calc(100vw - 190px))}
+#hud b{font-size:16px}
+#bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+button{font:inherit;font-size:14px;padding:9px 13px;border:0;border-radius:8px;background:var(--ui);color:var(--tx);cursor:pointer}
+button:focus-visible{outline:3px solid var(--ac2);outline-offset:2px}
+button.on{background:var(--ac);color:#fff}
+#inv{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;gap:8px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--ui);padding:5px 12px 5px 8px;border-radius:999px;font-size:18px;font-weight:600}
+.chip svg{width:26px;height:26px}
+.bump{animation:bump .35s}
+@keyframes bump{40%{transform:scale(1.22)}}
+#msg{position:fixed;top:calc(env(safe-area-inset-top,0px) + 58px);right:12px;background:var(--ui);padding:8px 12px;border-radius:10px;font-size:14px;max-width:220px;opacity:0;transition:opacity .3s}
+</style></head><body>
+<div id="hud"></div><div id="msg"></div>
+<div id="inv" aria-live="polite">
+<div class="chip" title="Wood from felled trees"><svg viewBox="0 0 24 24" aria-label="Wood"><rect x="11" y="10" width="2.4" height="12" rx="1" fill="#7a5a3a"/><path d="M12 10C7 9 4 11 3 14C7 12 9 12 12 12Z" fill="#5f8a3a"/><path d="M12 10C17 9 20 11 21 14C17 12 15 12 12 12Z" fill="#5f8a3a"/><path d="M12 10C9 5 6 5 4 6C7 7 9 8 12 10Z" fill="#6f9a45"/><path d="M12 10C15 5 18 5 20 6C17 7 15 8 12 10Z" fill="#6f9a45"/></svg><b id="invW">0</b></div>
+<div class="chip" title="Stone from collected rocks"><svg viewBox="0 0 24 24" aria-label="Stone"><path d="M3 19L6 10L12 6L12 19Z" fill="#b7a68c"/><path d="M12 6L18 9L21 19L12 19Z" fill="#7d6f60"/><path d="M6 10L12 6L18 9L21 19L3 19Z" fill="none" stroke="#6a5d4f" stroke-width=".8"/></svg><b id="invS">0</b></div>
+</div>
+<div id="bar">
+<button id="t" class="on">Tent</button><button id="s">Sentry wall</button><button id="w">Watch tower</button><button id="x">Erase</button><button id="f">Fell tree</button><button id="r">Collect rocks</button>
+<button id="rl" aria-label="Rotate left">&#8634;</button><button id="rr" aria-label="Rotate right">&#8635;</button>
+<button id="nw">New desert</button><button id="ex">Copy layout JSON</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*
+=====================================================================
+ DESERT OUTPOST RULE BOOK  (Iron Age camp builder, isometric three.js)
+=====================================================================
+
+0. WHAT KIND OF WAVE FUNCTION COLLAPSE IS THIS?
+   - It is a lightweight, per-slot WFC-style solver, NOT classic tiled WFC.
+   - Each slot (a tent, or one face of one tower level) has a small domain of
+     options. We repeatedly (a) pick the slot with the lowest entropy
+     (domain size plus a little random noise), (b) collapse it with a weighted
+     random choice, (c) propagate by deleting options from neighbours.
+   - There are no tile sockets, no overlapping-pattern model, no backtracking.
+     A contradiction (empty domain) is resolved by a fallback value.
+   - It is NOT chunked or stitched WFC (no generating regions separately and
+     matching their borders). The closest thing is the cache below: settled
+     tents and tower faces are pinned and only changed cells re-collapse
+     around them, which behaves like incremental WFC with pre-collapsed edges.
+   - On top sits a GRAPH GRAMMAR (section 5) that rewrites the camp graph.
+
+1. DATA
+   - Grid N=16. kind[x][z] is 0, 't' tent, 's' sentry wall or 'w' watch tower.
+   - lvl[x][z]: tent 1-3 (size), sentry 1-3 (strength), tower 1-4 (storeys).
+   - G is ground height, TL is storey height of a tower.
+   - build() is rerun after every edit. Pipeline order:
+     tent WFC -> merge tents into large tents -> build camp graph ->
+     graph grammar -> render tents -> fires/folds -> sentry walls ->
+     tower WFC -> render towers -> desert dressing -> export list.
+
+2. INPUT RULES
+   - Tent / Sentry tool on an empty cell places a level 1 piece.
+   - Same tool on the same kind of piece raises its level (max 3).
+   - Tower tool on an empty cell places 1 storey, again raises it (max 4).
+   - Clicking a different kind of piece with a tool does nothing.
+   - Erase lowers a tower, tent or wall one level first, then removes it.
+   - Fell tree tool (key 5): click a standing palm to cut it down. It leaves a
+     stump with a few chips, remembered in the felled set until New desert.
+   - Number keys 1-5 pick tools. Q/E or the rotate buttons turn the view.
+
+3. TENT RULES (WFC)
+   - Domain per tent cell: door direction (4) x goat-hair shade (4).
+   - Door may not face an occupied neighbour cell (relaxed if all blocked).
+   - Shade rule: an unsettled tent drops the shade of any touching tent,
+     including diagonals, as long as it keeps at least one shade.
+   - Courtyard rule: a tent two cells in front of a collapsed tent is forced
+     to face back toward it, if that direction is still allowed.
+   - Side-by-side rule: a tent touching a collapsed tent at its side is forced
+     to share its door direction so the two can join.
+   - STABILITY CACHE (tcache): each tent stores door, shade and a signature
+     of the 3x3 kinds around it. If the signature is unchanged the result is
+     reused, so tents only change when something next to them changes.
+     Changing a tent's size level does not change the signature.
+
+4. LARGE TENTS (merging)
+   - After the WFC, touching tent cells are merged by scanline, taking the
+     largest rectangle first: 2x3, 3x2, 2x2, 1x3, 3x1, 2x1, 1x2, 1x1.
+   - Maximum footprint is 2x3 tiles. The anchor is the first cell.
+   - The merged tent uses the anchor's shade and one door direction: the
+     anchor's if every outer cell on that side is free, otherwise the first
+     free direction of 0,1,2,3.
+   - Size: depth = tiles deep - 0.2 + 0.07 per extra size level.
+     Height scale = 1 + 0.2 per extra size level + 0.08 per extra tile,
+     plus 0.1 for a chief tent, capped at 1.7.
+   - Variants (hash of the anchor cell, so stable): 0 flat striped roof,
+     1 fringed valance, 2 peaked two-slope roof with ridge pole,
+     3 front awning on poles. Stripe colour is also hashed.
+   - Door-side props by hash: under 0.3 water jar, under 0.6 sacks,
+     under 0.8 goat hide, otherwise none.
+   - Banner pole: tent size 3 or a chief tent (red pennant for chief).
+
+5. GRAPH GRAMMAR
+   - Nodes: tent (one per cell), wall, tower, fire, fold. Distance is
+     Chebyshev (a diagonal neighbour counts as 1).
+   - Rules run in this order, repeated up to 8 passes until none match.
+     clan-chief    3 or more touching tent cells with no chief: the most
+                   connected one gets role chief (bigger, banner).
+     hearth        a tent with another tent within 2 and no fire within 2:
+                   add a fire on the free cell nearest their centre.
+     council-ring  a fire with 3 or more tents within 2 gets a stone ring.
+     sheepfold     a tent touching a wall, once per tent: add a fold with
+                   sheep and a thorn fence on a free cell next to both.
+     gatehouse     a tower touching 2 or more wall cells gets role gate
+                   (arched door on the wall side, pennant on top).
+     signal-beacon a tower of 2+ storeys with no wall or tower within 2
+                   loses its canopy and gets a fire basket.
+   - Fires also appear when 2 or more tent doors face the same empty cell.
+   - The HUD lists how often each rule fired.
+
+6. SENTRY WALL RULES
+   - Every wall cell always draws a 0.46 square stone pillar. Joining never
+     changes its size.
+   - Joining adds a 0.3 thick segment from the pillar to the cell edge toward
+     each neighbouring wall or tower (4-neighbour). Each cell draws its own
+     half using its own level, so unequal levels show a step at the joint.
+   - Outward is the direction away from the camp centre (the average of all
+     non-wall pieces). If there is no link on the outward side, a thin shield
+     slab is added on that side, so the wall faces out.
+   - Strength 1: two courses (top 0.29), thorn brush on top, outer-side brush.
+     Strength 2: three courses (top 0.54), wooden stakes, brush as abatis.
+     Strength 3: four courses (top 0.76), crenellated merlons, abatis.
+     Thin dimensions are thickened by 10 percent per extra level.
+   - A low firing step runs along the inner side of each segment.
+   - Pillar top: 0 or 1 links gets a pennant, 3 or more links gets a lamp.
+
+7. WATCH TOWER RULES
+   - Storey height TL=0.7. Width shrinks by a per-material taper each storey.
+   - WFC per face per storey: S arrow slit (weight 2), B log beam ends (1),
+     O plain (1). A collapsed face removes its value from the faces directly
+     above and below, so patterns alternate vertically.
+   - Cache (scache) pins settled faces. Adding a storey only collapses the
+     new faces.
+   - Material variant (hash): 0 mudbrick (taper 0.05), 1 pale limestone
+     (taper 0.02, band at each storey), 2 whitewashed with timber bands and
+     corner buttresses (taper 0.07).
+   - Crown variant (hash): 0 flat reed canopy, 1 pyramid thatch roof with tall
+     corner turrets, 2 timber hoarding gallery with flat roof.
+   - Parapet and merlons on every tower. Ladder on the first side with no
+     neighbouring piece (not the gate side).
+   - Rope bridge: two towers of equal height in line with exactly one empty
+     cell between them.
+
+8. DRESSING (hash of cell, skipped on occupied cells)
+   - Under 0.04 date palm, under 0.12 thorn scrub, under 0.2 rock (collectable),
+     under 0.29 dune. No cacti (New World plants).
+
+9. DETERMINISM
+   - rng(seed*17+count()) seeds fresh collapses only. hash(x,z) drives all
+     variants, so they are stable. New desert changes the seed and clears
+     both caches.
+
+10. EXPORT
+   - Copy layout JSON gives grid, seed and a list of pieces with kind, x, z,
+     role, door dir, shade, levels, wall links and tent span [width, length].
+
+10a. RESOURCES AND COSTS
+   - Inventory starts at 8 wood and 10 stone (New desert resets it) and is
+     shown top-right with a palm icon (wood) and a rock icon (stone), always visible.
+   - Fell tree gives 3 wood per palm and leaves a stump. Collect rocks gives
+     3 stone per rock and leaves pebbles. Neither regrows.
+   - Cost per level: tent 1 wood, sentry wall 2 stone, watch tower 1 wood and
+     2 stone. Raising a level costs the same again.
+   - Erase refunds half (rounded down) of one level's cost.
+   - Without enough materials a placement or upgrade is refused with a note.
+     The starter camp is free.
+
+10b. VARIATION
+   - Tents: footprint fraction 0.7-1.0 of the tile (large tents stay nearer full)
+     with a small offset inside the tile. Variants 0-3 open front, 4 round
+     yurt (cylinder and cone), 5 beehive dome hut, 6 closed pitched A-frame.
+   - Sentry: pillar width 0.38-0.5. Variant by cell hash: 0 square stone,
+     1 round cairn tower, 2 timber lookout posts with pitched roof and
+     palisade stake segments. Joining never changes a cell's own shape.
+   - Towers: about 40 percent are round (cylinder storeys, ring of merlons,
+     conical roof). Footprint 0.8-1.0 of the tile. Crown variants 0-3, where
+     3 is a pitched ridge roof; round towers always take the conical roof.
+
+11. HOW TO EXTEND
+   - New grammar rule: add [name, fn] to the rules array in grammar(). The fn
+     returns how many rewrites it made.
+   - New tent or tower variant: widen the hash modulo and add a branch.
+   - To get classic tiled WFC: define tiles with edge sockets, then replace
+     the domain objects with tile lists and the neighbour deletions with
+     socket compatibility checks.
+=====================================================================
+*/
+const N=16,G=.3,TL=.7,MAXL=4,PI=Math.PI,D4=[[0,1],[1,0],[0,-1],[-1,0]];
+let seed=11,tool='t';
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const W=i=>i-N/2+.5,cellOf=v=>Math.floor(v+N/2);
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;document.body.appendChild(R.domElement);
+const S=new THREE.Scene();S.background=new THREE.Color(0xf0d7a4);
+const C=new THREE.OrthographicCamera();
+let yaw=PI/4,yawT=PI/4,zoom=1;
+function proj(){const a=innerWidth/innerHeight,v=9.5/zoom;Object.assign(C,{left:-v*a,right:v*a,top:v,bottom:-v,near:.1,far:120});C.updateProjectionMatrix()}
+function cam(){yaw+=(yawT-yaw)*.14;const d=40,el=.6155;C.position.set(Math.cos(yaw)*Math.cos(el)*d,Math.sin(el)*d,Math.sin(yaw)*Math.cos(el)*d);C.lookAt(0,0,0)}
+S.add(new THREE.HemisphereLight(0xfff0d6,0xb08a5a,.8));
+const sun=new THREE.DirectionalLight(0xffe2b0,.95);sun.position.set(12,10,5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:1,far:60});S.add(sun);
+const mats={},M=c=>mats[c]||(mats[c]=new THREE.MeshStandardMaterial({color:c,roughness:.9,flatShading:true}));
+const glow={},MG=c=>glow[c]||(glow[c]=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9}));
+const gB=new THREE.BoxGeometry(1,1,1),gP=new THREE.ConeGeometry(.8,.75,4),gC=new THREE.CylinderGeometry(1,1,1,8),gS=new THREE.SphereGeometry(1,12,6),gCone=new THREE.ConeGeometry(1,1,14);
+const outer=new THREE.Mesh(new THREE.PlaneGeometry(200,200),M(0xd9b27a));outer.rotation.x=-PI/2;outer.position.y=-.02;outer.receiveShadow=true;S.add(outer);
+const GR=new THREE.Group(),T=new THREE.Group();S.add(GR,T);
+function box(g,w,h,d,c,x,y,z,ry=0,rx=0,rz=0,m){const o=new THREE.Mesh(g,m||M(c));o.scale.set(w,h,d);o.position.set(x,y,z);o.rotation.order='YXZ';o.rotation.set(rx,ry,rz);o.castShadow=o.receiveShadow=true;T.add(o);return o}
+const WOOD=0x6a4628,WOOD2=0x8a6a40;
+const kind=[],lvl=[];
+const K=(x,z)=>x<0||z<0||x>=N||z>=N?0:kind[x][z];
+const count=()=>{let c=0;for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(kind[x]&&kind[x][z])c+=kind[x][z]==='w'?lvl[x][z]+1:1;return c};
+function hash(x,z){return(((x*73856093)^(z*19349663)^(seed*83492791))>>>0)%1000/1000}
+const isPalm=(x,z)=>hash(x,z)<.04;
+const isRock=(x,z)=>{const h=hash(x,z);return h>=.12&&h<.2};
+function gen(){
+  while(GR.children.length)GR.remove(GR.children[0]);tcache=new Map();scache=new Map();felled=new Set();mined=new Set();inv={wood:8,stone:10};
+  const tones=[0xe6c590,0xdfbb84,0xe9ca98];
+  for(let x=0;x<N;x++){kind[x]=[];lvl[x]=[];for(let z=0;z<N;z++){kind[x][z]=0;lvl[x][z]=0;
+    const m=new THREE.Mesh(gB,M(tones[Math.floor(hash(x+3,z+9)*3)]));m.scale.set(1,G+.2,1);m.position.set(W(x),(G-.2)/2,W(z));m.receiveShadow=true;GR.add(m)}}
+  [[7,7,'w',2],[10,7,'w',2],[8,9,'t'],[6,9,'t'],[7,5,'t'],[8,7,'s'],[9,7,'s'],[8,6,'s'],[10,8,'s'],[10,9,'s']].forEach(([x,z,k,l])=>{kind[x][z]=k;lvl[x][z]=l||0});
+  build();
+}
+let outRes=[],tcache=new Map(),scache=new Map(),felled=new Set(),mined=new Set(),inv={wood:8,stone:10};
+const lw=(cx,cz,d,lx,lz)=>[cx+lx*D4[d][1]+lz*D4[d][0],cz-lx*D4[d][0]+lz*D4[d][1]];
+function lb(w,h,dd,c,cx,cz,d,lx,y,lz,rx=0,rz=0,m){const[p,q]=lw(cx,cz,d,lx,lz);return box(gB,w,h,dd,c,p,y,q,d*PI/2,rx,rz,m)}
+// ---- graph grammar: nodes are pieces, rules rewrite the camp graph until nothing matches
+function grammar(nodes){
+  const log={},dist=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.z-b.z));
+  const occ=(x,z)=>x<0||z<0||x>=N||z>=N||nodes.some(n=>n.x===x&&n.z===z);
+  const near=(a,t,d)=>nodes.filter(n=>n!==a&&n.t===t&&dist(a,n)<=d);
+  const rules=[
+   ['clan-chief',()=>{let hit=0;const seen=new Set();
+     for(const a of nodes.filter(n=>n.t==='tent')){if(seen.has(a))continue;const comp=[a],st=[a];seen.add(a);
+       while(st.length){const c=st.pop();for(const n of near(c,'tent',1))if(!seen.has(n)){seen.add(n);comp.push(n);st.push(n)}}
+       if(comp.length>=3&&!comp.some(n=>n.role)){comp.sort((u,v)=>near(v,'tent',1).length-near(u,'tent',1).length)[0].role='chief';hit++}}
+     return hit}],
+   ['hearth',()=>{let hit=0;
+     for(const a of nodes.filter(n=>n.t==='tent')){const g=near(a,'tent',2).concat(a);
+       if(g.length<2||nodes.some(n=>n.t==='fire'&&dist(n,a)<=2))continue;
+       const mx=Math.round(g.reduce((s,n)=>s+n.x,0)/g.length),mz=Math.round(g.reduce((s,n)=>s+n.z,0)/g.length);
+       let best=null,bd=99;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const x=mx+i,z=mz+j,k=Math.abs(i)+Math.abs(j);if(!occ(x,z)&&k<bd){bd=k;best={x,z}}}
+       if(best){nodes.push({t:'fire',x:best.x,z:best.z});hit++}}
+     return hit}],
+   ['council-ring',()=>nodes.filter(n=>n.t==='fire'&&!n.role&&near(n,'tent',2).length>=3&&(n.role='ring')).length],
+   ['sheepfold',()=>{let hit=0;
+     for(const a of nodes.filter(n=>n.t==='tent'&&!n.fold&&near(n,'wall',1).length)){
+       const w=near(a,'wall',1)[0];let spot=null;
+       for(let i=-1;i<=1&&!spot;i++)for(let j=-1;j<=1;j++){const x=a.x+i,z=a.z+j;if(!occ(x,z)&&dist({x,z},w)<=1){spot={x,z};break}}
+       a.fold=1;if(spot){nodes.push({t:'fold',x:spot.x,z:spot.z});hit++}}
+     return hit}],
+   ['gatehouse',()=>nodes.filter(n=>n.t==='tower'&&!n.role&&near(n,'wall',1).length>=2&&(n.role='gate')).length],
+   ['signal-beacon',()=>nodes.filter(n=>n.t==='tower'&&!n.role&&n.n>=2&&!near(n,'wall',2).length&&!near(n,'tower',2).length&&(n.role='beacon')).length]
+  ];
+  for(let i=0;i<8;i++){let any=0;for(const[nm,fn]of rules){const h=fn();if(h){log[nm]=(log[nm]||0)+h;any=1}}if(!any)break}
+  return log}
+function build(){
+  while(T.children.length)T.remove(T.children[0]);
+  const r=rng(seed*17+count());
+  // ---- WFC for tents: door direction + goat-hair shade
+  const ts=[];
+  // tents keep their resolved door/colour unless something changed in the 3x3 around them
+  const sg=(x,z)=>{let s="";for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)s+=K(x+i,z+j)||"-";return s};
+  for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(K(x,z)==='t'){const d=[0,1,2,3].filter(d=>!K(x+D4[d][0],z+D4[d][1])),s=sg(x,z),c=tcache.get(x+","+z),t={x,z,sig:s,dirs:d.length?d:[0,1,2,3],cols:[0,1,2,3]};
+    if(c&&c.sig===s){t.d=c.d;t.c=c.c}ts.push(t)}
+  for(const p of ts)if(p.d!==undefined)for(const n of ts)if(n.d===undefined&&Math.abs(n.x-p.x)<=1&&Math.abs(n.z-p.z)<=1&&n.cols.length>1)n.cols=n.cols.filter(c=>c!==p.c);
+  const open=ts.filter(t=>t.d===undefined);
+  while(open.length){
+    let b=null,be=1e9;for(const t of open){const e=t.dirs.length*t.cols.length+r()*.1;if(e<be){be=e;b=t}}
+    b.d=b.dirs[Math.floor(r()*b.dirs.length)];b.c=b.cols[Math.floor(r()*b.cols.length)];
+    open.splice(open.indexOf(b),1);
+    for(const n of open)if(Math.abs(n.x-b.x)<=1&&Math.abs(n.z-b.z)<=1&&n.cols.length>1)n.cols=n.cols.filter(c=>c!==b.c);
+    const [dx,dz]=D4[b.d],o=open.find(t=>t.x===b.x+dx*2&&t.z===b.z+dz*2);
+    if(o&&o.dirs.includes((b.d+2)%4))o.dirs=[(b.d+2)%4];
+    for(const n of open){const ex=n.x-b.x,ez=n.z-b.z;if(Math.abs(ex)+Math.abs(ez)===1&&ex*dx+ez*dz===0&&n.dirs.includes(b.d))n.dirs=[b.d]} // side-by-side tents face the same way so they can join
+  }
+  tcache=new Map(ts.map(t=>[t.x+","+t.z,{d:t.d,c:t.c,sig:t.sig}]));
+  // ---- merge touching tents into one large tent (max 2x3 tiles)
+  const tk=new Map(ts.map(t=>[t.x+","+t.z,t])),used=new Set();
+  for(const a of ts){if(used.has(a))continue;
+    for(const[w,l]of[[2,3],[3,2],[2,2],[1,3],[3,1],[2,1],[1,2],[1,1]]){const cells=[];let ok=true;
+      for(let i=0;i<w&&ok;i++)for(let j=0;j<l;j++){const c=tk.get((a.x+i)+","+(a.z+j));if(!c||used.has(c)){ok=false;break}cells.push(c)}
+      if(ok){const g={cells,w,l};cells.forEach(c=>{used.add(c);c.g=g});
+        const okd=d=>cells.every(c=>{const nx=c.x+D4[d][0],nz=c.z+D4[d][1];return cells.some(q=>q.x===nx&&q.z===nz)||!K(nx,nz)});
+        const gd=[a.d,0,1,2,3].find(okd);g.d=gd===undefined?a.d:gd;cells.forEach(c=>{c.d=g.d;c.c=a.c});break}}}
+  // ---- build the camp graph, then let the grammar rewrite it
+  const nodes=[],face=new Map();
+  for(const t of ts){nodes.push({t:'tent',x:t.x,z:t.z,d:t.d,c:t.c,sz:lvl[t.x][t.z]||1,g:t.g});
+    const [dx,dz]=D4[t.d],x=t.x+dx,z=t.z+dz;if(x>=0&&z>=0&&x<N&&z<N&&!K(x,z))face.set(x+","+z,(face.get(x+","+z)||0)+1)}
+  face.forEach((n,k)=>{if(n>=2){const[x,z]=k.split(',').map(Number);nodes.push({t:'fire',x,z})}});
+  for(let x=0;x<N;x++)for(let z=0;z<N;z++){const k=K(x,z);if(k==='w')nodes.push({t:'tower',x,z,n:lvl[x][z]});if(k==='s')nodes.push({t:'wall',x,z,s:lvl[x][z]||1})}
+  const log=grammar(nodes);
+  // ---- tents: black goat-hair, open front, poles, rug (Bedouin / Iron Age style)
+  const TCOL=[0x2e2621,0x3d3027,0x5a4a3a,0xb5a284];
+  const gs=[];nodes.filter(q=>q.t==='tent').forEach(q=>{if(!gs.includes(q.g))gs.push(q.g)});
+  for(const g of gs){
+    const mem=nodes.filter(q=>q.t==='tent'&&q.g===g),t=mem[0],d=t.d,k=TCOL[t.c],ch=mem.some(q=>q.role==='chief'),sz=Math.max(...mem.map(q=>q.sz||1)),
+      A=g.cells.length,LW=d%2?g.l:g.w,DD=d%2?g.w:g.l,B=ch?1.1:1,
+      fp=1-.3*hash(t.x+23,t.z+41)*(A>1?.5:1), // tents need not fill the whole tile
+      cx=W(t.x)+(g.w-1)/2+(hash(t.x+5,t.z+37)-.5)*(1-fp),cz=W(t.z)+(g.l-1)/2+(hash(t.x+37,t.z+5)-.5)*(1-fp),
+      Wd=LW*B*fp,Dp=(DD-.2+.07*(sz-1))*fp,Hs=Math.min(1.7,1+.2*(sz-1)+.08*(A-1)+(ch?.1:0)),ry=Dp/2-.04,
+      v=Math.floor(hash(t.x+7,t.z+3)*7),st=[0xc9b48a,0xb5a284,0xa8322a,0xc9b48a][Math.floor(hash(t.x+2,t.z+19)*4)],p=hash(t.x+11,t.z+5),y0=G+.45*Hs,r=Math.min(LW,DD)*.5*fp*.9,dk=0x2a1d14;
+    // variants: 0 flat striped, 1 fringed, 2 peaked open front, 3 awning, 4 round yurt, 5 beehive dome hut, 6 closed pitched A-frame
+    if(v===4){const hh=.3*Hs;box(gC,r,hh,r,k,cx,G+hh/2,cz);box(gC,r*1.02,.05,r*1.02,st,cx,G+hh*.6,cz);box(gCone,r*1.2,.5*Hs,r*1.2,k,cx,G+hh+.25*Hs,cz);lb(.26,.32,.04,dk,cx,cz,d,0,G+.16,r)}
+    else if(v===5){box(gS,r,.55*Hs,r,0xa98a52,cx,G,cz);lb(.26,.3,.04,dk,cx,cz,d,0,G+.15,r*.88);box(gC,.03,.25,.03,WOOD,cx,G+.6*Hs,cz)}
+    else if(v===6){const q=Wd*.9;lb(q,q,Dp,k,cx,cz,d,0,G-.02,0,0,PI/4);lb(.05,.05,Dp+.02,st,cx,cz,d,0,G-.02+q*.707,0);lb(.26,.3,.04,dk,cx,cz,d,0,G+.15,Dp/2+.005)}
+    else{
+      if(v===2){for(const s of[-1,1])lb(Wd/2+.06,.05,Dp,k,cx,cz,d,s*Wd/4,y0+.12,0,0,-s*.32);lb(.05,.62*Hs,.05,WOOD,cx,cz,d,0,G+.31*Hs,ry)}
+      else{lb(Wd,.05,Dp,k,cx,cz,d,0,y0,0,-.1);for(let i=0;i<LW;i++)lb(.14,.056,Dp,st,cx,cz,d,(i-(LW-1)/2)*fp,y0+.001,0,-.1)}
+      if(v===1)for(let i=0;i<LW*4;i++)lb(.12,.12,.03,st,cx,cz,d,-Wd/2+.12+i*(Wd-.24)/(LW*4-1),y0+Dp*.05-.07,Dp/2+.03);
+      for(let i=0;i<=LW;i++)lb(.04,.48*Hs,.04,WOOD,cx,cz,d,-Wd/2+.06+i*(Wd-.12)/LW,G+.24*Hs,ry);
+      lb(Wd,.32*Hs,.04,k,cx,cz,d,0,G+.16*Hs,-ry-.02);
+      for(const sg of[-1,1])lb(.04,.3*Hs,Dp*.9,k,cx,cz,d,sg*(Wd/2-.02),G+.15*Hs,-.02);
+      if(LW>=2)lb(.03,.3*Hs,Dp*.45,k,cx,cz,d,0,G+.15*Hs,-Dp*.2);
+      lb(Wd*.7,.02,Dp*.55,0x8a3d2e,cx,cz,d,0,G+.01,.1);
+      if(v===3){lb(Wd,.04,.32,k,cx,cz,d,0,G+.42*Hs,Dp/2+.14,.28);for(const sg of[-1,1])lb(.04,.4*Hs,.04,WOOD,cx,cz,d,sg*(Wd/2-.05),G+.2*Hs,Dp/2+.26)}}
+    const rnd=v===4||v===5,hw=rnd?r:Wd/2,fo=(rnd?r:Dp/2)+(v===3?.4:.14);
+    if(p<.3){const[jx,jz]=lw(cx,cz,d,hw-.14,fo);box(gC,.07,.16,.07,0x9a5b3a,jx,G+.08,jz)}
+    else if(p<.6){lb(.16,.1,.12,0xb5a284,cx,cz,d,hw-.16,G+.05,fo);lb(.12,.09,.1,0xa8977f,cx,cz,d,hw-.3,G+.045,fo+.03)}
+    else if(p<.8)lb(.24,.03,.18,0x6f5a44,cx,cz,d,-hw+.2,G+.02,fo-.02);
+    if(sz>=3||ch){const fz=rnd?r*.6:ry;lb(.04,.9,.04,WOOD,cx,cz,d,-hw+.04,G+.55,fz);lb(.22,.15,.02,ch?0xa8322a:0x2f6f8f,cx,cz,d,-hw+.16,G+.92,fz)}}
+  // ---- fires, hearth stones, sheep folds
+  for(const f of nodes.filter(q=>q.t==='fire')){const cx=W(f.x),cz=W(f.z);
+    box(gB,.34,.06,.07,0x3a2616,cx,G+.04,cz,.5);box(gB,.34,.06,.07,0x3a2616,cx,G+.04,cz,-.5);
+    box(gP,.3,.5,.3,0,cx,G+.3,cz,PI/4,0,0,MG(0xff7a1a));
+    if(f.role==='ring')for(let i=0;i<9;i++){const a=i*PI*2/9;box(gB,.14,.1,.12,0x9a8a78,cx+Math.cos(a)*.34,G+.05,cz+Math.sin(a)*.34,-a)}}
+  for(const f of nodes.filter(q=>q.t==='fold')){const cx=W(f.x),cz=W(f.z);
+    for(const[a,b]of D4)box(gB,a?.05:.86,.14,b?.05:.86,0x66763f,cx+a*.42,G+.07,cz+b*.42);
+    for(let i=0;i<3;i++)box(gS,.13,.09,.17,0xe8e2d0,cx+(i-1)*.22,G+.1,cz+((i*7)%3-1)*.2,i)}
+  // ---- sentry walls: dry-stone with thorn brush; neighbour mask picks segments
+  const ex=nodes.filter(q=>q.t!=='wall'),CC=ex.length?[ex.reduce((s,q)=>s+q.x,0)/ex.length,ex.reduce((s,q)=>s+q.z,0)/ex.length]:[N/2-.5,N/2-.5];
+  let cur=1;
+  // wall strength: 1 dry-stone with thorn, 2 taller courses with stakes, 3 tall ashlar with merlons
+  const pal=(cx,cz,a,b)=>{const hh=.5+.15*cur;for(let i=0;i<4;i++)box(gC,.05,hh,.05,WOOD,cx+a*(.14+i*.1),G+hh/2,cz+b*(.14+i*.1));box(gB,a?.5:.04,.05,b?.5:.04,WOOD2,cx+a*.25,G+hh*.5,cz+b*.25)};
+  const stone=(x,z,w,d)=>{const L=cur,hs=[[.16,.13],[.2,.18,.16],[.22,.2,.18,.16]][L-1],tk=1+.1*(L-1);let y=G;
+    hs.forEach((h,i)=>{const sc=i?1-.04*i:1;box(gB,w*sc*(w<.4?tk:1),h,d*sc*(d<.4?tk:1),i%2?0xb9a98f:0xa8977f,x,y+h/2,z);y+=h});
+    if(L===1)box(gS,w*.5,.09,d*.5,0x66763f,x,G+.32,z);
+    else for(const s of[-1,1]){const ax=w>.4?1:0,az=d>.4?1:0;
+      if(L===2)box(gB,.06,.2,.06,WOOD,x+ax*s*w*.25,y+.1,z+az*s*d*.25);
+      else box(gB,ax?.14:w,.14,az?.14:d,0xc9a46c,x+ax*s*w*.28,y+.07,z+az*s*d*.28)}};
+  for(const nd of nodes.filter(q=>q.t==='wall')){cur=nd.s||1;const x=nd.x,z=nd.z,cx=W(x),cz=W(z),
+    m=D4.map(([a,b])=>{const k=K(x+a,z+b);return k==='s'||k==='w'?1:0}),n=m[0]+m[1]+m[2]+m[3];nd.links=m;const sv=Math.floor(hash(x+3,z+47)*3),pw=.38+.12*hash(x+9,z+21);let topH=[.29,.54,.76][cur-1];
+    if(sv===0)stone(cx,cz,pw,pw);
+    else if(sv===1){box(gC,pw*.6,topH,pw*.6,0xa8977f,cx,G+topH/2,cz);box(gC,pw*.68,.08,pw*.68,0xb9a98f,cx,G+topH,cz)}
+    else{const ph=.6+.15*cur;for(const sa of[-1,1])for(const sb of[-1,1])box(gB,.06,ph,.06,WOOD,cx+sa*.14,G+ph/2,cz+sb*.14);box(gP,.5,.28,.5,0x8a6a40,cx,G+ph+.14,cz,PI/4);topH=ph+.3}
+    D4.forEach(([a,b],d)=>{if(m[d]){(sv===2?pal(cx,cz,a,b):stone(cx+a*.25,cz+b*.25,a?.5:.3,b?.5:.3));const pa=b?1:0,pb=a?1:0,sg=((x-CC[0])*pa+(z-CC[1])*pb)>=0?1:-1;
+      box(gS,a?.42:.1,cur>1?.12:.1,b?.42:.1,0x66763f,cx+a*.25+pa*sg*(cur>1?.22:.14),G+(cur>1?.06:.3),cz+b*.25+pb*sg*(cur>1?.22:.14));box(gB,a?.5:.14,.07,b?.5:.14,0x9a8a74,cx+a*.25-pa*sg*.2,G+.035,cz+b*.25-pb*sg*.2)}});
+    {let o=0,bs=-9;D4.forEach(([a,b],d)=>{const s=a*(x-CC[0])+b*(z-CC[1]);if(s>bs){bs=s;o=d}});const[oa,ob]=D4[o];if(!m[o])stone(cx+oa*.36,cz+ob*.36,oa?.2:.86,ob?.2:.86)}
+    if(n<=1){const hp=topH;box(gB,.07,.7,.07,WOOD,cx,G+hp+.35,cz);box(gB,.3,.18,.03,0xa8322a,cx+.17,G+hp+.6,cz)}
+    else if(n>=3){const hp=topH;box(gB,.14,.14,.14,0,cx,G+hp+.1,cz,0,0,0,MG(0xffc34a))}}
+  // ---- watch towers: mudbrick on a stone footing; WFC picks arrow slits / log beam ends per face
+  const sl=new Map();
+  for(const nd of nodes.filter(q=>q.t==='tower'))for(let l=0;l<nd.n;l++)for(let f=0;f<4;f++)sl.set([nd.x,nd.z,l,f]+"",{x:nd.x,z:nd.z,l,f,v:null,dom:{S:2,B:1,O:1}});
+  for(const s of sl.values()){const c=scache.get([s.x,s.z,s.l,s.f]+"");if(c)s.v=c}
+  for(const s of sl.values())if(s.v)for(const dl of[1,-1]){const n=sl.get([s.x,s.z,s.l+dl,s.f]+"");if(n&&!n.v)delete n.dom[s.v]}
+  const op=[...sl.values()].filter(s=>!s.v);
+  while(op.length){
+    let b=null,be=1e9;for(const s of op){const e=Object.keys(s.dom).length+r()*.1;if(e<be){be=e;b=s}}
+    const ks=Object.keys(b.dom);let tot=0;ks.forEach(k=>tot+=b.dom[k]);let u=r()*tot;b.v=ks.length?ks[0]:'O';
+    for(const k of ks){u-=b.dom[k];if(u<=0){b.v=k;break}}
+    op.splice(op.indexOf(b),1);
+    for(const dl of[1,-1]){const n=sl.get([b.x,b.z,b.l+dl,b.f]+"");if(n&&!n.v)delete n.dom[b.v]}
+  }
+  scache=new Map([...sl].map(([k,s])=>[k,s.v]));
+  for(const nd of nodes.filter(q=>q.t==='tower')){
+    const x=nd.x,z=nd.z,n=nd.n,cx=W(x),cz=W(z),tv=Math.floor(hash(x+13,z+29)*3),t2=Math.floor(hash(x+31,z+17)*4),tp=[.05,.02,.07][tv],wc=[0xc9a46c,0xb8b0a0,0xe3d7bb][tv],wb=[0x9d8c75,0x8f8878,0xa89a80][tv],rd=hash(x+53,z+11)<.4,fpT=.8+.2*hash(x+61,z+7),gd=nd.role==='gate'?D4.findIndex(([a,b])=>K(x+a,z+b)==='s'):-1;
+    for(let l=0;l<n;l++){const y0=G+l*TL,w=(.92-tp*l)*fpT;
+      rd?box(gC,w/2,TL,w/2,l?wc:wb,cx,y0+TL/2,cz):box(gB,w,TL,w,l?wc:wb,cx,y0+TL/2,cz);if(rd&&l&&tv)box(gC,w/2+.015,.05,w/2+.015,tv===2?WOOD:0xcfc8b6,cx,y0+.03,cz);if(tv===2&&l&&!rd)box(gB,w+.03,.05,w+.03,WOOD,cx,y0+.03,cz);if(tv===1&&l&&!rd)box(gB,w+.02,.04,w+.02,0xcfc8b6,cx,y0+TL*.5,cz);if(tv===2&&!l&&!rd)for(const sx of[-1,1])for(const sz of[-1,1])box(gB,.14,TL*.8,.14,wb,cx+sx*(w/2),G+TL*.4,cz+sz*(w/2));
+      if(!l)rd?box(gC,w/2+.04,.12,w/2+.04,0x8a7a65,cx,G+.06,cz):box(gB,w+.08,.12,w+.08,0x8a7a65,cx,G+.06,cz);
+      D4.forEach(([a,b],f)=>{const v=sl.get([x,z,l,f]+"").v,o=w/2+.01;
+        if(v==='S')box(gB,a?.04:.07,.3,b?.04:.07,0x2a2018,cx+a*o,y0+TL*.58,cz+b*o);
+        else if(v==='B')for(const sg of[-1,1])box(gB,a?.16:.07,.07,b?.16:.07,WOOD,cx+a*(o+.03)+(a?0:sg*.2),y0+TL*.82,cz+b*(o+.03)+(b?0:sg*.2))})}
+    if(gd>=0){const[a,b]=D4[gd];box(gB,a?.05:.3,.42,b?.05:.3,0x241a12,cx+a*(.46*fpT),G+.21,cz+b*(.46*fpT));box(gB,a?.1:.46,.07,b?.1:.46,WOOD,cx+a*(.46*fpT),G+.45,cz+b*(.46*fpT))}
+    const y=G+n*TL,tw=(.92-tp*(n-1))*fpT+.1;let ld=D4.findIndex(([a,b],d)=>!K(x+a,z+b)&&d!==gd);if(ld<0)ld=gd===0?1:0;
+    rd?box(gC,tw*.58,.08,tw*.58,0xb8996a,cx,y,cz):box(gB,tw+.08,.08,tw+.08,0xb8996a,cx,y,cz);
+    if(rd){box(gC,tw*.55,.18,tw*.55,wc,cx,y+.13,cz);box(gC,tw*.45,.02,tw*.45,0x6b5a3a,cx,y+.225,cz);for(let i=0;i<8;i++){const an=i*PI/4;box(gB,.14,t2===1?.45:.2,.14,wc,cx+Math.cos(an)*tw*.5,y+(t2===1?.3:.2),cz+Math.sin(an)*tw*.5,-an)}}
+    else D4.forEach(([a,b])=>box(gB,a?.08:tw,.16,b?.08:tw,wc,cx+a*tw/2,y+.12,cz+b*tw/2));
+    if(!rd)for(const sx of[-1,1])for(const sz of[-1,1])box(gB,.18,t2===1?.5:.26,.18,wc,cx+sx*tw/2,y+(t2===1?.29:.17),cz+sz*tw/2);
+    const [la,lb2]=D4[ld];
+    for(const sg of[-1,1])box(gB,.05,n*TL+.2,.05,WOOD,cx+la*(.46*fpT+.04)+(la?0:sg*.12),G+(n*TL+.2)/2,cz+lb2*(.46*fpT+.04)+(lb2?0:sg*.12));
+    for(let k=0;k<n*3;k++)box(gB,la?.04:.28,.04,lb2?.04:.28,WOOD,cx+la*(.46*fpT+.04),G+.2+k*.23,cz+lb2*(.46*fpT+.04));
+    if(nd.role==='beacon'){box(gC,.2,.14,.2,0x333333,cx,y+.12,cz);box(gP,.3,.5,.3,0,cx,y+.42,cz,PI/4,0,0,MG(0xff7a1a))}
+    else{for(const sx of[-1,1])for(const sz of[-1,1])box(gB,.05,.5,.05,WOOD,cx+sx*tw*.42,y+.33,cz+sz*tw*.42);if(rd)box(gCone,tw*.62,.7,tw*.62,0xa9894f,cx,y+.95,cz);else if(t2===1)box(gP,tw+.3,.8,tw+.3,0xa9894f,cx,y+.9,cz,PI/4);else if(t2===3)box(gB,tw*.8,tw*.8,tw+.1,0xb8472f,cx,y+.55,cz,(x+z)%2?PI/2:0,0,PI/4);else if(t2===2){box(gB,tw+.3,.16,tw+.3,WOOD,cx,y+.08,cz);box(gB,tw+.14,.07,tw+.14,0x8a6a40,cx,y+.6,cz)}else box(gB,tw+.14,.07,tw+.14,0xa9894f,cx,y+.6,cz)}
+    if(nd.role==='gate'){box(gB,.04,.7,.04,WOOD,cx+tw/2,y+.5,cz+tw/2);box(gB,.28,.16,.03,0xa8322a,cx+tw/2+.15,y+.72,cz+tw/2)}
+    for(const[dx2,dz2]of[[2,0],[0,2]])if(K(x+dx2,z+dz2)==='w'&&lvl[x+dx2][z+dz2]===n&&!K(x+dx2/2,z+dz2/2)){
+      box(gB,dx2?1:.24,.06,dz2?1:.24,WOOD2,cx+dx2/2,y+.03,cz+dz2/2);
+      for(const sg of[-1,1])box(gB,dx2?1:.03,.03,dz2?1:.03,0xd8c8a0,cx+dx2/2+(dx2?0:sg*.12),y+.2,cz+dz2/2+(dx2?sg*.12:0))}}
+  // ---- dressing: date palms, thorn scrub, rocks, dunes (no cacti: they are New World plants)
+  const occS=new Set(nodes.map(q=>q.x+","+q.z));
+  for(let x=0;x<N;x++)for(let z=0;z<N;z++){if(occS.has(x+","+z))continue;
+    const h=hash(x,z),cx=W(x),cz=W(z),ox=(hash(z,x)-.5)*.4,oz=(hash(x+5,z+1)-.5)*.4;
+    if(h<.04&&felled.has(x+","+z)){box(gC,.09,.14,.09,0x7a5a3a,cx+ox,G+.07,cz+oz);box(gC,.075,.01,.075,0xc9a46c,cx+ox,G+.145,cz+oz);box(gB,.1,.03,.04,0x8a6a40,cx+ox+.12,G+.015,cz+oz+.05,.6)}
+    else if(h<.04){box(gC,.07,.95,.07,0x7a5a3a,cx+ox,G+.47,cz+oz);
+      for(let i=0;i<6;i++){const a=i*PI/3;box(gB,.55,.03,.12,0x5f8a3a,cx+ox+Math.cos(a)*.24,G+.96,cz+oz-Math.sin(a)*.24,a,0,-.45)}}
+    else if(h<.12)box(gS,.22,.14,.22,0x7d8a4a,cx+ox,G+.05,cz+oz);
+    else if(h<.2&&mined.has(x+","+z)){box(gB,.1,.04,.08,0xb7a68c,cx+ox,G+.02,cz+oz,h*20);box(gB,.07,.03,.06,0xa8977f,cx+ox+.1,G+.015,cz+oz+.06,h*9)}
+    else if(h<.2)box(gB,.32,.2,.26,0x9a8a78,cx+ox,G+.08,cz+oz,h*20);
+    else if(h<.29)box(gS,.55,.16,.5,0xdcb67c,cx,G,cz,h*9)}
+  outRes=nodes.map(n=>({kind:n.t,x:n.x,z:n.z,role:n.role,dir:n.d,colour:n.c,levels:n.n,links:n.links,span:n.g&&n.g.cells[0].x===n.x&&n.g.cells[0].z===n.z?[n.g.w,n.g.l]:undefined}));
+  const cnt=t=>nodes.filter(q=>q.t===t).length,lg=Object.entries(log).map(([k,v])=>k+" ×"+v).join(", ")||"none yet";
+  updInv();$('hud').innerHTML="<b>Desert Outpost</b><br>Tents "+cnt('tent')+" · Walls "+cnt('wall')+" · Towers "+cnt('tower')+" · Fires "+cnt('fire')+" · Folds "+cnt('fold')+"<br>Grammar fired: "+lg+"<br>Tool: "+({t:'tent',s:'sentry wall',w:'watch tower (tap again to stack)',x:'erase',f:'fell tree (+3 wood, leaves a stump)',r:'collect rocks (+3 stone)'})[tool]+(COST[tool]?" · "+COST[tool][0]+" wood "+COST[tool][1]+" stone per level":"")}
+// ---------- input ----------
+const $=id=>document.getElementById(id);
+const ray=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),-G),pt=new THREE.Vector3(),nd=new THREE.Vector2();
+const pick=e=>{nd.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(nd,C);return ray.ray.intersectPlane(pl,pt)?pt.clone():null};
+const hov=new THREE.Mesh(new THREE.BoxGeometry(1,.06,1),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.5}));hov.visible=false;S.add(hov);
+let lastInv={wood:-1,stone:-1};
+function updInv(){for(const[k,id]of[['wood','invW'],['stone','invS']]){const el=$(id);el.textContent=inv[k];if(lastInv[k]!==-1&&lastInv[k]!==inv[k]){const c=el.parentNode;c.classList.remove('bump');void c.offsetWidth;c.classList.add('bump')}lastInv[k]=inv[k]}}
+const COST={t:[1,0],s:[0,2],w:[1,2]}; // [wood, stone] per level
+function pay(c){if(inv.wood<c[0]||inv.stone<c[1]){say("Need "+c[0]+" wood and "+c[1]+" stone.");return false}inv.wood-=c[0];inv.stone-=c[1];return true}
+function act(e){const p=pick(e);if(!p)return;const x=cellOf(p.x),z=cellOf(p.z);if(x<0||z<0||x>=N||z>=N)return;const k=kind[x][z],ky=x+","+z;
+  if(tool==='f'){if(!k&&isPalm(x,z)&&!felled.has(ky)){felled.add(ky);inv.wood+=3;say("+3 wood")}else{say("Click a standing palm to fell it.");return}}
+  else if(tool==='r'){if(!k&&isRock(x,z)&&!mined.has(ky)){mined.add(ky);inv.stone+=3;say("+3 stone")}else{say("Click a rock to collect it.");return}}
+  else if(tool==='x'){if(!k)return;const c=COST[k];inv.wood+=c[0]>>1;inv.stone+=c[1]>>1;if(lvl[x][z]>1)lvl[x][z]--;else{kind[x][z]=0;lvl[x][z]=0}}
+  else{const up=k&&k===tool&&(k==='w'?lvl[x][z]<MAXL:(lvl[x][z]||1)<3);
+    if(k&&!up)return;if(!pay(COST[tool]))return;
+    if(!k){kind[x][z]=tool;lvl[x][z]=1}else lvl[x][z]=(lvl[x][z]||1)+1}
+  build()}
+R.domElement.addEventListener('click',act);
+R.domElement.addEventListener('pointermove',e=>{const p=pick(e);if(!p){hov.visible=false;return}const x=cellOf(p.x),z=cellOf(p.z);
+  hov.visible=x>=0&&z>=0&&x<N&&z<N;if(hov.visible)hov.position.set(W(x),G+.04,W(z))});
+R.domElement.addEventListener('wheel',e=>{zoom=Math.max(.6,Math.min(2.2,zoom-e.deltaY*.001));proj();e.preventDefault()},{passive:false});
+function setTool(t){tool=t;['t','s','w','x','f','r'].forEach(i=>$(i).classList.toggle('on',i===t));build()}
+['t','s','w','x','f','r'].forEach(i=>$(i).onclick=()=>setTool(i));
+$('rl').onclick=()=>yawT-=PI/2;$('rr').onclick=()=>yawT+=PI/2;
+$('nw').onclick=()=>{seed=Math.floor(Math.random()*9999);gen()};
+let mt=0;function say(t){const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(mt);mt=setTimeout(()=>m.style.opacity=0,3000)}
+$('ex').onclick=async()=>{const j=JSON.stringify({grid:N,seed,pieces:outRes});try{await navigator.clipboard.writeText(j);say("Layout copied.")}catch(e){say("Clipboard blocked here. Copy from the page when hosted in your own site.")}};
+addEventListener('keydown',e=>{const k={1:'t',2:'s',3:'w',4:'x',5:'f',6:'r'}[e.key];if(k)setTool(k);if(e.key==='ArrowLeft'||e.key==='q')yawT-=PI/2;if(e.key==='ArrowRight'||e.key==='e')yawT+=PI/2});
+addEventListener('resize',()=>{R.setSize(innerWidth,innerHeight);proj()});R.setSize(innerWidth,innerHeight);proj();
+function loop(){cam();R.render(S,C);requestAnimationFrame(loop)}
+gen();loop();
+</script></body></html>
