@@ -38,6 +38,9 @@ test('all local script, stylesheet and import-map references exist', () => {
  references.push(...[...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(match => match[1]));
  for (const reference of references) {
   if (/^https?:/.test(reference)) continue;
+  // /@vite/client is injected by Vite in development only; it never exists
+  // in the built output and must not fail the reference audit.
+  if (reference.startsWith('/@')) continue;
   assert.ok(existsSync(new URL(reference, root)), `Missing reference: ${reference}`);
  }
 });

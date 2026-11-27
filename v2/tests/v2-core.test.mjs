@@ -89,6 +89,7 @@ test('save validation rejects malformed structures and impossible counters', () 
     campWater: 20,
     silver: 10,
     wood: 0,
+    stone: 0,
   };
   assert.equal(Core.validateSave(base), true);
   assert.equal(Core.validateSave({ ...base, structures: [{ kind: 'tent', x: -1, y: 2 }] }), false);

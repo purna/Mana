@@ -1,0 +1,55 @@
+/* MANNA offline shell. Navigations are network-first so a new release is seen
+   immediately; static assets are cached after first use. Updated workers wait
+   behind the in-game banner and only swap when the player accepts. */
+const CACHE = 'manna-iso-v2';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.ico', './js/iso-core.js'];
+
+self.addEventListener('install', (event) => {
+  // Deliberately no skipWaiting here: the new worker must stay in the
+  // "waiting" state so the page can show the "Reload" banner. The page
+  // sends SKIP_WAITING only when the player accepts, and a stray worker
+  // that skipped waiting would make the banner a false positive.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== location.origin) return;
+
+  const navigation = request.mode === 'navigate' || url.pathname.endsWith('/index.html');
+  if (navigation) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        }
+        return response;
+      }).catch(() => caches.match(request).then((hit) => hit || caches.match('./index.html'))),
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((hit) => hit || fetch(request).then((response) => {
+      if (response && response.ok && response.type === 'basic') {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+      }
+      return response;
+    })),
+  );
+});

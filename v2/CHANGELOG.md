@@ -1,5 +1,16 @@
 # MANNA — Changelog
 
+## Unreleased — view system, muster redesign, build variants, remappable keys
+
+- **Isometric view system** (from the Desert Outpost example): the camera yaw turns in smooth quarter steps (**Q**/**X** or the new bottom-right camera panel), the wheel and panel buttons zoom, and dragging the ground pans the view (a drag past 6px suppresses the click so walking and building still work). The whole world — terrain bitmap included — rotates and scales through one canvas transform, and WASD keeps moving screen-relative while the view is turned.
+- **Muster redesign**: the overview is now a full-width table with no side rail; clicking a tribe row opens its page, which carries the left-hand tribe rail, the deploy slider and per-role cells that are labelled, larger, and drawn with hand-drawn two-tone icons (manna, water, wood, camp, watch).
+- **Top buttons redesigned** as icon + label pills (Pause / Map / Sound / Setup / About) that no longer clip; on coarse pointers and narrow screens they collapse back to circles.
+- **Build & nature variants** (from the example): seven tent shapes (striped, fringed, peaked, awning, yurt, beehive, A-frame), three sentry-post and three watchtower designs chosen per spot; four rock shapes, rock nodes in four forms, and wilderness acacias and tamarisks alongside palms.
+- **Ground texture softened** toward the example's look: smooth value noise dominates the tile dither, speckle is a light garnish, and cliff strata are fainter.
+- **Remappable controls**: keys moved out of the Camp's Controls tab into Settings, where each action can be rebound (tap the action, press a key; bindings steal and persist in app settings) with a defaults reset; the action-bar keycaps update live.
+- **Update prompt hardened**: the Reload handler is bound outside service-worker registration timing with a fallback skip-waiting, and the banner is a plain top toast instead of a HUD-shaped overlay.
+- Tests: **40 passing** (`npm test`), build passes.
+
 ## Unreleased — update prompt, resource flights, raid intel, determinism
 
 - **PWA update prompt**: a new build now waits instead of silently restarting. When an updated service worker is installed, a “A new build of the wilderness is ready” banner offers **Reload**; the worker only takes over once the player accepts.

@@ -1,0 +1,14 @@
+{
+  "name": "MANNA — Forty Years in the Wilderness",
+  "short_name": "MANNA",
+  "description": "An isometric Exodus survival game: follow the Pillar, gather manna, keep the camp alive.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#23180f",
+  "theme_color": "#23180f",
+  "icons": [
+    { "src": "favicon.ico", "sizes": "48x48", "type": "image/x-icon", "purpose": "any" }
+  ]
+}

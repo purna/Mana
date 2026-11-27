@@ -10,7 +10,7 @@
   const SAVE_VERSION = 4;
   const SHARE_VERSION = 1;
   const TOTAL_DAYS = 40 * 12 * 7;
-  const MAP_SIZE = 48;
+  const MAP_SIZE = 88;
   const STRUCTURE_KINDS = new Set(['tent', 'sentry', 'tower']);
 
   const toBase64 = (text) =>
@@ -143,7 +143,7 @@
       hour: 6, stationIndex: 0, health: 100, hunger: 100, hydration: 100,
       warmth: 100, stamina: 100, faith: 68, manna: 0, waterskin: 0,
       campWater: 34, silver: 18, sick: 0, rot: 0, calf: 0, wood: 0,
-      score: 0, speed: 1,
+      stone: 0, armyCasualties: 0, areaHarvest: 0, score: 0, speed: 1,
     };
     for (const [key, value] of Object.entries(defaults)) {
       if (!Number.isFinite(Number(data[key]))) data[key] = value;
@@ -173,7 +173,7 @@
     if (!Array.isArray(input.raidLog) || input.raidLog.length > 20) return false;
     if (!Array.isArray(input.visited) || !Array.isArray(input.explored)) return false;
     if (!input.tribeStats || typeof input.tribeStats !== 'object' || Array.isArray(input.tribeStats)) return false;
-    for (const key of ['health', 'hunger', 'hydration', 'warmth', 'stamina', 'faith', 'manna', 'campWater', 'silver', 'wood']) {
+    for (const key of ['health', 'hunger', 'hydration', 'warmth', 'stamina', 'faith', 'manna', 'campWater', 'silver', 'wood', 'stone']) {
       if (!Number.isFinite(Number(input[key]))) return false;
     }
     return true;
