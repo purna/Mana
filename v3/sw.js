@@ -2,7 +2,7 @@
    immediately; static assets are cached after first use. Updated workers wait
    behind the in-game banner and only swap when the player accepts. */
 const CACHE = 'manna-iso-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.ico', './js/iso-core.js'];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.ico', './js/iso-core.js', './plugins/three.min.js'];
 
 self.addEventListener('install', (event) => {
   // Deliberately no skipWaiting here: the new worker must stay in the

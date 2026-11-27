@@ -1,5 +1,15 @@
 # MANNA — Changelog
 
+## Unreleased — Desert Outpost world engine migration
+
+- **WebGL world engine replaces the 2D tilemap** (from `examples/Desert Outpost_v5.html`): the game world now renders through a Three.js orthographic camera on a new `#gl` canvas layered under the existing overlay `#c`. The old `HT/WATER/TRAIL/TCOLOR/TYPE` grids, `GROUND[]` WFC ladder, `buildTerrainCanvas()`/tile textures and `renderWorld()` blitter are gone; the frame is a single `draw(dt)` path that renders the 3D scene and then draws the legacy overlay HUD (minimap, labels, pops, weather) on `#c`.
+- **Procedural desert**: a 48×48 WFC-desert terrain (dune ridges, gravel flats, oases, ponds with grass and reed rings) generated per world seed, with the camp site flattened and blended into a vertex-colour ground mesh (`rebuildGround`). Station landmarks (Sinai massif, Rephidim rock, sea shore waves) stand in the world; wood/stone nodes, palms, acacias and tufts are placed as 3D meshes.
+- **Graph-grammar camp build**: `build()` re-pitches the camp each month/arrival — the Tabernacle court with gold pillars, hangings and bronze altar, a tribal quarter layout (Levi inner ring, Judah/Joseph/Reuben/Dan quadrants) solved by WFC into quarter tents and merged long tents with tribe pennants and tent fires, sentry walls and watchtowers at the compass points, livestock pens with flocks, market stalls, crates and dune piles. Player-built tents/sentries/towers and layout moves call `markRebuild()` so the camp rebuilds from `structures`.
+- **Living entities**: pooled 3D people (Moses, camp crowds, raiders, foes), flocks that graze and drift, manna flakes, pillar of cloud/fire, campfire/tent fires with real lights, sky keyframes over the 24-hour day (dawn glow, noon sun, dusk, star night with moon), and the pillar igniting tent fires at night.
+- **Input**: click-to-walk and build targeting now raycast through the orthographic camera (`screenToWorld`); camera yaw is a quarter-turn rotation of the scene; WASD stays screen-relative; minimap colors remapped to the new terrain palette.
+- **Persistence unchanged**: the save key, schema and share codes are untouched (`manna-iso-save-v2`); load re-flattens the camp site, re-runs `buildDecor` and rebuilds the ground. Save/load round-trip, layout editor move/undo, journey map, build flow and day/night cycle verified in a live browser session.
+- Tests: **40 passing** (`npm test`), build passes (three.min.js added to the vite copy list and the service-worker shell).
+
 ## Unreleased — view system, muster redesign, build variants, remappable keys
 
 - **Isometric view system** (from the Desert Outpost example): the camera yaw turns in smooth quarter steps (**Q**/**X** or the new bottom-right camera panel), the wheel and panel buttons zoom, and dragging the ground pans the view (a drag past 6px suppresses the click so walking and building still work). The whole world — terrain bitmap included — rotates and scales through one canvas transform, and WASD keeps moving screen-relative while the view is turned.

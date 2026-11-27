@@ -20,7 +20,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#23180f;color:var(--in
 body{-webkit-touch-callout:none}
 input,textarea,select{user-select:text;font-size:16px;touch-action:manipulation}
 button{touch-action:manipulation}
-canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:1}
 #hud{position:fixed;inset:0;pointer-events:none;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px calc(env(safe-area-inset-bottom,0px) + 8px)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #0007}
 #vitals{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 8px);width:206px;padding:9px 10px 7px}
@@ -392,6 +393,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   box-shadow:0 6px 18px #0009;white-space:nowrap
 }
 .build-banner b{color:#f2cc6b;font-family:Cinzel,serif}
+.sw-update[hidden]{display:none !important}
 .sw-update{
   position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);
   z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;
@@ -838,6 +840,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 </style>
 </head>
 <body class="menu-open">
+<canvas id="gl" aria-hidden="true"></canvas>
 <canvas id="c" aria-label="Isometric wilderness"></canvas>
 <input id="saveImport" type="file" accept="application/json,.json" hidden>
 <div id="vignette" aria-hidden="true"></div>
@@ -1347,6 +1350,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   </div>
 </div>
 
+<script src="plugins/three.min.js"></script>
 <script src="js/iso-core.js"></script>
 <script>
 'use strict';
@@ -1975,112 +1979,80 @@ const lerp = (a,b,t) => a + (b-a)*t;
 const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
 const hash = (x,y) => { const h = Math.sin(x*127.1 + y*311.7) * 43758.5453; return h - Math.floor(h); };
 
-const cv = $('c');
+const cv = $('c');   // input + HUD overlay: screen-space effects draw here
 let g = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1;
 
-/* ---- Isometric view system (from the Desert Outpost example) ----
-   A fixed 35° iso projection whose yaw turns in smooth quarter steps, a wheel
-   zoom, and drag-to-pan: the whole scene (terrain bitmap included) rotates and
-   scales about the player through one canvas transform, and every world-space
-   picking path runs the inverse. */
-const view = { rot:0, zoom:1, zoomT:1, trans:null };
+/* ---- Desert Outpost world engine (three.js orthographic isometric) ----
+   The tilemap system is gone. Following examples/Desert Outpost_v5.html and
+   its Migration Guide, the world is one blended vertex-coloured ground mesh
+   plus hash-stable procedural pieces rebuilt from tile data after every
+   edit. The 2D canvas above it keeps only screen-space feedback (pops,
+   flights, markers) projected from the 3D camera. */
+const R3 = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true });
+R3.setPixelRatio(Math.min(devicePixelRatio, 2));
+R3.shadowMap.enabled = true;
+const S3 = new THREE.Scene();
+S3.background = new THREE.Color(0xf0d7a4);
+const CAM = new THREE.OrthographicCamera();
+
+/* View: a fixed 35° iso projection whose yaw turns in smooth quarter steps,
+   a wheel zoom and drag-to-pan of the camera target (Desert Outpost style).
+   settledYaw() keeps the old quarter-turn semantics so screen-relative
+   walking and the compass behave exactly as before. */
+const view = { rot: 0 };
 const VIEW_QUARTER = Math.PI/2;
-/* Four cameras around the isometric plane. The ground is pre-rendered for
-   each quarter-turn (builtTerrainRot); turning the view switches cameras and
-   a graceful circle wipe reveals the new scene over the old one. */
-let builtTerrainRot = 0;
-let transCanvas = null, transCtx = null;
-function viewPivot(){ return W2S(state.player.x, state.player.y); }
+let yaw = VIEW_QUARTER/2, yawT = VIEW_QUARTER/2, zoom3 = .85;
+const tgt = { x: 0, z: .5 };
+function proj3(){
+  const a = Math.max(1, W) / Math.max(1, H), v = 9.5/zoom3;
+  CAM.left = -v*a; CAM.right = v*a; CAM.top = v; CAM.bottom = -v;
+  CAM.near = .1; CAM.far = 260;
+  CAM.updateProjectionMatrix();
+}
+function cam3(dt){
+  yaw += (yawT - yaw)*Math.min(1, dt*8 || .14);
+  const el = .6155, d = 60;
+  CAM.position.set(tgt.x + Math.cos(yaw)*Math.cos(el)*d, Math.sin(el)*d, tgt.z + Math.sin(yaw)*Math.cos(el)*d);
+  CAM.lookAt(tgt.x, 0, tgt.z);
+}
 function settledYaw(){ return view.rot*VIEW_QUARTER; }
-function mod4Quarter(a){ return ((Math.round(a/VIEW_QUARTER) % 4) + 4) % 4; }
 function rotateView(dir){
-  if (view.trans) return;   // one turn at a time
-  const from = view.rot;
-  const to = ((view.rot + dir) % 4 + 4) % 4;
+  view.rot = ((view.rot + dir) % 4 + 4) % 4;
+  yawT = VIEW_QUARTER/2 + view.rot*VIEW_QUARTER;
   playSfx('click', 0.1);
-  // Render the new camera's ground up front, then wipe between the two.
-  const fresh = buildTerrainCanvas(to);
-  const pv = viewPivot();
-  view.trans = {
-    from, to, t: 0, dur: 0.55,
-    cx: pv.x, cy: pv.y,
-    r0: 0,
-    r1: Math.hypot(Math.max(pv.x, W-pv.x), Math.max(pv.y, H-pv.y)) + 40,
-    canvasOld: terrainCanvas, canvasNew: fresh,
-  };
-  builtTerrainRot = to;
-  terrainCanvas = fresh;
-  view.rot = to;
-}
-/* Tile-space quarter rotations: (x,y) -> drawn grid (u,v) about the centre. */
-function rotUV(x,y,k){
-  const m = N-1;
-  if (k===1) return { u:y, v:m-x };
-  if (k===2) return { u:m-x, v:m-y };
-  if (k===3) return { u:m-y, v:x };
-  return { u:x, v:y };
-}
-function unrotUV(u,v,k){ return rotUV(u,v,(4-k)%4); }
-/* World->screen for the active camera quarter. */
-function W2S(x,y){
-  const q = rotUV(x,y,view.rot);
-  return { x: ox + (q.u-q.v)*HW, y: oy + (q.u+q.v)*HH - groundElev(x,y) };
-}
-/* Painter depth: the rotated screen height, so stacking stays correct at
-   every quarter-turn. */
-function depthKey(x,y){
-  return W2S(x,y).y;
 }
 function zoomView(factor){
-  view.zoomT = clamp(view.zoomT * factor, 0.55, 2.2);
+  zoom3 = clamp(zoom3 * factor, .3, 2.4);
+  proj3();
 }
-function applyViewTransform(){
-  const p = viewPivot(), k = view.zoom;
-  g.translate(p.x, p.y);
-  g.scale(k, k);
-  g.translate(-p.x, -p.y);
-}
-function screenToWorld(sx,sy){
-  const pv = viewPivot();
-  const dx = (sx - pv.x)/(view.zoom || 1), dy = (sy - pv.y)/(view.zoom || 1);
-  sx = pv.x + dx;
-  sy = pv.y + dy;
-  const a = (sx - ox)/HW, b = (sy - oy)/HH;
-  const u = (a+b)/2, v = (b-a)/2;
-  const w = unrotUV(u, v, view.rot);
-  return { x:w.u, y:w.v };
-}
+/* World position of a tile centre: W(i) = i - N/2 + .5 (Migration Guide §2). */
+const WT = i => i - N/2 + .5;
 
-/* Open desert painted beyond the map's edge, so the known world sits inside
-   a wider wilderness instead of ending at a hard rectangle. */
-let backdrop = null;
-function paintBackdrop(){
-  backdrop = document.createElement('canvas');
-  backdrop.width = Math.max(2, W);
-  backdrop.height = Math.max(2, H);
-  const bg = backdrop.getContext('2d');
-  const grad = bg.createRadialGradient(W/2, H*0.4, 120, W/2, H*0.55, Math.max(W,H)*0.85);
-  grad.addColorStop(0, '#cfa877');
-  grad.addColorStop(0.5, '#c99a5e');
-  grad.addColorStop(1, '#a3794a');
-  bg.fillStyle = grad;
-  bg.fillRect(0,0,W,H);
-  bg.fillStyle = 'rgba(120,80,40,.05)';
-  for (let i=0;i<420;i++){
-    const sx = (i*97.3)%W, sy = (i*61.7)%H;
-    bg.fillRect(sx, sy, 1.6, 1.6);
-  }
-  bg.fillStyle = 'rgba(245,225,190,.045)';
-  for (let i=0;i<260;i++){
-    const sx = (i*53.9+31)%W, sy = (i*83.1+17)%H;
-    bg.fillRect(sx, sy, 1.4, 1.4);
-  }
+const _v3 = new THREE.Vector3();
+/* World -> overlay-canvas screen position, for pops, flights and markers. */
+function W2S(x, y){
+  _v3.set(WT(x), gyAt(x, y), WT(y)).project(CAM);
+  return { x: (_v3.x*.5 + .5)*W, y: (-_v3.y*.5 + .5)*H, z: _v3.z };
 }
-function drawBackdrop(){
-  if (!backdrop || backdrop.width !== Math.max(2,W) || backdrop.height !== Math.max(2,H)) paintBackdrop();
-  g.drawImage(backdrop, 0, 0);
+/* Picking: raycast the ground mesh, falling back to the ground plane. */
+const _ray = new THREE.Raycaster(), _nd = new THREE.Vector2();
+function screenToWorld(sx, sy){
+  _nd.set(sx/Math.max(1,W)*2 - 1, -(sy/Math.max(1,H))*2 + 1);
+  _ray.setFromCamera(_nd, CAM);
+  let p = null;
+  if (groundMesh){
+    const hit = _ray.intersectObject(groundMesh, false);
+    if (hit.length) p = hit[0].point;
+  }
+  if (!p && Math.abs(_ray.ray.direction.y) > 1e-5){
+    const t = (_ray.ray.origin.y - GROUND_Y) / -_ray.ray.direction.y;
+    if (Number.isFinite(t) && t > 0) p = _ray.ray.origin.clone().addScaledVector(_ray.ray.direction, t);
+  }
+  if (!p) return { x: state.player.x, y: state.player.y };
+  return { x: p.x + N/2 - .5, y: p.z + N/2 - .5 };
 }
+function viewPivot(){ return W2S(state.player.x, state.player.y); }
 
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -2089,22 +2061,30 @@ function resize(){
   cv.width = Math.floor(W * DPR);
   cv.height = Math.floor(H * DPR);
   g.setTransform(DPR,0,0,DPR,0,0);
-  g.imageSmoothingEnabled = true;
-  backdrop = null;
+  R3.setSize(W, H, false);
+  proj3();
 }
 window.addEventListener('resize', resize);
 
 /* ------------------------------- world ------------------------------- */
 
-let HT, WATER, TRAIL, TCOLOR, TYPE, waterTiles = [];
+/* Desert Outpost data model (Migration Guide §2/§3): ground, ponds, palms,
+   pens and dunes live in tile grids; the ground mesh and every piece are
+   rebuilt from that data after each edit. Variant looks come from whash(),
+   so they stay put between rebuilds. */
+const GROUND_Y = .3, LV = .4, TL = .7, MAXL = 4;
+const D4 = [[0,1],[1,0],[0,-1],[-1,0]];
+const K_TENT = 1, K_SENTRY = 2, K_TOWER = 3, K_TAB = 4, K_PEN = 5;
+let ter = [], TH = [], gtype = [], kind = [], lvl = [], palm = [], dune = [], dunes = [];
+let waterTiles = [];        // pond tiles: the springs the journey drinks from
+let shore = [], pens = [], groundMesh = null;
+let terrainHills = [], hillPhase = [0,0,0,0];
+
 let decor = [], people = [], manna = [], particles = [], pops = [], flights = [], tentFires = [];
 let woodNodes = [], rockNodes = [], structures = [], raiders = [], foeCamps = [], buildGhost = null;
 let fx = [];
 const fxTimers = { ambient:0, pillar:0, fire:0 };
 const glowCache = new Map();
-let terrainCanvas = null;
-let OX = N*HW + 2*HW;
-const TERRAIN_PAD = 44;
 
 let seed = 20261115;
 const rnd = () => { seed = (seed*1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -2122,281 +2102,197 @@ function shade(hex, amt){
   return out;
 }
 
-/* ------------------------------------------------------------------ *
- * Desert ground layer — wave function collapse
- *
- * Adapted from examples/WFC Layered Isometric Terrain.html. The ground
- * is ordered as a wetness/altitude ladder (deep water → shallows → shore
- * → sand → scrub → gravel → rock → peak) so coasts, talus slopes and
- * scrub margins emerge from adjacency instead of being painted by hand.
- * Camp, stations and the landmark hills pin the collapse, keeping the
- * journey map and its gameplay anchors intact.
- * ------------------------------------------------------------------ */
-const GROUND = [
-  { key:'deep',    height:0, water:1, weight:0.15, colors:['#427f9d','#3a7592','#4a89a7'] },
-  { key:'shallow', height:0, water:1, weight:0.2,  colors:['#5b9bb6','#66a7c2','#5493af'] },
-  { key:'shore',   height:0, water:0, weight:0.8,  colors:['#c9a878','#d1b184','#c09f70'] },
-  { key:'sand',    height:0, water:0, weight:6.0,  colors:['#c99a5e','#d2a76b','#dcb67c','#e4c58c'] },
-  { key:'scrub',   height:0, water:0, weight:0.75, colors:['#c6ae74','#bda76d','#cbb57e'] },
-  { key:'gravel',  height:0, water:0, weight:0.8,  colors:['#c09a73','#b8906b','#c7a17c'] },
-  { key:'rock',    height:2, water:0, weight:0.06, colors:['#ab9c88','#b7a996','#9f907c'] },
-  { key:'peak',    height:3, water:0, weight:0.0,  colors:['#c3b7a5','#cec3b2','#b8ab98'] }
+/* Deterministic helpers (Migration Guide §2): fresh solver choices come from
+   srand(); every variant look comes from whash() so it is stable. */
+function srand(s){ return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function whash(x, z){ return (((x*73856093) ^ (z*19349663) ^ (seed*83492791)) >>> 0) % 1000 / 1000; }
+const cellOf = v => Math.floor(v + N/2);
+const inMap = (x,z) => x >= 0 && z >= 0 && x < N && z < N;
+const K = (x,z) => inMap(x,z) ? kind[x][z] : 0;
+
+/* The Tabernacle reserves 8x3 tiles centred on the camp (Desert Outpost §10):
+   a fence ring round a 6x1 interior with the tent, court and altar fire. */
+const TBSIZE = { w: 8, l: 3 };
+function tbRect(){ return { x0: Math.round(CAMP.x) - 4, z0: Math.round(CAMP.y) - 1 }; }
+
+/* Dune stamps: @ = sand mound tile. Rotated and flipped at placement. */
+const DSTAMPS = [["@"],["@@"],["@@@"],["@@","@@"],["@@@","@@@"],["@@@","@@@","@@@"],["@@@","-@@","--@"],["@@-","-@@","--@"],["@--","@@@"],["-@-","@@@","-@-"],["@@-","-@@"],["@-@","@@@"],["@@@","@--","@--"],["@@","@-","@@"],["@@@","@-@"]];
+function stampCells(pat, rot, flip){
+  let cs = [];
+  pat.forEach((row, r) => { for (let c=0;c<row.length;c++) if (row[c]==='@') cs.push([c,r]); });
+  for (let i=0;i<rot;i++) cs = cs.map(([c,r]) => [-r,c]);
+  if (flip) cs = cs.map(([c,r]) => [-c,r]);
+  const mx = Math.min(...cs.map(a=>a[0])), mz = Math.min(...cs.map(a=>a[1]));
+  return cs.map(([c,r]) => [c-mx, r-mz]);
+}
+
+/* Smooth ground height under a creature: bilinear between tile centres. */
+function gyAt(x, z){
+  const u = x + N/2 - .5, v = z + N/2 - .5;
+  const i = Math.floor(u), j = Math.floor(v), fu = u-i, fv = v-j;
+  const h = (a,b) => (inMap(a,b) ? TH[a][b] : GROUND_Y);
+  return (h(i,j)*(1-fu) + h(i+1,j)*fu)*(1-fv) + (h(i,j+1)*(1-fu) + h(i+1,j+1)*fu)*fv;
+}
+/* Creatures cannot cross a cliff (2 or more levels between tiles). */
+function cliffBetween(x0,z0,x1,z1){
+  const a = cellOf(x0), b = cellOf(z0), c = cellOf(x1), d = cellOf(z1);
+  if (!inMap(a,b) || !inMap(c,d)) return true;
+  return Math.abs(ter[a][b] - ter[c][d]) >= 2;
+}
+
+/* Named pools the journey depends on: the sea behind the Red Sea Shore, the
+   springs of Marah and Elim, Rephidim's rock, the oasis near the camp and a
+   small wilderness pool. Each is a pond (gtype 2) ringed by grass. */
+const POOL_SITES = [
+  { x:6.5,  y:36.5, r:3.2 },
+  { x:37.5, y:7.5,  r:2.1 },
+  { x:8.5,  y:14.5, r:1.9 },
+  { x:30.5, y:43.0, r:2.2 },
+  { x:23.0, y:20.0, r:1.5 },
+  { x:44.0, y:33.0, r:1.3 }
 ];
-const G_DEEP=0, G_SHALLOW=1, G_SHORE=2, G_SAND=3, G_SCRUB=4, G_GRAVEL=5, G_ROCK=6, G_PEAK=7;
 
-function mulberry32(a){
-  return function(){
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function popcount(m){ let c=0; while (m){ c += m & 1; m >>= 1; } return c; }
-
-function wfcDesertGround(hills){
-  const K = GROUND.length, ALL = (1<<K)-1;
-  /* 1-step reach keeps dune, scrub and talus bands coherent. */
-  const OK = GROUND.map((_,a) => {
-    let m = 0;
-    for (let b=0;b<K;b++) if (Math.abs(a-b) <= 1) m |= 1<<b;
-    return m;
-  });
-  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
-  const weights = GROUND.map(t => t.weight);
-  const idx = (x,y) => y*N+x;
-
-  function propagate(cells, start, mask){
-    mask &= cells[start];
-    if (!mask) return false;
-    if (mask === cells[start]) return true;
-    cells[start] = mask;
-    const stack = [start];
-    while (stack.length){
-      const c = stack.pop(), x = c % N, y = (c/N)|0;
-      let allowed = 0;
-      for (let t=0;t<K;t++) if (cells[c] >> t & 1) allowed |= OK[t];
-      for (const [dx,dy] of DIRS){
-        const nx = x+dx, ny = y+dy;
-        if (nx<0||ny<0||nx>=N||ny>=N) continue;
-        const n = ny*N+nx, nm = cells[n] & allowed;
-        if (nm === cells[n]) continue;
-        if (!nm) return false;
-        cells[n] = nm;
-        stack.push(n);
-      }
-    }
-    return true;
-  }
-
-  for (let attempt=0; attempt<24; attempt++){
-    const rand = mulberry32((seed ^ 0x9e3779b9) + attempt*2654435761);
-    const cells = new Uint8Array(N*N).fill(ALL);
-
-    function pin(cx, cy, r, mask, required){
-      const x0 = Math.max(0, Math.floor(cx-r)), x1 = Math.min(N-1, Math.ceil(cx+r));
-      const y0 = Math.max(0, Math.floor(cy-r)), y1 = Math.min(N-1, Math.ceil(cy+r));
-      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
-        if (Math.hypot(x-cx, y-cy) > r) continue;
-        if (!propagate(cells, idx(x,y), mask) && required) return false;
-      }
-      return true;
-    }
-
-    // The camp and every station stay flat and open.
-    if (!pin(CAMP.x, CAMP.y, 5.6, 1<<G_SAND, true)) continue;
-    let bad = false;
-    for (const s of STATIONS) if (!pin(s.x, s.y, 3.4, 1<<G_SAND, true)){ bad = true; break; }
-    if (bad) continue;
-
-    // Landmark hills seed the massifs; the collapse grows their skirts.
-    function pinMassif(cx, cy, radius, mask, skip){
-      const x0 = Math.max(0, Math.floor(cx-radius)), x1 = Math.min(N-1, Math.ceil(cx+radius));
-      const y0 = Math.max(0, Math.floor(cy-radius)), y1 = Math.min(N-1, Math.ceil(cy+radius));
-      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
-        const wobble = radius * (0.84 + hash(x*1.7+3, y*2.3-5)*0.32);
-        if (Math.hypot(x-cx, y-cy) > wobble) continue;
-        const i = idx(x,y);
-        if (skip && (cells[i] & skip)) continue;
-        propagate(cells, i, mask);
-      }
-    }
-    for (const h of hills){
-      const summit = 1 << (h.peak === 3 ? G_PEAK : G_ROCK);
-      pinMassif(h.x, h.y, Math.max(1.2, h.r*0.5), summit, 0);
-      pinMassif(h.x, h.y, Math.max(2.4, h.r*1.0), 1<<G_ROCK, summit);
-      pinMassif(h.x, h.y, Math.max(3.2, h.r*1.4), 1<<G_GRAVEL, summit | (1<<G_ROCK));
-    }
-
-    let guard = N*N*80, failed = false;
-    while (guard-- > 0){
-      let best = -1, bestN = K+1;
-      for (let i=0;i<N*N;i++){
-        const c = cells[i];
-        if (c && (c & (c-1)) === 0) continue;
-        const n = popcount(c);
-        if (n < bestN){ bestN = n; best = i; if (n === 2) break; }
-      }
-      if (best < 0) break;
-      const m = cells[best];
-      let total = 0;
-      for (let t=0;t<K;t++) if (m>>t&1) total += weights[t];
-      let roll = rand()*total, pick = G_SAND;
-      for (let t=0;t<K;t++) if (m>>t&1){ roll -= weights[t]; if (roll <= 0){ pick = t; break; } }
-      if (!propagate(cells, best, 1<<pick)){ failed = true; break; }
-    }
-    if (failed) continue;
-
-    const out = new Uint8Array(N*N);
-    for (let i=0;i<N*N;i++){
-      const m = cells[i];
-      if (m && (m & (m-1)) === 0){ out[i] = 31 - Math.clz32(m); continue; }
-      let total = 0;
-      for (let t=0;t<K;t++) if (m>>t&1) total += weights[t];
-      let roll = rand()*total, pick = G_SAND;
-      for (let t=0;t<K;t++) if (m>>t&1){ roll -= weights[t]; if (roll <= 0){ pick = t; break; } }
-      out[i] = pick;
-    }
-    return out;
-  }
-
-  // Fallback: open sand with the landmark hills kept as rock.
-  const out = new Uint8Array(N*N).fill(G_SAND);
-  for (const h of hills){
-    const cx = Math.round(h.x), cy = Math.round(h.y);
-    for (let y=Math.max(0,cy-2);y<=Math.min(N-1,cy+2);y++)
-      for (let x=Math.max(0,cx-2);x<=Math.min(N-1,cx+2);x++)
-        out[y*N+x] = Math.hypot(x-cx, y-cy) < 1 ? (h.peak === 3 ? G_PEAK : G_ROCK) : G_ROCK;
-  }
-  return out;
+function newGrids(){
+  ter = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  gtype = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  kind = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  lvl = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  palm = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  dune = Array.from({length:N_MAX}, () => new Int16Array(N_MAX).fill(-1));
+  TH = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
+  dunes = [];
 }
 
+function stampPond(cx, cy, r, ring = 1.8){
+  const x0 = Math.max(0, Math.floor(cx-r-ring)), x1 = Math.min(N-1, Math.ceil(cx+r+ring));
+  const y0 = Math.max(0, Math.floor(cy-r-ring)), y1 = Math.min(N-1, Math.ceil(cy+r+ring));
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++){
+    const d = Math.hypot(x+.5-cx, y+.5-cy) + (hash(x,y)-.5)*.5;
+    if (d < r) gtype[x][y] = 2;
+    else if (d < r + ring && gtype[x][y] === 0) gtype[x][y] = 1;
+  }
+}
+
+/* Flatten a campsite for pitching: hills are levelled and grass cleared,
+   but pond water (a drinking source) and the Tabernacle court survive. */
+function flattenAt(cx,cy,r){
+  for (let x=Math.max(0,Math.floor(cx-r));x<=Math.min(N-1,Math.ceil(cx+r));x++)
+    for (let y=Math.max(0,Math.floor(cy-r));y<=Math.min(N-1,Math.ceil(cy+r));y++)
+      if (Math.hypot(x-cx,y-cy) <= r && kind[x][y] !== K_TAB){
+        ter[x][y] = 0; gtype[x][y] = 0; palm[x][y] = 0; TH[x][y] = GROUND_Y;
+      }
+}
+
+function tileTerrainLevel(x, y){
+  for (const p of POOL_SITES) if (Math.hypot(x+.5-p.x, y+.5-p.y) < p.r + 2.5) return 0;
+  if (Math.hypot(x+.5-CAMP.x, y+.5-CAMP.y) < 9) return 0;
+  if (STATIONS.some(s => Math.hypot(x+.5-s.x, y+.5-s.y) < 4.5)) return 0;
+  const f = .5 + .25*Math.sin(x*.21 + hillPhase[0])*Math.cos(y*.17 + hillPhase[1])
+    + .2*Math.sin((x+y)*.13 + hillPhase[2]) + .1*Math.sin(x*.4 + hillPhase[3])*Math.sin(y*.35 + hillPhase[0]);
+  let L = f > .8 ? 2 : f > .62 ? 1 : 0;
+  for (const m of terrainHills){
+    const d = Math.hypot(x-m.x, y-m.y), an = Math.atan2(y-m.y, x-m.x);
+    if (d < m.mr*(.85 + .2*Math.sin(an*3 + m.ph))) L = Math.min(3, L+2);
+  }
+  return L;
+}
+
+function refreshHeights(x0, y0, x1, y1){
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++)
+    TH[x][y] = gtype[x][y] === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][y]*LV;
+}
+
+/* Fenced 3x2 bedding pens for the flocks, away from the camp and stations,
+   each with a one tile gate facing the camp (Desert Outpost §10e). */
+function placePens(r){
+  pens = [];
+  for (let n=0;n<600 && pens.length<4;n++){
+    const x0 = 2 + Math.floor(r()*(N-7)), z0 = 2 + Math.floor(r()*(N-6));
+    const cx = x0+1.5, czp = z0+1;
+    const sgn = czp > CAMP.y ? -1 : 1;
+    if (Math.hypot(cx-CAMP.x, czp-CAMP.y) < 9) continue;
+    if (STATIONS.some(s => Math.hypot(cx-s.x, czp-s.y) < 6)) continue;
+    if (pens.some(p => Math.hypot(p.x0+1.5-cx, p.z0+1-czp) < 6)) continue;
+    let ok = true;
+    for (let i=0;i<3 && ok;i++) for (let j=0;j<2;j++){
+      if (!inMap(x0+i,z0+j) || kind[x0+i][z0+j] || gtype[x0+i][z0+j] === 2 || ter[x0+i][z0+j] !== 0){ ok = false; break; }
+    }
+    const gz0 = sgn < 0 ? z0-1 : z0+2;
+    for (const dz of [0,1]) for (const dx of [-1,0,1]){
+      const x = x0+1+dx, z = gz0 + (sgn<0 ? -dz : dz);
+      if (!inMap(x,z) || kind[x][z] || gtype[x][z] === 2 || ter[x][z] !== 0) ok = false;
+    }
+    if (!ok) continue;
+    for (let i=0;i<3;i++) for (let j=0;j<2;j++) kind[x0+i][z0+j] = K_PEN;
+    pens.push({ x0, z0, sgn });
+  }
+}
+
+function refreshShoreAndPalms(){
+  shore = [];
+  waterTiles = [];
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
+    if (gtype[x][y] === 2){ waterTiles.push({x,y}); continue; }
+    if (!kind[x][y] && gtype[x][y] !== 2 && D4.some(([a,b]) => inMap(x+a,y+b) && gtype[x+a][y+b] === 2)) shore.push([x,y]);
+  }
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
+    if (kind[x][y] || gtype[x][y] === 2){ palm[x][y] = 0; continue; }
+    const pondRing = gtype[x][y] === 1 && D4.some(([a,b]) => inMap(x+a,y+b) && gtype[x+a][y+b] === 2);
+    palm[x][y] = (whash(x,y) < .04 && gtype[x][y] === 0) || (pondRing && whash(x+71,y+13) < .4) ? 1 : 0;
+  }
+}
+
+/* Dune groups: stamps placed on free flat sand away from the camp. */
+function placeDunes(r, bandStart = 0){
+  for (let n=0;n<300 && dunes.length<34;n++){
+    const pat = DSTAMPS[Math.floor(Math.pow(r(),1.1)*DSTAMPS.length)];
+    const cs = stampCells(pat, Math.floor(r()*4), r() < .5);
+    const x0 = Math.max(bandStart-2, 1) + Math.floor(r()*(N-Math.max(bandStart-2,1)-4));
+    const z0 = 1 + Math.floor(r()*(N-4));
+    if (cs.some(([c,rr]) => {
+      const x = x0+c, z = z0+rr;
+      if (!inMap(x,z) || x < bandStart) return true;
+      return kind[x][z] || gtype[x][z] !== 0 || palm[x][z] || dune[x][z] >= 0
+        || Math.hypot(x-CAMP.x, z-CAMP.y) < 8
+        || STATIONS.some(s => Math.hypot(x-s.x, z-s.y) < 4);
+    })) continue;
+    const id = dunes.length;
+    cs.forEach(([c,rr]) => dune[x0+c][z0+rr] = id);
+    dunes.push({ id, cells: cs.map(([c,rr]) => [x0+c, z0+rr]) });
+  }
+}
+
+/* Build the world: tile grids, ponds, terrain levels, pens, palms and dunes.
+   The ground mesh and every piece are drawn from this data afterwards. */
 function buildTerrain(){
   seed = state.worldSeed || DEFAULT_WORLD_SEED;
   builtWorldSeed = seed;
-  HT = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
-  WATER = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
-  TRAIL = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
-  waterTiles = [];
-
-  // Landmark hills keep the map's silhouette; the collapse grows the talus
-  // and scrub around them rather than stamping concentric rings.
-  const hills = [];
-  for (let i=0;i<15;i++){
-    const cx = 3 + rnd()*(N-6);
-    const cy = 3 + rnd()*(N-6);
-    const r = 2.1 + rnd()*4.4;
-    if (Math.hypot(cx-CAMP.x, cy-CAMP.y) < 9) continue;
-    hills.push({x:cx, y:cy, r, peak: r > 4.4 ? 3 : 2});
-  }
-
-  terrainHills = hills;
-  const flatType = wfcDesertGround(hills);
-  TYPE = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
-  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
-    const t = flatType[y*N+x];
-    TYPE[x][y] = t;
-    HT[x][y] = GROUND[t].height;
-    WATER[x][y] = GROUND[t].water;
-  }
-
-  // Named pools are stamped after the collapse so every water source the
-  // journey depends on exists, with a shallow shelf and shore ring.
-  const addPool = (cx,cy,r) => stampPool(cx,cy,r,N,N);
-  addPool(6.5,36.5,3.2);       // the sea behind the Red Sea Shore
-  addPool(37.5,7.5,2.1);       // Elim springs
-  addPool(8.5,14.5,1.9);       // Marah
-  addPool(30.5,43.0,2.2);      // Rephidim
-  addPool(23.0,20.0,1.5);      // oasis near camp
-  addPool(44.0,33.0,1.3);      // a small wilderness pool
-
+  N = Math.min(N_MAX, Math.max(N0, state.worldN || N0));
+  newGrids();
+  const tb = tbRect();
+  for (let x=tb.x0;x<tb.x0+TBSIZE.w;x++) for (let z=tb.z0;z<tb.z0+TBSIZE.l;z++) if (inMap(x,z)) kind[x][z] = K_TAB;
+  for (const p of POOL_SITES) stampPond(p.x, p.y, p.r);
   flattenAt(CAMP.x, CAMP.y, 5.6);
   STATIONS.forEach(s => flattenAt(s.x, s.y, 3.4));
-
-  STATIONS.forEach(s => carveTrail(CAMP.x, CAMP.y, s.x, s.y));
-  carveTrail(CAMP.x, CAMP.y, 23, 20);
-
-  // A lone rock tile is an invisible obstacle, so fold specks into gravel.
-  for (let pass=0; pass<2; pass++){
-    for (let x=0;x<N;x++) for (let y=0;y<N;y++){
-      if (!HT[x][y]) continue;
-      let neighbours = 0;
-      for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-        const nx = x+dx, ny = y+dy;
-        if (nx>=0&&nx<N&&ny>=0&&ny<N&&HT[nx][ny]) neighbours++;
-      }
-      if (!neighbours){ HT[x][y] = 0; TYPE[x][y] = G_GRAVEL; }
-    }
+  // Hills and mesas: smooth noise gives level steps; a few mesas rise two
+  // levels with cliff edges (Desert Outpost §10i). Flat round the camp,
+  // the stations and every pond.
+  const r = srand(seed*7+3);
+  hillPhase = [r()*9, r()*9, r()*9, r()*9];
+  terrainHills = [];
+  for (let i=0;i<15;i++){
+    const cx = 3 + r()*(N-6), cy = 3 + r()*(N-6), hr = 2.1 + r()*4.4;
+    if (Math.hypot(cx-CAMP.x, cy-CAMP.y) < 11) continue;
+    if (STATIONS.some(s => Math.hypot(cx-s.x, cy-s.y) < 9)) continue;
+    if (r() < .6) continue;   // a handful of mesas, the rest open desert
+    terrainHills.push({ x:cx, y:cy, mr: Math.min(hr, 3.8), ph: r()*6 });
   }
-
-  paintGroundColors();
-
-  waterTiles = [];
-  for (let x=0;x<N;x++) for (let y=0;y<N;y++) if (WATER[x][y]) waterTiles.push({x,y});
-}
-
-/* Ground helpers shared with the migration system: flatten a campsite,
-   carve a winding trail between two points, and repaint the tile colours. */
-function flattenAt(cx,cy,r){
-  for (let x=Math.floor(cx-r);x<=Math.ceil(cx+r);x++)
-    for (let y=Math.floor(cy-r);y<=Math.ceil(cy+r);y++)
-      if (x>0&&x<N-1&&y>0&&y<N-1&&Math.hypot(x-cx,y-cy) <= r){
-        HT[x][y]=0; WATER[x][y]=0; TYPE[x][y]=G_SAND;
-      }
-}
-
-function carveTrail(x0,y0,x1,y1){
-  const len = Math.hypot(x1-x0,y1-y0);
-  const steps = Math.ceil(len*3.2);
-  for (let i=0;i<=steps;i++){
-    const t = i/steps;
-    const x = lerp(x0,x1,t) + Math.sin(t*Math.PI*3.1)*1.35;
-    const y = lerp(y0,y1,t) + Math.cos(t*Math.PI*2.3)*1.15;
-    for (let a=-1;a<=1;a++) for (let b=-1;b<=1;b++){
-      if (a*a+b*b > 1.25) continue;
-      const tx = Math.round(x)+a, ty = Math.round(y)+b;
-      if (tx>0&&tx<N-1&&ty>0&&ty<N-1){
-        HT[tx][ty]=0; WATER[tx][ty]=0; TRAIL[tx][ty]=1; TYPE[tx][ty]=G_SAND;
-      }
-    }
-  }
-}
-
-function paintGroundColors(){
-  TCOLOR = Array.from({length:N_MAX}, () => new Array(N_MAX));
-  const trailCols = ['#dbc08a','#e3cb96'];
-  for (let x=0;x<N;x++) for (let y=0;y<N;y++){
-    let col;
-    if (WATER[x][y]){
-      col = GROUND[TYPE[x][y]].colors[Math.floor(hash(x,y)*3)];
-    } else if (TRAIL[x][y]){
-      col = trailCols[hash(x,y) < 0.5 ? 0 : 1];
-    } else {
-      const colors = GROUND[TYPE[x][y]].colors;
-      const wave = Math.sin(x*0.21 + Math.sin(y*0.17)*1.8) + Math.sin((x*0.11 + y*0.16)*1.3 + 0.9);
-      const ci = clamp(Math.floor((wave+2.4)/4.8*colors.length), 0, colors.length-1);
-      col = colors[ci];
-      if (hash(x*2.3,y*1.7) < 0.14) col = shade(col,-0.04);
-    }
-    TCOLOR[x][y] = col;
-  }
-}
-
-/* Stamp one pool with a shallow shelf and shore ring. (bx,by) bound the
-   stamping so extensions only ever paint ground beyond the old edge. */
-function stampPool(cx,cy,r,bx,by){
-  for (let x=Math.max(1,Math.floor(cx-r-1));x<Math.min(bx-1,Math.ceil(cx+r+1));x++)
-    for (let y=Math.max(1,Math.floor(cy-r-1));y<Math.min(by-1,Math.ceil(cy+r+1));y++){
-      const d = Math.hypot(x-cx,y-cy) / r + hash(x+9,y+3)*0.18;
-      let t = -1;
-      if (d < 0.62) t = G_DEEP;
-      else if (d < 0.92) t = G_SHALLOW;
-      else if (d < 1.12) t = G_SHORE;
-      if (t < 0) continue;
-      TYPE[x][y] = t;
-      HT[x][y] = 0;
-      WATER[x][y] = (t === G_DEEP || t === G_SHALLOW) ? 1 : 0;
-    }
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++) ter[x][y] = tileTerrainLevel(x, y);
+  refreshHeights(0, 0, N-1, N-1);
+  placePens(r);
+  refreshShoreAndPalms();
+  placeDunes(r);
+  rebuildGround();
 }
 
 /* ------------------------ the widening wilderness ----------------------
@@ -2406,7 +2302,7 @@ function stampPool(cx,cy,r,bx,by){
    never regenerated, so the ground is remembered across the whole journey
    and survives save/load. */
 const EXT_STEP = 8;
-let terrainHills = null;
+
 
 function worldNFor(rings){
   return Math.min(N_MAX, N0 + Math.max(0, Math.floor(rings)) * EXT_STEP);
@@ -2419,6 +2315,7 @@ function syncWorldExtent(){
 }
 
 /* Massifs for new land: jittered over an 8-tile grid, pure per grid cell. */
+/* Massifs for new land: jittered over an 8-tile grid, pure per grid cell. */
 function extensionHills(x0,y0,x1,y1,out){
   const cs = 8;
   for (let cx=Math.floor((x0-1)/cs);cx<=Math.floor(x1/cs);cx++){
@@ -2427,47 +2324,36 @@ function extensionHills(x0,y0,x1,y1,out){
       const hx = cx*cs + 1.5 + tileHash2(cx+7, cy+11, seed) * (cs-3);
       const hy = cy*cs + 1.5 + tileHash2(cx+13, cy+5, seed) * (cs-3);
       if (hx < x0-1 && hy < y0-1) continue;
-      if (Math.hypot(hx-CAMP.x, hy-CAMP.y) < 10) continue;
-      if (STATIONS.some(s => Math.hypot(hx-s.x, hy-s.y) < 8)) continue;
-      out.push({ x:hx, y:hy, r:2.1 + tileHash2(cx+3, cy+17, seed)*2.6,
-        peak: tileHash2(cx+21, cy+29, seed) > 0.8 ? 3 : 2 });
+      if (Math.hypot(hx-CAMP.x, hy-CAMP.y) < 11) continue;
+      if (STATIONS.some(s => Math.hypot(hx-s.x, hy-s.y) < 9)) continue;
+      out.push({ x:hx, y:hy, mr: 1.8 + tileHash2(cx+3, cy+17, seed)*2.2,
+        ph: tileHash2(cx+21, cy+29, seed)*6 });
     }
   }
-}
-
-/* Ground type for one wilderness tile: hill skirts first, then noise bands. */
-function wildType(x, y, hills){
-  let d = Infinity, best = null;
-  for (const h of hills){
-    const dd = Math.hypot(x-h.x, y-h.y);
-    if (dd < d){ d = dd; best = h; }
-  }
-  const wob = (hash(x*1.7+3, y*2.3-5)-0.5)*1.5;
-  if (best){
-    if (d + wob < Math.max(0.9, best.r*0.42)) return best.peak === 3 ? G_PEAK : G_ROCK;
-    if (d + wob < best.r*0.85) return G_ROCK;
-    if (d + wob < best.r*1.25) return G_GRAVEL;
-  }
-  if (valueNoise(x*0.9, y*0.9, 17, 4, seed ^ 0x2b3c) > 0.66) return G_SCRUB;
-  if (valueNoise(x*1.6, y*1.6, 9, 5, seed ^ 0x19d7) > 0.82) return G_GRAVEL;
-  return G_SAND;
 }
 
 /* Grow the world from N to newN. The old square is never touched. */
+/* Grow the world from N to newN. The old square is never touched; new ground
+   is a pure function of the world seed, so the land survives save/load. */
 function extendWorld(newN){
   newN = Math.min(N_MAX, Math.max(N, Math.floor(newN)));
-  if (newN <= N || !TYPE) return false;
+  if (newN <= N || !kind.length) return false;
   const oldN = N;
   const hills = (terrainHills || []).slice();
   extensionHills(oldN-6, oldN-6, newN, newN, hills);
-  for (let x=0;x<newN;x++){
-    for (let y=0;y<newN;y++){
-      if (x < oldN && y < oldN) continue;
-      const t = wildType(x, y, hills);
-      TYPE[x][y] = t;
-      HT[x][y] = GROUND[t].height;
-      WATER[x][y] = GROUND[t].water;
+  for (let x=0;x<newN;x++) for (let y=0;y<newN;y++){
+    if (x < oldN && y < oldN) continue;
+    let L = 0;
+    if (!(Math.hypot(x+.5-CAMP.x, y+.5-CAMP.y) < 9) && !STATIONS.some(s => Math.hypot(x+.5-s.x, y+.5-s.y) < 4.5)){
+      const f = .5 + .25*Math.sin(x*.21 + hillPhase[0])*Math.cos(y*.17 + hillPhase[1])
+        + .2*Math.sin((x+y)*.13 + hillPhase[2]) + .1*Math.sin(x*.4 + hillPhase[3])*Math.sin(y*.35 + hillPhase[0]);
+      L = f > .8 ? 2 : f > .62 ? 1 : 0;
+      for (const m of hills){
+        const d = Math.hypot(x-m.x, y-m.y), an = Math.atan2(y-m.y, x-m.x);
+        if (d < m.mr*(.85 + .2*Math.sin(an*3 + m.ph))) L = Math.min(3, L+2);
+      }
     }
+    ter[x][y] = L;
   }
   // Water sources in the new land, so fresh ground can be lived on.
   for (let k=oldN;k<newN;k+=EXT_STEP){
@@ -2476,42 +2362,37 @@ function extendWorld(newN){
     if (px < oldN - 2 || py < oldN - 2 || px > newN - 3 || py > newN - 3) continue;
     if (Math.hypot(px-CAMP.x, py-CAMP.y) < 9) continue;
     if (STATIONS.some(s => Math.hypot(px-s.x, py-s.y) < 7)) continue;
-    stampPool(px, py, 1.6 + tileHash2(k, 91, seed)*0.9, newN, newN);
+    stampPond(px, py, 1.6 + tileHash2(k, 91, seed)*0.9);
   }
   terrainHills = hills;
   N = newN;
-  OX = N*HW + 2*HW;
-  paintGroundColors();
-  waterTiles = [];
-  for (let x=0;x<N;x++) for (let y=0;y<N;y++) if (WATER[x][y]) waterTiles.push({x,y});
+  for (let x=0;x<newN;x++) for (let y=0;y<newN;y++){
+    if (x < oldN && y < oldN) continue;
+    TH[x][y] = gtype[x][y] === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][y]*LV;
+  }
+  refreshShoreAndPalms();
+  placeDunes(srand(seed ^ oldN), oldN-4);
   decorateBand(oldN, newN);
-  terrainCanvas = buildTerrainCanvas();
+  rebuildGround();
+  markRebuild();
   return true;
 }
 
-/* Trees, boulders and scrub detail for freshly revealed ground. */
+
+/* Gathering trees and boulders for freshly revealed ground (the gameplay
+   nodes; scenery comes from the dressing pass of build()). */
 function decorateBand(oldN, newN){
   const key = (x,y) => Math.floor(x) + ',' + Math.floor(y);
   const inBand = (x,y) => x >= oldN || y >= oldN;
   const freeB = (x,y,r=0.4) => {
     if (x<1||x>N-2||y<1||y>N-2) return false;
     if (!inBand(x,y)) return false;
-    if (HT[Math.floor(x)][Math.floor(y)] || WATER[Math.floor(x)][Math.floor(y)]) return false;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    if (gtype[tx][ty] === 2 || kind[tx][ty] || ter[tx][ty] > 0) return false;
     if (decorUsed.has(key(x,y))) return false;
     if (Math.hypot(x-CAMP.x,y-CAMP.y) < TABERNACLE_RADIUS + 0.7) return false;
     return true;
   };
-  // Palms at the new water's edge.
-  for (const t of waterTiles){
-    if (t.x < oldN-2 && t.y < oldN-2) continue;
-    if (tileHash2(t.x*3.1, t.y*5.7, seed ^ 0x7ea1) > 0.2) continue;
-    const a = tileHash2(t.x, t.y*2, seed) * Math.PI*2;
-    const x = t.x + Math.cos(a)*2.0, y = t.y + Math.sin(a)*2.0;
-    if (freeB(x,y,0.2)){
-      decor.push({kind:'palm', x, y, s:0.8+tileHash2(x,y,seed)*0.45, h:tileHash2(y,x,seed)*6.28, tv:Math.floor(tileHash2(x+3,y,seed)*4)});
-      decorUsed.add(key(x,y));
-    }
-  }
   // Gathering trees and boulders scattered through the band.
   const n = Math.ceil(((newN-oldN) * newN) / 190);
   for (let i=0;i<n;i++){
@@ -2521,17 +2402,11 @@ function decorateBand(oldN, newN){
     if (pick < 0.3){
       if (freeB(x,y,0.2)){
         woodNodes.push({ x, y, wood:18, max:18, claimedBy:null, h:tileHash2(x,y,seed)*6.28 });
-        decor.push({kind:'acacia', x, y, s:0.9+tileHash2(x,y,seed)*0.5, h:tileHash2(y,x,seed)*6.28, tv:Math.floor(tileHash2(x+3,y,seed)*3)});
         decorUsed.add(key(x,y));
       }
     } else if (pick < 0.5){
       if (freeB(x,y,0.4)){
         rockNodes.push({ x, y, stone:12, max:12, h:tileHash2(x,y,seed)*6.28, rv:Math.floor(tileHash2(x*3,y*5,seed)*4) });
-        decorUsed.add(key(x,y));
-      }
-    } else if (pick < 0.75){
-      if (freeB(x,y,0.3)){
-        decor.push({kind: pick < 0.6 ? 'shrub' : 'pebble', x, y, s:0.65+tileHash2(x,y,seed)*0.7, h:tileHash2(y,x,seed)*6.28});
         decorUsed.add(key(x,y));
       }
     }
@@ -2571,8 +2446,8 @@ function findCampSite(){
     for (let dx=-6;dx<=6;dx+=2) for (let dy=-6;dy<=6;dy+=2){
       const tx = Math.floor(x)+dx, ty = Math.floor(y)+dy;
       if (tx<1||ty<1||tx>N-2||ty>N-2) continue;
-      if (!HT[tx][ty] && !WATER[tx][ty]) open++;
-      if (WATER[tx][ty]) waterNear = 1;
+      if (!blocked(tx,ty) && ter[tx][ty] === 0) open++;
+      if (gtype[tx][ty] === 2) waterNear = 1;
     }
     const score = open + (waterNear ? 8 : 0) - Math.abs(Math.hypot(x-CAMP.x,y-CAMP.y)-15)*0.2;
     if (score > bestScore){ bestScore = score; best = {x,y}; }
@@ -2600,11 +2475,8 @@ function migrateCamp(site){
   syncWorldExtent();
 
   flattenAt(CAMP.x, CAMP.y, 5.6);
-  // The old site's trail stubs remain; new trails lead from the new camp.
-  STATIONS.forEach(s => carveTrail(CAMP.x, CAMP.y, s.x, s.y));
-  carveTrail(CAMP.x, CAMP.y, 23, 20);
-  paintGroundColors();
-  terrainCanvas = buildTerrainCanvas();
+  rebuildGround();
+  markRebuild();
 
   const savedTribes = state.tribeStats, savedPeople = people;
   buildDecor();
@@ -2637,7 +2509,7 @@ function migrateCamp(site){
 
   state.player.x = CAMP.x + 1.4; state.player.y = CAMP.y + 1.4;
   state.player.tx = null; state.player.ty = null; state.player.moving = false;
-  camX = (CAMP.x-CAMP.y)*HW; camY = (CAMP.x+CAMP.y)*HH;
+  camX = 0; camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   manna = []; state.mannaSpawned = false;
   tentFires = [];
@@ -2662,13 +2534,17 @@ function checkMigration(){
 }
 
 let decorUsed = new Set();
+let campTents = [];   // tribal-quarter tents: { x, y, tribe } — snapped into the tent grid at build time
+let nodeCells = new Set();
 function buildDecor(){
-  decor = []; people = []; woodNodes = []; rockNodes = []; structures = []; raiders = [];
+  people = []; woodNodes = []; rockNodes = []; structures = []; raiders = [];
+  campTents = [];
   const used = decorUsed = new Set();
   const key = (x,y) => Math.floor(x) + ',' + Math.floor(y);
   const free = (x,y,r=0.8) => {
     if (x<1||x>N-2||y<1||y>N-2) return false;
-    if (HT[Math.floor(x)][Math.floor(y)] || WATER[Math.floor(x)][Math.floor(y)]) return false;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    if (gtype[tx][ty] === 2 || kind[tx][ty] || ter[tx][ty] > 0) return false;
     if (used.has(key(x,y))) return false;
     if (Math.hypot(x-CAMP.x,y-CAMP.y) < TABERNACLE_RADIUS + 0.7) return false;
     if (STATIONS.some(s => Math.hypot(x-s.x,y-s.y) < 2.4)) return false;
@@ -2679,60 +2555,14 @@ function buildDecor(){
     const x0=Math.floor(x-r), x1=Math.ceil(x+r), y0=Math.floor(y-r), y1=Math.ceil(y+r);
     for (let i=Math.max(0,x0);i<=Math.min(N-1,x1);i++)
       for (let j=Math.max(0,y0);j<=Math.min(N-1,y1);j++)
-        if (WATER[i][j] && Math.hypot(i-x,j-y) < r+0.7) return true;
+        if (gtype[i][j] === 2 && Math.hypot(i-x,j-y) < r+0.7) return true;
     return false;
-  }
-
-  // Palms hug the water; trees — palms, acacias and tamarisks — also dot the
-  // open desert, each drawn with its own shape and size variant.
-  let palms = 0;
-  for (const t of waterTiles){
-    if (palms >= 30) break;
-    if (hash(t.x*3.1,t.y*5.7) > 0.16) continue;
-    const a = hash(t.x,t.y*2)*Math.PI*2;
-    const x = t.x + Math.cos(a)*2.0, y = t.y + Math.sin(a)*2.0;
-    if (free(x,y,0.2)){
-      decor.push({kind:'palm', x, y, s:0.8+hash(x,y)*0.45, h:hash(y,x)*6.28, tv:Math.floor(hash(x+3,y)*4)});
-      used.add(key(x,y)); palms++;
-    }
-  }
-
-  // Wilderness trees: lone acacias and tamarisks out on the sand.
-  for (let i=0;i<16;i++){
-    const x = 2 + rnd()*(N-4), y = 2 + rnd()*(N-4);
-    if (!free(x,y,0.4)) continue;
-    if (STATIONS.some(s => Math.hypot(x-s.x,y-s.y) < 4)) continue;
-    const kind = hash(x,y) < 0.5 ? 'acacia' : 'tamarisk';
-    decor.push({kind, x, y, s:0.75+rnd()*0.55, h:rnd()*6.28, tv:Math.floor(rnd()*3)});
-    used.add(key(x,y));
-  }
-
-  // Rocks at the feet of the massifs — four shapes, from slabs to shards.
-  for (let i=0;i<95;i++){
-    const x = 2 + rnd()*(N-4), y = 2 + rnd()*(N-4);
-    if (!free(x,y,0.4)) continue;
-    const nearRock = [[1,0],[-1,0],[0,1],[0,-1]].some(([a,b]) => {
-      const tx=Math.floor(x)+a, ty=Math.floor(y)+b;
-      return tx>=0&&tx<N&&ty>=0&&ty<N&&HT[tx][ty]>0;
-    });
-    if (nearRock || rnd() < 0.18){
-      decor.push({kind:'rock', x, y, s:0.7+rnd()*0.8, h:rnd()*6.28, rv:Math.floor(rnd()*4)});
-      used.add(key(x,y));
-    }
-  }
-
-  // Desert plants and pebbles.
-  const kinds = ['shrub','shrub','shrub','tuft','agave','cactus','pebble','pebble'];
-  for (let i=0;i<140;i++){
-    const x = 2 + rnd()*(N-4), y = 2 + rnd()*(N-4);
-    if (!free(x,y,0.2)) continue;
-    decor.push({kind:kinds[Math.floor(rnd()*kinds.length)], x, y, s:0.65+rnd()*0.7, h:rnd()*6.28});
-    used.add(key(x,y));
   }
 
   // The twelve tribes pitch their tents in their own quarters around the
   // Tabernacle (Numbers 2): Judah's host east, Reuben's south, Joseph's west,
-  // Dan's north — and Levi nearest the sanctuary.
+  // Dan's north — and Levi nearest the sanctuary. build() snaps them into
+  // the tent grid and runs the Desert Outpost solver over the whole camp.
   for (const t of TRIBES){
     const dir = QUARTER_DIRS[t.camp] || [0,1];
     if (t.name === 'Levi'){
@@ -2740,26 +2570,25 @@ function buildDecor(){
       const n = 8;
       for (let i=0;i<n;i++){
         const a = i/n*Math.PI*2 + 0.35;
-        const x = CAMP.x + Math.cos(a)*(TABERNACLE_RADIUS + 0.9), y = CAMP.y + Math.sin(a)*(TABERNACLE_RADIUS + 0.9);
-        if (free(x,y,0)){
-      const t = TRIBES.find(tr => tr.name === 'Levi');
-      decor.push({ kind:'tent', x, y, s:0.8+hash(x,y)*0.15, h:a, tribe:'Levi', v:Math.floor(hash(x+1,y+2)*7) });
-    }
+        const x = CAMP.x + Math.cos(a)*5.6, y = CAMP.y + Math.sin(a)*3.2;
+        if (inMap(Math.round(x), Math.round(y)) && !kind[Math.round(x)][Math.round(y)])
+          campTents.push({ x, y, tribe:'Levi' });
       }
       continue;
     }
-    const qx = CAMP.x + dir[0]*6.6, qy = CAMP.y + dir[1]*6.6;
+    const qx = CAMP.x + dir[0]*7.4, qy = CAMP.y + dir[1]*7.4;
     const n = 4;
     for (let i=0;i<n;i++){
       const a = (i/n + hash(t.name.length, i)*0.35) * Math.PI*2;
       const r = 1.2 + hash(i, t.name.length)*2.4;
       const x = qx + Math.cos(a)*r, y = qy + Math.sin(a)*r;
-      if (free(x,y,0)) decor.push({ kind:'tent', x, y, s:0.85+hash(x,y)*0.2, h:a, tribe:t.name, v:Math.floor(hash(x+1,y+2)*7) });
+      if (inMap(Math.round(x), Math.round(y)) && !kind[Math.round(x)][Math.round(y)])
+        campTents.push({ x, y, tribe:t.name });
     }
   }
 
-  // The camp's fixed props (the Tabernacle itself is drawn separately and is
-  // not decor — it stands at the centre of the map).
+  // The camp's fixed props (the Tabernacle itself is drawn by build()).
+  decor = [];
   decor.push({kind:'market', x:CAMP.x+2.9, y:CAMP.y-3.4, s:1});
   decor.push({kind:'fire', x:CAMP.x+0.9, y:CAMP.y+0.9, s:1});
   for (let i=0;i<5;i++){
@@ -2812,7 +2641,6 @@ function buildDecor(){
     });
   }
 }
-
 /* ------------------------------ state -------------------------------- */
 
 /* Bump APP_VERSION every time a new build ships; it shows bottom-left. */
@@ -2841,7 +2669,7 @@ const state = {
   layoutEdit:null, layoutUndo:[], layoutRedo:[], trial:null, haptics:true, sharedJourney:null
 };
 
-let camX = 0, camY = 0, ox = 0, oy = 0;
+let camX = 0, camY = 0;   // drag-pan offset for the camera target (world units)
 let last = 0, music = null;
 let builtWorldSeed = null;
 
@@ -2898,6 +2726,7 @@ function resetState(){
   $('raidOverlay').classList.remove('open');
   $('settingsOverlay').classList.remove('open');
   manna = []; particles = []; pops = []; flights = []; structures = []; raiders = []; buildGhost = null; tentFires = []; foeCamps = [];
+  markRebuild();
   fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
   woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
   rockNodes.forEach(n => { n.stone = n.max; });
@@ -2909,7 +2738,7 @@ function resetState(){
     p.work = 0; p.stuck = 0; p.counselCd = 0; p.sick = false; p.deposited = false; p.gatheredMonth = 0;
   });
   state.sick = 0;
-  camX = (CAMP.x-CAMP.y)*HW; camY = (CAMP.x+CAMP.y)*HH;
+  camX = 0; camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   say(`Year 1, Month ${monthName()} (${monthOfYear()}/12). The pillar of cloud stands over the Red Sea Shore.`);
   setSpeed(1);
@@ -2919,16 +2748,10 @@ function resetState(){
 
 /* ------------------------------ helpers ------------------------------ */
 
-function groundElev(x,y){
-  const i = Math.floor(x), j = Math.floor(y);
-  if (i<0||i>=N||j<0||j>=N) return 0;
-  return HT[i][j] * ELEV;
-}
-
 function blocked(x,y){
   const i = Math.floor(x), j = Math.floor(y);
   if (i<1||i>N-2||j<1||j>N-2) return true;
-  return HT[i][j] > 0 || WATER[i][j] > 0;
+  return gtype[i][j] === 2 || !!kind[i][j] || ter[i][j] >= 2;
 }
 
 function say(msg){
@@ -3489,6 +3312,7 @@ function strikeDefenses(){
     if (st.kind === 'sentry'){ sentries++; state.defenseStore.sentry = (state.defenseStore.sentry||0) + 1; return false; }
     return true;
   });
+  markRebuild();
   if (towers || sentries){
     say(`A new week: the watch is struck. ${towers} watchtower${towers===1?'':'s'} and ${sentries} sentry post${sentries===1?'':'s'} wait in the camp store — set them out again (C).`);
     updateCampUI();
@@ -3741,7 +3565,7 @@ function startTrial(index){
   });
   state.sick = 0;
   beginMonthTracking(); beginYearTracking();
-  state.explored = new Set(); camX = (CAMP.x-CAMP.y)*HW; camY = (CAMP.x+CAMP.y)*HH;
+  state.explored = new Set(); camX = 0; camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   $('trialsOverlay').classList.remove('open');
   $('shareOverlay').classList.remove('open');
@@ -5913,12 +5737,13 @@ function placeStructure(x,y){
   if (Math.hypot(x-CAMP.x, y-CAMP.y) < TABERNACLE_RADIUS + 0.8){ say('The Tabernacle court is sacred ground — build no shelter there.'); return true; }
   if (blocked(x,y)){ say('You cannot build on rock or water.'); return true; }
   if (structures.some(s => Math.hypot(s.x-x, s.y-y) < 1.0)){ say('Something already stands there.'); return true; }
-  if (decor.some(d => d.kind === 'tent' && Math.hypot(d.x-x, d.y-y) < 0.9)){ say('A tent already stands there.'); return true; }
+  if (campTents.some(d => Math.hypot(d.x-x, d.y-y) < 0.9)){ say('A tent already stands there.'); return true; }
 
   const fromStore = (state.defenseStore[kind]||0) > 0;
   payFor(kind);
   const tribe = kind === 'tent' ? quarterTribeAt(x,y) : undefined;
   structures.push({ kind, x, y, s: kind === 'tent' ? 1.05 : 1, tribe });
+  markRebuild();
   if (kind === 'tent') state.faith = clamp(state.faith + 1, 0, 100);
   pops.push({ x, y, text:`${BUILD_LABELS[kind]} built`, color:'#e8b84a', t:1.2, max:1.2 });
   burst(x, y, '#c99a5a', 10);
@@ -6004,6 +5829,7 @@ function moveStructure(index,x,y){
   state.layoutUndo.push({ index, x:s.x, y:s.y });
   state.layoutRedo = [];
   s.x = spot.x; s.y = spot.y;
+  markRebuild();
   burst(x, y, '#e8b84a', 7);
   playSfx('click', 0.2);
   say(`Moved the ${(BUILD_LABELS[s.kind] || 'structure').toLowerCase()}.`);
@@ -6018,6 +5844,7 @@ function undoLayoutMove(){
   if (last.blueprint){
     state.layoutRedo.push({ blueprint:snapshotStructures() });
     structures = last.blueprint.map(s => ({ ...s }));
+    markRebuild();
     playSfx('click', 0.2);
     say('Camp blueprint restored to its previous layout.');
     updateCampUI(); updateHud(true); saveGame();
@@ -6027,6 +5854,7 @@ function undoLayoutMove(){
   if (!s){ say('That structure is no longer there.'); return; }
   state.layoutRedo.push({ index:last.index, x:s.x, y:s.y });
   s.x = last.x; s.y = last.y;
+  markRebuild();
   playSfx('click', 0.2);
   say('Camp move undone.');
   updateCampUI(); updateHud(true);
@@ -6038,6 +5866,7 @@ function redoLayoutMove(){
   if (next.blueprint){
     state.layoutUndo.push({ blueprint:snapshotStructures() });
     structures = next.blueprint.map(s => ({ ...s }));
+    markRebuild();
     playSfx('click', 0.2);
     say('Blueprint layout reapplied.');
     updateCampUI(); updateHud(true); saveGame();
@@ -6047,6 +5876,7 @@ function redoLayoutMove(){
   if (!s){ say('That structure is no longer there.'); return; }
   state.layoutUndo.push({ index:next.index, x:s.x, y:s.y });
   s.x = next.x; s.y = next.y;
+  markRebuild();
   playSfx('click', 0.2);
   say('Camp move reapplied.');
   updateCampUI(); updateHud(true);
@@ -6078,6 +5908,7 @@ function restoreBlueprint(slot){
   if (reason){ say(`Blueprint ${slot+1} cannot be restored: ${reason}`); return; }
   state.layoutUndo.push({ blueprint:snapshotStructures() });
   structures = blueprint.map(s => ({ ...s }));
+  markRebuild();
   for (const s of structures){ if (s.kind === 'wall') s.kind = 'sentry'; }
   playSfx('coins', 0.25);
   say(`Blueprint ${slot+1} restored.`);
@@ -6634,7 +6465,7 @@ function applySaveData(data){
   if (builtWorldSeed !== state.worldSeed){
     buildTerrain();
   }
-  view.rot = 0; view.trans = null; builtTerrainRot = 0;
+  view.rot = 0; yawT = yaw = VIEW_QUARTER/2;
   // Restore a migrated camp site: flatten the saved camp, carve its trails,
   // then build the decor, tents and people around it.
   if (data.camp && Number.isFinite(Number(data.camp.x)) && Number.isFinite(Number(data.camp.y))
@@ -6642,17 +6473,14 @@ function applySaveData(data){
     CAMP.x = clamp(Number(data.camp.x), 2, N-3);
     CAMP.y = clamp(Number(data.camp.y), 2, N-3);
     flattenAt(CAMP.x, CAMP.y, 5.6);
-    STATIONS.forEach(s => carveTrail(CAMP.x, CAMP.y, s.x, s.y));
-    carveTrail(CAMP.x, CAMP.y, 23, 20);
-    paintGroundColors();
+    rebuildGround();
   }
   buildDecor();
   // Reveal ground the journey had already opened up, then repaint the canvas.
   if (state.worldN > N){
     extendWorld(state.worldN);
-  } else {
-    terrainCanvas = buildTerrainCanvas();
   }
+  markRebuild();
   const savedVersion = data._sourceVersion || 4;
   if (savedVersion >= 3) state.day = data.day || 1;
   else if (savedVersion === 2) state.day = ((data.day || 1) - 1) * DAYS_PER_MONTH + 1;
@@ -6886,7 +6714,7 @@ function applySharedToNewGame(p){
   state.waterskin = 0; state.wood = 6; state.silver = 12;
   state.raidSpawned = false; state.raidDefense = null;
   beginMonthTracking(); beginYearTracking();
-  camX = (CAMP.x-CAMP.y)*HW; camY = (CAMP.x+CAMP.y)*HH;
+  camX = 0; camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   say('A shared wilderness opens. Same land, new journey.');
   updateHud(true); updateCampUI();
@@ -6898,7 +6726,7 @@ function startGame(){
   const shared = state.sharedJourney;
   if (state.trial) leaveTrial(true);
   resetState();
-  if (builtWorldSeed !== state.worldSeed){ buildTerrain(); buildDecor(); terrainCanvas = buildTerrainCanvas(); }
+  if (builtWorldSeed !== state.worldSeed){ buildTerrain(); buildDecor(); markRebuild(); }
   if (shared){
     applySharedToNewGame(shared);
     state.sharedJourney = null;
@@ -6944,835 +6772,745 @@ function valueNoise(x, y, size, grid, seed){
   const a = h(xi,yi), b = h(xi+1,yi), c = h(xi,yi+1), d = h(xi+1,yi+1);
   return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
 }
-function tileSeed(str){
-  let h = 2166136261;
-  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h >>> 0;
+
+/* ------------------------------------------------------------------ *
+ * The Desert Outpost build() pipeline (Migration Guide §4).
+ * After every edit the whole scene of pieces is rebuilt from the grids:
+ * tent WFC -> merge large tents -> camp graph -> grammar -> tents/fires/
+ * folds -> sentry walls -> tower WFC -> towers/bridges -> Tabernacle ->
+ * pens -> dressing -> dunes -> footings. Nothing is stored in the meshes.
+ * ------------------------------------------------------------------ */
+const PI = Math.PI;
+const WOOD = 0x6a4628, WOOD2 = 0x8a6a40;
+const mats = {}, M = c => mats[c] || (mats[c] = new THREE.MeshStandardMaterial({ color:c, roughness:.9, flatShading:true }));
+const glow = {}, MG = c => glow[c] || (glow[c] = new THREE.MeshStandardMaterial({ color:c, emissive:c, emissiveIntensity:.9 }));
+const gB = new THREE.BoxGeometry(1,1,1), gP = new THREE.ConeGeometry(.8,.75,4), gC = new THREE.CylinderGeometry(1,1,1,8), gS = new THREE.SphereGeometry(1,12,6), gCone = new THREE.ConeGeometry(1,1,14);
+const GR3 = new THREE.Group(), T3 = new THREE.Group(), FL3 = new THREE.Group(), RG3 = new THREE.Group();
+S3.add(GR3, T3, FL3, RG3);
+const hemi = new THREE.HemisphereLight(0xfff0d6, 0xb08a5a, .8); S3.add(hemi);
+const moonL = new THREE.DirectionalLight(0x8fa8ff, 0); moonL.position.set(-12,16,-8); S3.add(moonL);
+const sunL = new THREE.DirectionalLight(0xffe2b0, .95); sunL.castShadow = true; sunL.shadow.mapSize.set(2048,2048);
+Object.assign(sunL.shadow.camera, { left:-26, right:26, top:26, bottom:-26, near:1, far:120 });
+S3.add(sunL); S3.add(sunL.target);
+let FD = [];
+
+/* Every part sits on the height of the tile under it (Desert Outpost §10i). */
+const yo = (x,z) => { const a = cellOf(x), b = cellOf(z); return inMap(a,b) && TH[a][b] !== undefined ? TH[a][b] - GROUND_Y : 0; };
+function box(geo, w, h, dd, c, x, y, z, ry=0, rx=0, rz=0, m){
+  const o = new THREE.Mesh(geo, m || M(c));
+  o.scale.set(w, h, dd);
+  o.position.set(x, y + yo(x,z), z);
+  o.rotation.order = 'YXZ';
+  o.rotation.set(rx, ry, rz);
+  o.castShadow = o.receiveShadow = true;
+  T3.add(o);
+  return o;
 }
-function shadeHex(hex, amt){ return shade(hex, amt); }
 
-function tileTexture(top, face, variant, kind){
-  const bottom = shadeHex(top, -0.34);
-  const key = `${face}|${top}|${variant}|${kind||''}`;
-  if (tileTextureCache.has(key)) return tileTextureCache.get(key);
-  const S = TILE_TEX_SIZE;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const t = c.getContext('2d');
-  const seed = tileSeed(key);
-
-  if (face === 'top'){
-    /* Ordered-dither pixel texture, tuned soft like the Desert Outpost
-       example: smooth value noise dominates, speckle is a light garnish, and
-       the tint spread is narrow so tiles blend into one even ground. */
-    const levels = 5;
-    const tints = [-0.052,-0.026,0,0.028,0.056].map(a => shadeHex(top, a));
-    const bayer = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
-    for (let y=0;y<S;y++) for (let x=0;x<S;x++){
-      const lv = valueNoise(x,y,S,5,seed) * 0.44
-               + valueNoise(x,y,S,11,seed+11) * 0.38
-               + tileHash2(x,y,seed) * 0.18;
-      const th = (bayer[(y&3)*4 + (x&3)] + 0.5) / 16;
-      const q = clamp(Math.floor(lv*(levels-1) + (th-0.5)*0.9), 0, levels-1);
-      t.fillStyle = tints[q];
-      t.fillRect(x,y,1,1);
-    }
-    // Sparse pebbles and straw.
-    for (let i=0;i<12;i++){
-      const x = Math.floor(tileHash2(i,21,seed)*S), y = Math.floor(tileHash2(i,22,seed)*S);
-      t.fillStyle = i%3 ? 'rgba(80,54,28,.13)' : 'rgba(255,242,214,.15)';
-      t.fillRect(x,y,1,1);
-    }
-    if (kind === 'rock' || kind === 'peak'){
-      t.strokeStyle = 'rgba(55,35,22,.26)'; t.lineWidth = 1;
-      for (let i=0;i<4;i++){
-        const x = 3 + tileHash2(i,5,seed)*(S-6), y = 3 + tileHash2(i,6,seed)*(S-6);
-        t.beginPath(); t.moveTo(x,y); t.lineTo(x+4,y+2); t.lineTo(x+5,y+5); t.stroke();
-      }
-    } else if (kind === 'trail'){
-      for (let i=0;i<18;i++){
-        const x = tileHash2(i,7,seed)*S, y = tileHash2(i,8,seed)*S;
-        t.fillStyle = i%2 ? 'rgba(120,85,45,.26)' : 'rgba(255,240,200,.24)';
-        t.fillRect(x,y,1,1);
-      }
-    }
-  } else {
-    const left = face === 'left';
-    const topColor = shadeHex(top, left ? -0.16 : -0.04);
-    const bottomColor = shadeHex(bottom, left ? -0.18 : -0.06);
-    t.fillStyle = topColor; t.fillRect(0,0,S,S*0.52);
-    t.fillStyle = bottomColor; t.fillRect(0,S*0.52,S,S*0.48);
-    // Strata / brick courses, kept faint so cliffs read as soft slopes.
-    for (let y=4;y<S;y+=5){
-      const off = (Math.floor(y/5)%2)*5;
-      t.fillStyle = 'rgba(40,24,12,.13)';
-      t.fillRect(0,y,S,1);
-      t.fillStyle = 'rgba(255,238,200,.07)';
-      t.fillRect(0,y+1,S,1);
-      t.fillStyle = 'rgba(40,24,12,.09)';
-      for (let x=off;x<S;x+=10) t.fillRect(x,y,1,5);
-    }
-    for (let y=0;y<S;y++) for (let x=0;x<S;x++){
-      const h = tileHash2(x,y,seed);
-      if (h > 0.94) t.fillStyle = 'rgba(255,240,210,.07)';
-      else if (h < 0.05) t.fillStyle = 'rgba(35,20,10,.08)';
-      else continue;
-      t.fillRect(x,y,1,1);
+/* ---- one blended ground mesh with cliffs and a sand skirt (Guide §5.9) -- */
+function rebuildGround(){
+  while (GR3.children.length) GR3.remove(GR3.children[0]);
+  const tones = [0xe6c590,0xdfbb84,0xe9ca98], greens = [0x8fbf5f,0x84b455], blues = [0x4a9ab8,0x5aa6c2];
+  const ROCKC = new THREE.Color(0xc4a470), TCo = [];
+  for (let x=0;x<N;x++){
+    TCo[x] = [];
+    for (let z=0;z<N;z++){
+      const gt = gtype[x][z], hh = whash(x+3,z+9), k = kind[x][z];
+      TH[x][z] = gt === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][z]*LV;
+      TCo[x][z] = new THREE.Color(
+        k === K_TAB ? 0xf0dcae : k === K_PEN ? 0xd8c08a :
+        gt === 2 ? blues[hh < .5 ? 0 : 1] : gt === 1 ? greens[hh < .5 ? 0 : 1] : tones[Math.floor(hh*3)]);
+      if (ter[x][z] && gt !== 2) TCo[x][z].lerp(ROCKC, .14*ter[x][z]);
     }
   }
-  tileTextureCache.set(key,c);
-  return c;
+  // Corner colour = average of the 4 tiles; corner height = average of the
+  // tiles not separated from this tile by a cliff.
+  const ccol = (i,j) => {
+    const c = new THREE.Color(0,0,0); let n = 0;
+    for (const [a,b] of [[i-1,j-1],[i,j-1],[i-1,j],[i,j]])
+      if (a>=0 && b>=0 && a<N && b<N){ c.add(TCo[a][b]); n++; }
+    return c.multiplyScalar(1/n);
+  };
+  const chh = (tx,tz,i,j) => {
+    let h = 0, n = 0;
+    for (const [a,b] of [[i-1,j-1],[i,j-1],[i-1,j],[i,j]])
+      if (a>=0 && b>=0 && a<N && b<N && Math.abs(ter[a][b] - ter[tx][tz]) < 2){ h += TH[a][b]; n++; }
+    return h/n;
+  };
+  const pos = [], cols = [];
+  const push = (x,y,z,c) => { pos.push(x,y,z); cols.push(c.r,c.g,c.b); };
+  const cliffC = [new THREE.Color(0xc8a874), new THREE.Color(0x8f6f4a)];
+  if (!FD.length || FD.length < N_MAX) FD = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    const x0 = x-N/2, z0 = z-N/2, m = TCo[x][z], my = TH[x][z];
+    const cs = [[x,z],[x+1,z],[x+1,z+1],[x,z+1]];
+    const q = cs.map(([i,j]) => [i-N/2, chh(x,z,i,j), j-N/2, ccol(i,j)]);
+    FD[x][z] = Math.max(0, ...q.map(a => my - a[1]));
+    for (let k=0;k<4;k++){
+      const p = q[k], n = q[(k+1)%4];
+      push(p[0],p[1],p[2],p[3]); push(x0+.5,my,z0+.5,m); push(n[0],n[1],n[2],n[3]);
+    }
+    for (const [dx,dz,ia,ib] of [[1,0,1,2],[0,1,2,3],[-1,0,3,0],[0,-1,0,1]]){
+      const nx = x+dx, nz = z+dz;
+      if (nx>=0 && nz>=0 && nx<N && nz<N && ter[x][z] - ter[nx][nz] >= 2){
+        const A = q[ia], B = q[ib];
+        const ha = chh(nx,nz,cs[ia][0],cs[ia][1]), hb = chh(nx,nz,cs[ib][0],cs[ib][1]);
+        push(A[0],A[1],A[2],cliffC[0]); push(A[0],ha,A[2],cliffC[1]); push(B[0],B[1],B[2],cliffC[0]);
+        push(B[0],B[1],B[2],cliffC[0]); push(A[0],ha,A[2],cliffC[1]); push(B[0],hb,B[2],cliffC[1]);
+      }
+    }
+  }
+  const sc = new THREE.Color(0xb89a62);
+  const sk = (h1,px,pz,h2,qx,qz) => {
+    push(px,h1,pz,sc); push(px,-.05,pz,sc); push(qx,h2,qz,sc);
+    push(qx,h2,qz,sc); push(px,-.05,pz,sc); push(qx,-.05,qz,sc);
+  };
+  for (let t=0;t<N;t++){
+    const a = t-N/2, b = a+1;
+    sk(TH[t][0], a, -N/2, TH[t][0], b, -N/2);
+    sk(TH[t][N-1], a, N/2, TH[t][N-1], b, N/2);
+    sk(TH[0][t], -N/2, a, TH[0][t], -N/2, b);
+    sk(TH[N-1][t], N/2, a, TH[N-1][t], N/2, b);
+  }
+  const gg = new THREE.BufferGeometry();
+  gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  gg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  gg.computeVertexNormals();
+  const gm = new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.95, flatShading:true, side:THREE.DoubleSide }));
+  groundMesh = gm;
+  gm.receiveShadow = true;
+  GR3.add(gm);
 }
 
-function drawTextureQuad(t, pts, tex, alpha=1){
-  if (!tex) return;
-  const [p0,p1,,p3] = pts;
-  const S = tex.width;
-  const ux = (p1[0]-p0[0])/S, uy = (p1[1]-p0[1])/S;
-  const vx = (p3[0]-p0[0])/S, vy = (p3[1]-p0[1])/S;
-  t.save();
-  t.globalAlpha = alpha;
-  t.beginPath();
-  t.moveTo(pts[0][0],pts[0][1]);
-  for (let i=1;i<pts.length;i++) t.lineTo(pts[i][0],pts[i][1]);
-  t.closePath();
-  t.clip();
-  t.imageSmoothingEnabled = false;
-  t.transform(ux,uy,vx,vy,p0[0],p0[1]);
-  t.drawImage(tex,0,0);
-  t.restore();
-}
-
-
-function terrainKindAt(x,y){
-  if (x<0||x>=N||y<0||y>=N) return 'sand';
-  if (WATER[x][y]) return 'water';
-  if (HT[x][y] > 0) return TYPE[x][y] === G_PEAK ? 'peak' : 'rock';
-  if (TRAIL[x][y]) return 'trail';
-  return GROUND[TYPE[x][y]].key;
-}
-
-function buildTerrainCanvas(k = ((builtTerrainRot % 4) + 4) % 4){
-  k = ((k % 4) + 4) % 4;
-  const c = document.createElement('canvas');
-  c.width = 2*N*HW + 4*HW;
-  c.height = 2*N*HH + 180;
-  const tg = c.getContext('2d');
-  tg.fillStyle = '#c99a5e';
-  tg.fillRect(0,0,c.width,c.height);
-
-  /* Camera k renders the world rotated a quarter-turn about its centre:
-     drawn grid cell (u,v) holds world tile unrotUV(u,v,k). */
-  const topPoint = (u,v,e) => ({
-    x: OX + (u-v)*HW,
-    y: (u+v)*HH + TERRAIN_PAD - e
-  });
-
-  function tileUV(u,v){
-    const w = unrotUV(u,v,k);
-    const x = Math.round(w.u), y = Math.round(w.v);
-    const e = HT[x][y]*ELEV;
-    const p = topPoint(u,v,e);
-    const water = !!WATER[x][y];
-    const kind = terrainKindAt(x,y);
-    const variant = Math.floor(hash(x,y)*3);
-    const texTop = GROUND[TYPE[x][y]].colors[1];
-    const SIDE = 9;
-    const lN = unrotUV(u, v+1, k), rN = unrotUV(u+1, v, k);
-    const lE = (lN.v >= 0 && lN.v < N && lN.u >= 0 && lN.u < N) ? HT[Math.round(lN.u)][Math.round(lN.v)]*ELEV : -SIDE;
-    const rE = (rN.v >= 0 && rN.v < N && rN.u >= 0 && rN.u < N) ? HT[Math.round(rN.u)][Math.round(rN.v)]*ELEV : -SIDE;
-    const A = [p.x, p.y];
-    const B = [p.x+HW, p.y+HH];
-    const C = [p.x, p.y+2*HH];
-    const D = [p.x-HW, p.y+HH];
-
-    // Front-left wall (towards +y), plain and vertical for solid 3D edges.
-    if (lE < e){
-      const h = e-lE + SIDE;
-      const face = [[D[0], D[1]], [C[0], C[1]], [C[0], C[1]+h], [D[0], D[1]+h]];
-      drawTextureQuad(tg, face, tileTexture(texTop, 'left', (variant+1)%3, 'cliff'));
-      tg.strokeStyle = 'rgba(28,15,7,.22)'; tg.lineWidth = 1;
-      tg.beginPath(); tg.moveTo(face[0][0],face[0][1]); face.slice(1).forEach(q => tg.lineTo(q[0],q[1])); tg.closePath(); tg.stroke();
-    }
-    // Front-right wall (towards +x).
-    if (rE < e){
-      const h = e-rE + SIDE;
-      const face = [[C[0], C[1]], [B[0], B[1]], [B[0], B[1]+h], [C[0], C[1]+h]];
-      drawTextureQuad(tg, face, tileTexture(texTop, 'right', (variant+2)%3, 'cliff'));
-      tg.strokeStyle = 'rgba(28,15,7,.20)'; tg.lineWidth = 1;
-      tg.beginPath(); tg.moveTo(face[0][0],face[0][1]); face.slice(1).forEach(q => tg.lineTo(q[0],q[1])); tg.closePath(); tg.stroke();
-    }
-
-    // Top-layer lip: a thin band of the top material over the wall.
-    const lip = 3;
-    if (lE < e){
-      tg.fillStyle = shadeHex(texTop, -0.03);
-      tg.beginPath(); tg.moveTo(D[0],D[1]); tg.lineTo(C[0],C[1]); tg.lineTo(C[0],C[1]+lip); tg.lineTo(D[0],D[1]+lip); tg.closePath(); tg.fill();
-    }
-    if (rE < e){
-      tg.fillStyle = shadeHex(texTop, -0.09);
-      tg.beginPath(); tg.moveTo(C[0],C[1]); tg.lineTo(B[0],B[1]); tg.lineTo(B[0],B[1]+lip); tg.lineTo(C[0],C[1]+lip); tg.closePath(); tg.fill();
-    }
-
-    // Top face with the shared dithered texture.
-    drawTextureQuad(tg, [A,B,C,D], tileTexture(texTop, 'top', 0, kind));
-
-    // Per-tile details: pebbles, dry grass, rock cracks, trail stones.
-    if (!water){
-      const count = kind === 'trail' ? 4 : kind === 'gravel' ? 6 : kind === 'rock' ? 2 : 3;
-      for (let i=0;i<count;i++){
-        const fx = (hash(x*2.3+i*1.7, y*3.1+i*2.9)-0.5)*1.6;
-        const fy = (hash(y*1.9+i*3.7, x*2.7+i*1.3)-0.5)*1.5;
-        if (Math.abs(fx)+Math.abs(fy) > 0.82) continue;
-        const px = p.x + fx*HW;
-        const py = p.y + HH + fy*HH;
-        if (kind === 'rock' || kind === 'peak'){
-          tg.strokeStyle = 'rgba(55,35,22,.30)'; tg.lineWidth = 1;
-          tg.beginPath(); tg.moveTo(px,py); tg.lineTo(px+2,py+1); tg.lineTo(px+3,py+3); tg.stroke();
-        } else if (kind === 'gravel'){
-          tg.fillStyle = hash(x+i,y+i) < 0.5 ? 'rgba(92,68,44,.42)' : 'rgba(214,190,150,.38)';
-          tg.beginPath(); tg.ellipse(px,py,1.6,0.9,hash(px,py)*3,0,Math.PI*2); tg.fill();
-        } else if (kind === 'scrub'){
-          tg.strokeStyle = 'rgba(112,118,58,.58)'; tg.lineWidth = 1;
-          for (let b=0;b<4;b++){
-            tg.beginPath(); tg.moveTo(px+b*1.2-2, py); tg.lineTo(px+b*1.7-3, py-3.5); tg.stroke();
-          }
-        } else if (kind !== 'trail' && hash(x+i,y+i) < 0.24){
-          tg.strokeStyle = 'rgba(120,125,60,.55)'; tg.lineWidth = 1;
-          for (let b=0;b<3;b++){
-            tg.beginPath(); tg.moveTo(px+b*1.5-2, py); tg.lineTo(px+b*1.8-3, py-3); tg.stroke();
-          }
-        } else {
-          tg.fillStyle = kind === 'trail' ? 'rgba(100,70,38,.45)' : 'rgba(90,62,32,.34)';
-          tg.beginPath(); tg.ellipse(px,py,1.4,0.8,0,0,Math.PI*2); tg.fill();
+/* ---- grid sync: gameplay piece lists -> tent grid ---- */
+let tentTribe = new Map();
+function syncGrid(){
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    const k = kind[x][z];
+    if (k === K_TENT || k === K_SENTRY || k === K_TOWER){ kind[x][z] = 0; lvl[x][z] = 0; }
+  }
+  const tb = tbRect();
+  for (let x=tb.x0;x<tb.x0+TBSIZE.w;x++) for (let z=tb.z0;z<tb.z0+TBSIZE.l;z++)
+    if (inMap(x,z) && !kind[x][z]) kind[x][z] = K_TAB;
+  const taken = new Set();
+  const claim = (x, y, k, l) => {
+    const sx = clamp(Math.round(x), 1, N-2), sy = clamp(Math.round(y), 1, N-2);
+    for (let rr=0; rr<7; rr++)
+      for (let i=-rr;i<=rr;i++) for (let j=-rr;j<=rr;j++){
+        if (Math.max(Math.abs(i), Math.abs(j)) !== rr) continue;
+        const tx = clamp(sx+i, 1, N-2), ty = clamp(sy+j, 1, N-2);
+        if (!kind[tx][ty] && !taken.has(tx+','+ty) && gtype[tx][ty] !== 2 && ter[tx][ty] === 0
+          && Math.hypot(tx-CAMP.x, ty-CAMP.y) < CAMP_RADIUS + 4){
+          kind[tx][ty] = k; lvl[tx][ty] = l; taken.add(tx+','+ty);
+          return [tx, ty];
         }
       }
-      if (kind === 'sand' && hash(x*5.1,y*4.3) < 0.22){
-        tg.strokeStyle = 'rgba(255,240,205,.18)'; tg.lineWidth = 1;
-        const rx = p.x + (hash(x,y)-0.5)*HW*0.9;
-        const ry = p.y + HH + (hash(y,x)-0.5)*HH*0.5;
-        tg.beginPath(); tg.quadraticCurveTo(rx+3,ry-1,rx+9,ry); tg.stroke();
-      }
-    }
-  }
-
-  for (let s=0; s<=2*(N-1); s++){
-    const u0 = Math.max(0, s-(N-1));
-    const u1 = Math.min(N-1, s);
-    for (let u=u0; u<=u1; u++) tileUV(u, s-u);
-  }
-
-  // ── Screen-space dither grain ────────────────────────────────────────
-  // A single ordered-dither pattern laid over the whole map hides the
-  // seams between tiles and ties the ground textures together.
-  const GS = 96;
-  const gc = document.createElement('canvas'); gc.width = gc.height = GS;
-  const gg = gc.getContext('2d');
-  const gd = gg.createImageData(GS, GS);
-  const gb = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
-  for (let y=0;y<GS;y++) for (let x=0;x<GS;x++){
-    const th = (gb[(y&3)*4 + (x&3)] + 0.5) / 16;
-    const n = valueNoise(x,y,GS,6,9137) * 0.42
-            + valueNoise(x,y,GS,13,9137) * 0.28
-            + tileHash2(x,y,9137) * 0.30;
-    const light = n > th;
-    const i = (y*GS + x) * 4;
-    gd.data[i]   = light ? 255 : 38;
-    gd.data[i+1] = light ? 242 : 24;
-    gd.data[i+2] = light ? 208 : 12;
-    gd.data[i+3] = light ? 18 : 16;
-  }
-  gg.putImageData(gd, 0, 0);
-  tg.fillStyle = tg.createPattern(gc, 'repeat');
-  tg.fillRect(0, 0, c.width, c.height);
-
-  return c;
-}
-
-function drawTerrain(){
-  const dx = Math.floor(ox - OX);
-  const dy = Math.floor(oy - TERRAIN_PAD);
-  const srcX = Math.max(0, -dx);
-  const srcY = Math.max(0, -dy);
-  const dstX = dx + srcX;
-  const dstY = dy + srcY;
-  const srcW = Math.min(terrainCanvas.width - srcX, W - dstX + 2);
-  const srcH = Math.min(terrainCanvas.height - srcY, H - dstY + 2);
-  if (srcW <= 0 || srcH <= 0) return;
-  g.drawImage(terrainCanvas, srcX, srcY, srcW, srcH, dstX, dstY, srcW, srcH);
-}
-
-function drawWater(){
-  const t = performance.now()/1000;
-  for (const tile of waterTiles){
-    const p = W2S(tile.x+0.5, tile.y+0.5);
-    if (p.x < -60 || p.x > W+60 || p.y < -40 || p.y > H+60) continue;
-    const a = 0.18 + 0.14*Math.sin(t*1.6 + tile.x*0.8 + tile.y*0.5);
-    g.strokeStyle = `rgba(210,245,255,${a})`;
-    g.lineWidth = 1.4;
-    g.beginPath();
-    g.ellipse(p.x, p.y, 13 + Math.sin(t+tile.x)*2, 4.4, 0, 0, Math.PI*2);
-    g.stroke();
-    if (hash(tile.x,tile.y) < 0.3){
-      g.fillStyle = `rgba(255,255,255,${0.18+a})`;
-      g.beginPath(); g.arc(p.x-6, p.y-2, 1.3, 0, 6.28); g.fill();
-    }
-  }
-}
-
-function drawGroundHalo(){
-  const s = currentStation();
-  // Pillar ground glow.
-  if (s){
-    const p = W2S(s.x,s.y);
-    const night = state.hour >= 19 || state.hour < 5.5;
-    const grd = g.createRadialGradient(p.x,p.y,2,p.x,p.y,60);
-    grd.addColorStop(0, night ? 'rgba(255,140,40,.24)' : 'rgba(255,250,220,.18)');
-    grd.addColorStop(1, 'rgba(255,140,40,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.ellipse(p.x,p.y,60,30,0,0,Math.PI*2); g.fill();
-  }
-  // Campfire ground glow.
-  const cp = W2S(CAMP.x,CAMP.y);
-  const fg = g.createRadialGradient(cp.x,cp.y,2,cp.x,cp.y,46);
-  fg.addColorStop(0,'rgba(255,170,60,.22)'); fg.addColorStop(1,'rgba(255,130,30,0)');
-  g.fillStyle = fg;
-  g.beginPath(); g.ellipse(cp.x,cp.y,46,23,0,0,Math.PI*2); g.fill();
-}
-
-function drawEntities(){
-  const items = [];
-  const t = performance.now()/1000;
-
-  for (const d of decor){
-    items.push({ d:depthKey(d.x,d.y), fn:() => drawDecor(d,t) });
-  }
-  for (const p of people){
-    items.push({ d:depthKey(p.x,p.y), fn:() => drawPerson(p,t) });
-  }
-  for (const n of woodNodes){
-    items.push({ d:depthKey(n.x,n.y), fn:() => drawWoodNode(n,t) });
-  }
-  for (const n of rockNodes){
-    items.push({ d:depthKey(n.x,n.y), fn:() => drawRockNode(n,t) });
-  }
-  for (const fc of foeCamps){
-    items.push({ d:depthKey(fc.x,fc.y), fn:() => drawFoeCamp(fc,t) });
-  }
-  items.push({ d:depthKey(CAMP.x,CAMP.y)-0.01, fn:() => drawTabernacle(CAMP.x, CAMP.y, t) });
+    return null;
+  };
+  tentTribe = new Map();
   for (const st of structures){
-    items.push({ d:depthKey(st.x,st.y), fn:() => drawStructure(st,t) });
+    const cell = claim(st.x, st.y, st.kind === 'tent' ? K_TENT : st.kind === 'sentry' ? K_SENTRY : K_TOWER, st.kind === 'tower' ? 2 : 1);
+    if (cell && st.tribe) tentTribe.set(cell[0]+','+cell[1], st.tribe);
   }
-  for (const r of raiders){
-    items.push({ d:depthKey(r.x,r.y), fn:() => drawRaider(r,t) });
-  }
-  for (const m of manna){
-    items.push({ d:depthKey(m.x,m.y), fn:() => drawManna(m,t) });
-  }
-  for (let i=0;i<STATIONS.length;i++){
-    const s = STATIONS[i];
-    items.push({ d:depthKey(s.x,s.y), fn:() => drawStation(s,i,t) });
-  }
-  items.push({ d:depthKey(state.player.x,state.player.y), fn:() => drawPlayer(t) });
-
-  items.sort((a,b) => a.d-b.d);
-  for (const item of items) item.fn();
-}
-
-function drawDecor(d,t){
-  const p = W2S(d.x,d.y);
-  if (p.x < -90 || p.x > W+90 || p.y < -100 || p.y > H+90) return;
-  if (d.kind === 'palm') drawPalm(p,d,t);
-  else if (d.kind === 'acacia') drawAcacia(p,d,t);
-  else if (d.kind === 'tamarisk') drawTamarisk(p,d,t);
-  else if (d.kind === 'rock') drawRock(p,d);
-  else if (d.kind === 'tent') drawTent(p,d,t,tentFires.find(f => f.ref === d));
-  else if (d.kind === 'market') drawMarket(p,d,t);
-  else if (d.kind === 'fire') drawFire(p,d,t);
-  else if (d.kind === 'crate') drawCrate(p,d);
-  else if (d.kind === 'cactus') drawCactus(p,d);
-  else if (d.kind === 'agave') drawAgave(p,d);
-  else if (d.kind === 'tuft') drawTuft(p,d);
-  else if (d.kind === 'pebble') drawPebble(p,d);
-  else drawShrub(p,d);
-}
-
-function shadow(p, w=12, h=5){
-  g.fillStyle = 'rgba(40,22,10,.22)';
-  g.beginPath(); g.ellipse(p.x, p.y+2, w, h, 0, 0, Math.PI*2); g.fill();
-}
-
-function drawPalm(p,d,t){
-  shadow(p, 16, 6);
-  const s = d.s;
-  g.strokeStyle = '#6b4526'; g.lineWidth = 4*s; g.lineCap = 'round';
-  g.beginPath();
-  g.moveTo(p.x,p.y);
-  g.quadraticCurveTo(p.x+4*s, p.y-25*s, p.x+9*s, p.y-48*s);
-  g.stroke();
-  const sway = Math.sin(t*0.8 + d.h)*3;
-  g.strokeStyle = '#4f8a3f'; g.lineWidth = 3*s;
-  for (let i=0;i<7;i++){
-    const a = i/7*Math.PI*2 + d.h;
-    g.beginPath();
-    g.moveTo(p.x+9*s, p.y-48*s);
-    g.quadraticCurveTo(
-      p.x+9*s + Math.cos(a)*13*s, p.y-52*s + Math.sin(a)*4*s,
-      p.x+9*s + Math.cos(a)*23*s + sway, p.y-44*s + Math.sin(a)*9*s
-    );
-    g.stroke();
-  }
-  g.fillStyle = '#3f7333';
-  g.beginPath(); g.arc(p.x+9*s, p.y-48*s, 4*s, 0, 6.28); g.fill();
-}
-
-function drawRock(p,d){
-  shadow(p, 16*d.s, 6*d.s);
-  const s = d.s;
-  if (d.rv === 0){
-    // Classic angular boulder.
-    g.fillStyle = '#8c7a66';
-    g.beginPath();
-    g.moveTo(p.x-17*s,p.y-2); g.lineTo(p.x-8*s,p.y-17*s); g.lineTo(p.x+5*s,p.y-19*s); g.lineTo(p.x+14*s,p.y-6*s); g.lineTo(p.x+7*s,p.y+3); g.closePath(); g.fill();
-    g.fillStyle = '#a08c76';
-    g.beginPath();
-    g.moveTo(p.x+2*s,p.y-15*s); g.lineTo(p.x+14*s,p.y-6*s); g.lineTo(p.x+7*s,p.y+3); g.lineTo(p.x-1*s,p.y-2); g.closePath(); g.fill();
-    g.fillStyle = '#b7a58e';
-    g.beginPath();
-    g.moveTo(p.x-8*s,p.y-17*s); g.lineTo(p.x+2*s,p.y-20*s); g.lineTo(p.x+7*s,p.y-12*s); g.lineTo(p.x-2*s,p.y-9*s); g.closePath(); g.fill();
-  } else if (d.rv === 1){
-    // Flat slab, split by a crack.
-    g.fillStyle = '#93826d';
-    g.beginPath(); g.ellipse(p.x, p.y-3*s, 15*s, 8*s, 0, 0, 6.28); g.fill();
-    g.fillStyle = '#ab9780';
-    g.beginPath(); g.ellipse(p.x-1*s, p.y-7*s, 12*s, 6*s, 0, 0, 6.28); g.fill();
-    g.strokeStyle = 'rgba(60,40,26,.4)'; g.lineWidth = 1.1;
-    g.beginPath(); g.moveTo(p.x-9*s,p.y-6*s); g.lineTo(p.x+2*s,p.y-9*s); g.lineTo(p.x+10*s,p.y-5*s); g.stroke();
-  } else if (d.rv === 2){
-    // A cluster of round boulders.
-    g.fillStyle = '#857259';
-    g.beginPath(); g.ellipse(p.x+7*s, p.y-4*s, 7*s, 5*s, 0, 0, 6.28); g.fill();
-    g.beginPath(); g.ellipse(p.x-8*s, p.y-3*s, 6.5*s, 5*s, 0, 0, 6.28); g.fill();
-    g.fillStyle = '#a8947b';
-    g.beginPath(); g.ellipse(p.x, p.y-11*s, 9*s, 7.5*s, 0, 0, 6.28); g.fill();
-    g.fillStyle = '#bfae95';
-    g.beginPath(); g.ellipse(p.x-2.5*s, p.y-13.5*s, 4.5*s, 3.2*s, 0, 0, 6.28); g.fill();
-  } else {
-    // A single shard leaning out of the sand.
-    g.fillStyle = '#8f7c66';
-    g.beginPath();
-    g.moveTo(p.x-6*s,p.y); g.lineTo(p.x-1*s,p.y-21*s); g.lineTo(p.x+3*s,p.y-22*s); g.lineTo(p.x+9*s,p.y-1*s); g.closePath(); g.fill();
-    g.fillStyle = '#ab9780';
-    g.beginPath();
-    g.moveTo(p.x-1*s,p.y-21*s); g.lineTo(p.x+3*s,p.y-22*s); g.lineTo(p.x+9*s,p.y-1*s); g.lineTo(p.x+3.5*s,p.y-2*s); g.closePath(); g.fill();
+  for (const t of campTents){
+    const cell = claim(t.x, t.y, K_TENT, 1);
+    if (cell) tentTribe.set(cell[0]+','+cell[1], t.tribe);
   }
 }
 
-/* Lone acacia: one gnarled trunk under a flat, wide dark-green crown. */
-function drawAcacia(p,d,t){
-  const s = d.s;
-  shadow(p, 14*s, 5*s);
-  const sway = state.reducedMotion ? 0 : Math.sin(t*0.9 + d.h)*1.2;
-  // Trunk with a fork.
-  g.strokeStyle = '#6d4c2c'; g.lineWidth = 3.2*s; g.lineCap = 'round';
-  g.beginPath();
-  g.moveTo(p.x, p.y); g.quadraticCurveTo(p.x-2*s, p.y-11*s, p.x-1*s+sway*0.4, p.y-18*s);
-  g.moveTo(p.x-1*s, p.y-11*s); g.lineTo(p.x+6*s, p.y-16*s);
-  g.stroke();
-  // Flat layered crown.
-  g.fillStyle = '#3f6b41';
-  g.beginPath(); g.ellipse(p.x+sway, p.y-22*s, 20*s, 5.5*s, 0, 0, 6.28); g.fill();
-  g.fillStyle = '#4e7d4c';
-  g.beginPath(); g.ellipse(p.x-3*s+sway, p.y-25.5*s, 13*s, 4.5*s, 0, 0, 6.28); g.fill();
-  if (d.tv === 1){
-    g.fillStyle = '#5b8d55';
-    g.beginPath(); g.ellipse(p.x+8*s+sway, p.y-19.5*s, 8*s, 3.5*s, 0, 0, 6.28); g.fill();
+let gridDirty = true;
+function markRebuild(){ gridDirty = true; }
+function refreshNodeCells(){
+  nodeCells = new Set();
+  for (const n of woodNodes) nodeCells.add(Math.floor(n.x)+','+Math.floor(n.y));
+  for (const n of rockNodes) nodeCells.add(Math.floor(n.x)+','+Math.floor(n.y));
+}
+const count = () => {
+  let c = 0;
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++) if (kind[x][z]) c += kind[x][z] === K_TOWER ? lvl[x][z]+1 : 1;
+  return c;
+};
+
+/* ---- graph grammar: nodes are pieces, rules rewrite the camp graph ---- */
+function grammar(nodes){
+  const log = {}, dist = (a,b) => Math.max(Math.abs(a.x-b.x), Math.abs(a.z-b.z));
+  const occ = (x,z) => !inMap(x,z) || !!K(x,z) || nodes.some(n => n.x === x && n.z === z);
+  const near = (a,t,d) => nodes.filter(n => n !== a && n.t === t && dist(a,n) <= d);
+  const rules = [
+    ['clan-chief', () => {
+      let hit = 0; const seen = new Set();
+      for (const a of nodes.filter(n => n.t === 'tent')){
+        if (seen.has(a)) continue;
+        const comp = [a], st = [a]; seen.add(a);
+        while (st.length){
+          const c = st.pop();
+          for (const n of near(c,'tent',1)) if (!seen.has(n)){ seen.add(n); comp.push(n); st.push(n); }
+        }
+        if (comp.length >= 3 && !comp.some(n => n.role)){
+          comp.sort((u,v) => near(v,'tent',1).length - near(u,'tent',1).length)[0].role = 'chief';
+          hit++;
+        }
+      }
+      return hit;
+    }],
+    ['hearth', () => {
+      let hit = 0;
+      for (const a of nodes.filter(n => n.t === 'tent')){
+        const g = near(a,'tent',2).concat(a);
+        if (g.length < 2 || nodes.some(n => n.t === 'fire' && dist(n,a) <= 2)) continue;
+        const mx = Math.round(g.reduce((s,n) => s+n.x,0)/g.length), mz = Math.round(g.reduce((s,n) => s+n.z,0)/g.length);
+        let best = null, bd = 99;
+        for (let i=-2;i<=2;i++) for (let j=-2;j<=2;j++){
+          const x = mx+i, z = mz+j, k = Math.abs(i)+Math.abs(j);
+          if (!occ(x,z) && k < bd){ bd = k; best = {x,z}; }
+        }
+        if (best){ nodes.push({ t:'fire', x:best.x, z:best.z }); hit++; }
+      }
+      return hit;
+    }],
+    ['council-ring', () => nodes.filter(n => n.t === 'fire' && !n.role && near(n,'tent',2).length >= 3 && (n.role = 'ring')).length],
+    ['sheepfold', () => {
+      let hit = 0;
+      for (const a of nodes.filter(n => n.t === 'tent' && !n.fold && near(n,'wall',1).length)){
+        const w = near(a,'wall',1)[0]; let spot = null;
+        for (let i=-1;i<=1 && !spot;i++) for (let j=-1;j<=1;j++){
+          const x = a.x+i, z = a.z+j;
+          if (!occ(x,z) && dist({x,z}, w) <= 1){ spot = {x,z}; break; }
+        }
+        a.fold = 1;
+        if (spot){ nodes.push({ t:'fold', x:spot.x, z:spot.z }); hit++; }
+      }
+      return hit;
+    }],
+    ['gatehouse', () => nodes.filter(n => n.t === 'tower' && !n.role && near(n,'wall',1).length >= 2 && (n.role = 'gate')).length],
+    ['signal-beacon', () => nodes.filter(n => n.t === 'tower' && !n.role && n.n >= 2 && !near(n,'wall',2).length && !near(n,'tower',2).length && (n.role = 'beacon')).length]
+  ];
+  for (let i=0;i<8;i++){
+    let any = 0;
+    for (const [nm,fn] of rules){ const h = fn(); if (h){ log[nm] = (log[nm]||0) + h; any = 1; } }
+    if (!any) break;
   }
+  return log;
 }
 
-/* Tamarisk: a slim, feathery tree of thin drooping branches. */
-function drawTamarisk(p,d,t){
-  const s = d.s;
-  shadow(p, 11*s, 4*s);
-  const sway = state.reducedMotion ? 0 : Math.sin(t*1.1 + d.h)*1.6;
-  g.strokeStyle = '#7a5a35'; g.lineWidth = 2.6*s; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(p.x,p.y); g.quadraticCurveTo(p.x+1*s, p.y-14*s, p.x+sway*0.5, p.y-24*s); g.stroke();
-  g.lineWidth = 1.6*s;
-  const n = d.tv === 2 ? 7 : 5;
-  for (let i=0;i<n;i++){
-    const a = -0.85 + i/(n-1)*1.7;
-    g.beginPath();
-    g.moveTo(p.x+sway*0.4, p.y-18*s);
-    g.quadraticCurveTo(p.x+Math.sin(a)*7*s+sway, p.y-26*s, p.x+Math.sin(a)*11*s+sway*1.4, p.y-20*s+Math.abs(a)*4*s);
-    g.stroke();
+/* Tribe of a spot: the camp wedges of Numbers 2, with Levi nearest the
+   sanctuary (fallback for tents without an explicit quarter assignment). */
+const WEDGES = [[345,375,3],[15,45,8],[315,345,9],[75,105,0],[45,75,1],[105,135,6],[135,180,10],[180,225,11],[255,285,4],[225,255,7],[285,315,5]];
+function tribeNameOf(cx, cz){
+  const dx = cx - CAMP.x, dz = cz - CAMP.y;
+  if (Math.hypot(dx,dz) < 5.5) return 'Levi';
+  const a = (Math.atan2(dz,dx)*180/PI + 360) % 360;
+  for (const [lo,hi,i] of WEDGES) if ((a >= lo && a < hi) || (a+360 >= lo && a+360 < hi)) return TRIBES[i].name;
+  return 'Judah';
+}
+function tribeColour(name){
+  const t = TRIBES.find(q => q.name === name);
+  return t ? parseInt(t.color.slice(1),16) : 0xb5a284;
+}
+
+/* ---- the build pass ---- */
+let tcache = new Map(), scache = new Map(), smoke = [], tabLabel = null, flags = [];
+const lw = (cx,cz,d,lx,lz) => [cx+lx*D4[d][1]+lz*D4[d][0], cz-lx*D4[d][0]+lz*D4[d][1]];
+function lb(w,h,dd,c,cx,cz,d,lx,y,lz,rx=0,rz=0,m){
+  const [p,q] = lw(cx,cz,d,lx,lz);
+  return box(gB, w, h, dd, c, p, y, q, d*PI/2, rx, rz, m);
+}
+
+function build(){
+  refreshNodeCells();
+  while (T3.children.length) T3.remove(T3.children[0]);
+  const r = srand(seed*17 + count());
+  // ---- WFC for tents: door direction + goat-hair shade (Guide §5.3)
+  const ts = [];
+  const sg = (x,z) => { let s = ""; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++) s += K(x+i,z+j) || "-"; return s; };
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++) if (kind[x][z] === K_TENT){
+    const d = [0,1,2,3].filter(dd => !K(x+D4[dd][0], z+D4[dd][1]));
+    const s = sg(x,z), c = tcache.get(x+","+z);
+    const t = { x, z, sig:s, dirs:d.length ? d : [0,1,2,3], cols:[0,1,2,3] };
+    if (c && c.sig === s){ t.d = c.d; t.c = c.c; }
+    ts.push(t);
   }
-  g.strokeStyle = '#6f9a63';
-  g.lineWidth = 2.2*s;
-  for (let i=0;i<n;i++){
-    const a = -0.85 + i/(n-1)*1.7;
-    g.beginPath();
-    g.moveTo(p.x+Math.sin(a)*9*s+sway, p.y-26*s);
-    g.lineTo(p.x+Math.sin(a)*13*s+sway*1.6, p.y-21*s+Math.abs(a)*5*s);
-    g.stroke();
+  for (const p of ts) if (p.d !== undefined)
+    for (const n of ts)
+      if (n.d === undefined && Math.abs(n.x-p.x) <= 1 && Math.abs(n.z-p.z) <= 1 && n.cols.length > 1)
+        n.cols = n.cols.filter(c => c !== p.c);
+  const open = ts.filter(t => t.d === undefined);
+  while (open.length){
+    let b = null, be = 1e9;
+    for (const t of open){ const e = t.dirs.length*t.cols.length + r()*.1; if (e < be){ be = e; b = t; } }
+    b.d = b.dirs[Math.floor(r()*b.dirs.length)];
+    b.c = b.cols[Math.floor(r()*b.cols.length)];
+    open.splice(open.indexOf(b), 1);
+    for (const n of open)
+      if (Math.abs(n.x-b.x) <= 1 && Math.abs(n.z-b.z) <= 1 && n.cols.length > 1)
+        n.cols = n.cols.filter(c => c !== b.c);
+    const [dx,dz] = D4[b.d], o = open.find(t => t.x === b.x+dx*2 && t.z === b.z+dz*2);
+    if (o && o.dirs.includes((b.d+2)%4)) o.dirs = [(b.d+2)%4];
+    for (const n of open){
+      const ex = n.x-b.x, ez = n.z-b.z;
+      if (Math.abs(ex)+Math.abs(ez) === 1 && ex*dx+ez*dz === 0 && n.dirs.includes(b.d)) n.dirs = [b.d];
+    }
   }
-}
-
-function drawShrub(p,d){
-  shadow(p, 8*d.s, 3*d.s);
-  g.strokeStyle = '#93803b'; g.lineWidth = 1.5;
-  for (let i=0;i<6;i++){
-    const a = i/6*Math.PI*2 + d.h;
-    g.beginPath();
-    g.moveTo(p.x,p.y);
-    g.lineTo(p.x+Math.cos(a)*7*d.s, p.y-Math.abs(Math.sin(a))*9*d.s-2);
-    g.stroke();
-  }
-  g.fillStyle = '#7d8f4a';
-  g.beginPath(); g.ellipse(p.x,p.y-9*d.s,8*d.s,3.5*d.s,0,0,6.28); g.fill();
-}
-
-function drawTuft(p,d){
-  g.strokeStyle = '#b8933f'; g.lineWidth = 1.5; g.lineCap = 'round';
-  for (let i=0;i<5;i++){
-    g.beginPath();
-    g.moveTo(p.x+i*2-4, p.y);
-    g.lineTo(p.x+i*3-6, p.y-(6*d.s+i%2*3));
-    g.stroke();
-  }
-}
-
-function drawAgave(p,d){
-  g.lineWidth = 3.4*d.s; g.lineCap = 'round';
-  for (let i=0;i<7;i++){
-    const a = i/6*2.4-1.2;
-    g.strokeStyle = i%2 ? '#4a9482' : '#5fae9a';
-    g.beginPath();
-    g.moveTo(p.x,p.y);
-    g.lineTo(p.x+Math.sin(a)*14*d.s, p.y-Math.cos(a)*12*d.s);
-    g.stroke();
-  }
-}
-
-function drawCactus(p,d){
-  const s = d.s;
-  g.strokeStyle = '#4f8a66'; g.lineWidth = 5*s; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(p.x,p.y); g.lineTo(p.x,p.y-24*s); g.stroke();
-  g.lineWidth = 4*s;
-  g.beginPath(); g.moveTo(p.x,p.y-9*s); g.lineTo(p.x-8*s,p.y-9*s); g.lineTo(p.x-8*s,p.y-17*s); g.stroke();
-  if (d.h > 3){ g.beginPath(); g.moveTo(p.x,p.y-14*s); g.lineTo(p.x+8*s,p.y-14*s); g.lineTo(p.x+8*s,p.y-21*s); g.stroke(); }
-}
-
-function drawPebble(p,d){
-  g.fillStyle = '#9a8a78';
-  g.beginPath(); g.ellipse(p.x,p.y,3*d.s,1.7*d.s,0,0,6.28); g.fill();
-}
-
-function drawTent(p,d,t,fire){
-  const s = d.s;
-  const x = p.x, y = p.y;
-  // Seven tent shapes from the Desert Outpost set: striped and fringed
-  // wedges, a peaked ridge, an awning, a round yurt, a beehive dome and a
-  // closed A-frame — chosen per spot so no two camps look alike.
-  const v = d.v != null ? d.v : Math.floor(hash(x*0.71,y*1.13)*7);
-  shadow(p, 20*s, 7*s);
-  if (v === 4){
-    // Yurt: a round felt body with a cone cap and a dark door.
-    g.fillStyle = '#ddd0b2';
-    g.beginPath(); g.ellipse(x,y-8*s,15*s,12*s,0,0,6.28); g.fill();
-    g.fillStyle = '#c8ba98';
-    g.beginPath(); g.ellipse(x+3*s,y-8*s,12*s,11*s,0,0,6.28); g.fill();
-    g.fillStyle = '#8a6a44';
-    g.beginPath(); g.ellipse(x,y-15*s,8.5*s,8.5*s,0,0,6.28); g.fill();
-    g.strokeStyle = '#6b5334'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(x-8*s,y-15*s); g.lineTo(x+8*s,y-15*s); g.stroke();
-    g.fillStyle = '#4b3520';
-    g.beginPath(); g.ellipse(x,y-3*s,3.2*s,4.5*s,0,0,6.28); g.fill();
-  } else if (v === 5){
-    // Beehive dome.
-    g.fillStyle = '#e3d6b8';
-    g.beginPath(); g.ellipse(x,y-11*s,13.5*s,13.5*s,0,Math.PI,0); g.fill();
-    g.fillStyle = '#cdbf9c';
-    g.beginPath(); g.ellipse(x+3*s,y-10*s,10*s,10.5*s,0,Math.PI,0); g.fill();
-    g.fillStyle = '#7a5c3a';
-    g.beginPath(); g.ellipse(x,y-23*s,2.6*s,2.6*s,0,0,6.28); g.fill();
-    g.fillStyle = '#4b3520';
-    g.beginPath(); g.ellipse(x,y-2.5*s,3.4*s,4.2*s,0,0,6.28); g.fill();
-  } else if (v === 6){
-    // Closed A-frame with a centre seam.
-    g.fillStyle = '#e8dcc0';
-    g.beginPath(); g.moveTo(x-16*s,y); g.lineTo(x,y-26*s); g.lineTo(x+16*s,y); g.closePath(); g.fill();
-    g.fillStyle = '#cdbf9c';
-    g.beginPath(); g.moveTo(x,y-26*s); g.lineTo(x+16*s,y); g.lineTo(x+4*s,y); g.closePath(); g.fill();
-    g.strokeStyle = '#6b5334'; g.lineWidth = 1.3;
-    g.beginPath(); g.moveTo(x,y-26*s); g.lineTo(x,y); g.stroke();
-    g.fillStyle = '#4b3520';
-    g.beginPath(); g.ellipse(x,y-3*s,3*s,4*s,0,0,6.28); g.fill();
-  } else {
-    // The classic open-front wedge, personalised per variant.
-    const ridge = v === 2 ? 27 : 23;
-    g.fillStyle = '#e8dcc0';
-    g.beginPath(); g.moveTo(x-20*s,y); g.lineTo(x,y+9*s); g.lineTo(x,y-ridge*s); g.closePath(); g.fill();
-    g.fillStyle = '#cdbf9c';
-    g.beginPath(); g.moveTo(x+20*s,y); g.lineTo(x,y+9*s); g.lineTo(x,y-ridge*s); g.closePath(); g.fill();
-    g.strokeStyle = '#6b5334'; g.lineWidth = 1.4;
-    g.beginPath(); g.moveTo(x,y-ridge*s); g.lineTo(x,y+9*s); g.stroke();
-    if (v === 0){
-      // Horizontal awning stripes on the lit face.
-      g.strokeStyle = 'rgba(122,74,52,.5)'; g.lineWidth = 2.2;
-      for (let i=0;i<3;i++){
-        const f = 0.3+i*0.22;
-        g.beginPath();
-        g.moveTo(x+20*s*(1-f), y-ridge*s*f);
-        g.lineTo(x+2*s, y-ridge*s*f + 9*s*f);
-        g.stroke();
+  tcache = new Map(ts.map(t => [t.x+","+t.z, { d:t.d, c:t.c, sig:t.sig }]));
+  // ---- merge touching tents into one large tent (max 2x3 tiles) (§5.4)
+  const tk = new Map(ts.map(t => [t.x+","+t.z, t])), used = new Set();
+  for (const a of ts){
+    if (used.has(a)) continue;
+    for (const [w,l] of [[2,3],[3,2],[2,2],[1,3],[3,1],[2,1],[1,2],[1,1]]){
+      const cells = []; let ok = true;
+      for (let i=0;i<w && ok;i++) for (let j=0;j<l;j++){
+        const c = tk.get((a.x+i)+","+(a.z+j));
+        if (!c || used.has(c) || ter[c.x][c.z] !== ter[a.x][a.z]){ ok = false; break; }
+        cells.push(c);
+      }
+      if (ok){
+        const grp = { cells, w, l };
+        cells.forEach(c => { used.add(c); c.g = grp; });
+        const okd = d => cells.every(c => {
+          const nx = c.x+D4[d][0], nz = c.z+D4[d][1];
+          return cells.some(q => q.x === nx && q.z === nz) || !K(nx,nz);
+        });
+        const gd = [a.d,0,1,2,3].find(okd);
+        grp.d = gd === undefined ? a.d : gd;
+        cells.forEach(c => { c.d = grp.d; c.c = a.c; });
+        break;
       }
     }
-    if (v === 1){
-      // Fringe along the hem.
-      g.fillStyle = '#b8a884';
-      for (let i=0;i<6;i++){
-        const fx = x - 17*s + i*(34*s/5), fy = y - Math.abs(fx-x)*(9*s)/(20*s)*0.55;
-        g.fillRect(fx-1, fy, 2, 4.5);
+  }
+  // ---- camp graph, then the grammar rewrites it (§5.5)
+  const nodes = [], face = new Map();
+  for (const t of ts){
+    nodes.push({ t:'tent', x:t.x, z:t.z, d:t.d, c:t.c, sz:lvl[t.x][t.z]||1, g:t.g });
+    const [dx,dz] = D4[t.d], x = t.x+dx, z = t.z+dz;
+    if (x>=0 && z>=0 && x<N && z<N && !kind[x][z]) face.set(x+","+z, (face.get(x+","+z)||0)+1);
+  }
+  face.forEach((n,k) => { if (n >= 2){ const [x,z] = k.split(',').map(Number); nodes.push({ t:'fire', x, z }); } });
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    const k = kind[x][z];
+    if (k === K_TOWER) nodes.push({ t:'tower', x, z, n:lvl[x][z] });
+    if (k === K_SENTRY) nodes.push({ t:'wall', x, z, s:lvl[x][z]||1 });
+  }
+  grammar(nodes);
+  // ---- tents: black goat-hair, open front, poles, rug (§5.4)
+  const TCOL = [0x2e2621,0x3d3027,0x5a4a3a,0xb5a284];
+  flags.length = 0;
+  const gs = [];
+  nodes.filter(q => q.t === 'tent').forEach(q => { if (!gs.includes(q.g)) gs.push(q.g); });
+  for (const grp of gs){
+    const mem = nodes.filter(q => q.t === 'tent' && q.g === grp), t = mem[0], d = t.d, k = TCOL[t.c],
+      ch = mem.some(q => q.role === 'chief'), sz = Math.max(...mem.map(q => q.sz||1)),
+      A = grp.cells.length, LW = d%2 ? grp.l : grp.w, DD = d%2 ? grp.w : grp.l, B = ch ? 1.1 : 1,
+      fp = 1 - .3*whash(t.x+23,t.z+41)*(A>1?.5:1),
+      cx = WT(t.x) + (grp.w-1)/2 + (whash(t.x+5,t.z+37)-.5)*(1-fp),
+      cz = WT(t.z) + (grp.l-1)/2 + (whash(t.x+37,t.z+5)-.5)*(1-fp),
+      Wd = LW*B*fp, Dp = (DD-.2+.07*(sz-1))*fp,
+      Hs = Math.min(1.7, 1+.2*(sz-1)+.08*(A-1)+(ch?.1:0)), ry = Dp/2-.04,
+      v = Math.floor(whash(t.x+7,t.z+3)*7),
+      st = [0xc9b48a,0xb5a284,0xa8322a,0xc9b48a][Math.floor(whash(t.x+2,t.z+19)*4)],
+      p = whash(t.x+11,t.z+5), y0 = GROUND_Y+.45*Hs, rd = Math.min(LW,DD)*.5*fp*.9, dk = 0x2a1d14;
+    // variants: 0 flat striped, 1 fringed, 2 peaked open front, 3 awning, 4 round yurt, 5 beehive dome hut, 6 closed pitched A-frame
+    if (v === 4){
+      const hh = .3*Hs;
+      box(gC, rd, hh, rd, k, cx, GROUND_Y+hh/2, cz);
+      box(gC, rd*1.02, .05, rd*1.02, st, cx, GROUND_Y+hh*.6, cz);
+      box(gCone, rd*1.2, .5*Hs, rd*1.2, k, cx, GROUND_Y+hh+.25*Hs, cz);
+      lb(.26,.32,.04,dk,cx,cz,d,0,GROUND_Y+.16,rd);
+    } else if (v === 5){
+      box(gS, rd, .55*Hs, rd, 0xa98a52, cx, GROUND_Y, cz);
+      lb(.26,.3,.04,dk,cx,cz,d,0,GROUND_Y+.15,rd*.88);
+      box(gC,.03,.25,.03,WOOD,cx,GROUND_Y+.6*Hs,cz);
+    } else if (v === 6){
+      const q = Wd*.9;
+      lb(q,q,Dp,k,cx,cz,d,0,GROUND_Y-.02,0,0,PI/4);
+      lb(.05,.05,Dp+.02,st,cx,cz,d,0,GROUND_Y-.02+q*.707,0);
+      lb(.26,.3,.04,dk,cx,cz,d,0,GROUND_Y+.15,Dp/2+.005);
+    } else {
+      if (v === 2){
+        for (const s of [-1,1]) lb(Wd/2+.06,.05,Dp,k,cx,cz,d,s*Wd/4,y0+.12,0,0,-s*.32);
+        lb(.05,.62*Hs,.05,WOOD,cx,cz,d,0,GROUND_Y+.31*Hs,ry);
+      } else {
+        lb(Wd,.05,Dp,k,cx,cz,d,0,y0,0,-.1);
+        for (let i=0;i<LW;i++) lb(.14,.056,Dp,st,cx,cz,d,(i-(LW-1)/2)*fp,y0+.001,0,-.1);
+      }
+      if (v === 1) for (let i=0;i<LW*4;i++) lb(.12,.12,.03,st,cx,cz,d,-Wd/2+.12+i*(Wd-.24)/(LW*4-1),y0+Dp*.05-.07,Dp/2+.03);
+      for (let i=0;i<=LW;i++) lb(.04,.48*Hs,.04,WOOD,cx,cz,d,-Wd/2+.06+i*(Wd-.12)/LW,GROUND_Y+.24*Hs,ry);
+      lb(Wd,.32*Hs,.04,k,cx,cz,d,0,GROUND_Y+.16*Hs,-ry-.02);
+      for (const sg of [-1,1]) lb(.04,.3*Hs,Dp*.9,k,cx,cz,d,sg*(Wd/2-.02),GROUND_Y+.15*Hs,-.02);
+      if (LW >= 2) lb(.03,.3*Hs,Dp*.45,k,cx,cz,d,0,GROUND_Y+.15*Hs,-Dp*.2);
+      lb(Wd*.7,.02,Dp*.55,0x8a3d2e,cx,cz,d,0,GROUND_Y+.01,.1);
+      if (v === 3){
+        lb(Wd,.04,.32,k,cx,cz,d,0,GROUND_Y+.42*Hs,Dp/2+.14,.28);
+        for (const sg of [-1,1]) lb(.04,.4*Hs,.04,WOOD,cx,cz,d,sg*(Wd/2-.05),GROUND_Y+.2*Hs,Dp/2+.26);
       }
     }
-    if (v === 3){
-      // Front awning propped on two poles.
-      g.fillStyle = '#c2b28a';
-      g.beginPath(); g.moveTo(x-12*s,y+6*s); g.lineTo(x,y+9*s); g.lineTo(x+14*s,y+16*s); g.lineTo(x-8*s,y+13*s); g.closePath(); g.fill();
-      g.strokeStyle = '#6d4c2c'; g.lineWidth = 1.3;
-      g.beginPath(); g.moveTo(x+13*s,y+15.5*s); g.lineTo(x+13*s,y+4*s); g.stroke();
-    }
-    g.fillStyle = '#4b3520';
-    g.beginPath(); g.moveTo(x-3*s,y+2*s); g.lineTo(x,y+9*s); g.lineTo(x+8*s,y+2*s); g.closePath(); g.fill();
-    if (v === 2){
-      g.strokeStyle = '#5a3d22'; g.lineWidth = 1.2;
-      g.beginPath(); g.moveTo(x,y-ridge*s); g.lineTo(x,y-ridge*s-6*s); g.stroke();
+    const rndv = v === 4 || v === 5, hw = rndv ? rd : Wd/2, fo = (rndv ? rd : Dp/2) + (v === 3 ? .4 : .14);
+    if (p < .3){ const [jx,jz] = lw(cx,cz,d,hw-.14,fo); box(gC,.07,.16,.07,0x9a5b3a,jx,GROUND_Y+.08,jz); }
+    else if (p < .6){ lb(.16,.1,.12,0xb5a284,cx,cz,d,hw-.16,GROUND_Y+.05,fo); lb(.12,.09,.1,0xa8977f,cx,cz,d,hw-.3,GROUND_Y+.045,fo+.03); }
+    else if (p < .8) lb(.24,.03,.18,0x6f5a44,cx,cz,d,-hw+.2,GROUND_Y+.02,fo-.02);
+    // tribe flag: pole, cloth, cream emblem square and a tail (§10h)
+    const tname = tentTribe.get(t.x+","+t.z) || tribeNameOf(cx,cz);
+    mem.forEach(q => q.tribe = tname);
+    const col = tribeColour(tname);
+    const topY = v === 4 ? GROUND_Y+.8*Hs : v === 5 ? GROUND_Y+.58*Hs : v === 6 ? GROUND_Y-.02+Wd*.9*.707+.03 : v === 2 ? y0+.32 : y0+.08,
+      ph = .5 + (ch ? .28 : 0) + (sz >= 3 ? .1 : 0), k2 = ch ? 1.35 : 1;
+    box(gB,.025,ph,.025,WOOD,cx,topY+ph/2,cz);
+    const fg = new THREE.Group();
+    fg.position.set(cx, topY + yo(cx,cz), cz);
+    fg.rotation.y = d*PI/2;
+    T3.add(fg);
+    const fm = (w,h,c,lx,yy) => {
+      const mm = new THREE.Mesh(gB, M(c));
+      mm.scale.set(w,h,.02); mm.position.set(lx,yy,0); mm.castShadow = true;
+      fg.add(mm);
+    };
+    fm(.3*k2,.18*k2,col,.16*k2,-.1*k2);
+    fm(.12*k2,.1*k2,0xf5e9c8,.1*k2,-.1*k2);
+    fm(.1*k2,.09*k2,col,.34*k2,-.1*k2);
+    flags.push({ g:fg, r0:d*PI/2, ph:whash(t.x,t.z)*6 });
+  }
+  // ---- fires, hearth stones, sheep folds
+  for (const f of nodes.filter(q => q.t === 'fire')){
+    const cx = WT(f.x), cz = WT(f.z);
+    box(gB,.34,.06,.07,0x3a2616,cx,GROUND_Y+.04,cz,.5);
+    box(gB,.34,.06,.07,0x3a2616,cx,GROUND_Y+.04,cz,-.5);
+    box(gP,.3,.5,.3,0,cx,GROUND_Y+.3,cz,PI/4,0,0,MG(0xff7a1a));
+    if (f.role === 'ring') for (let i=0;i<9;i++){
+      const a = i*PI*2/9;
+      box(gB,.14,.1,.12,0x9a8a78,cx+Math.cos(a)*.34,GROUND_Y+.05,cz+Math.sin(a)*.34,-a);
     }
   }
-  // Tribe pennant: a small standard in the tribe's colour marks whose tents these are.
-  const tribe = d.tribe;
-  const tRow = tribe && TRIBES.find(tr => tr.name === tribe);
-  if (tRow){
-    g.strokeStyle = '#5a3d22'; g.lineWidth = 1.2;
-    const ph = v === 2 ? 33 : v === 6 ? 36 : v === 5 ? 30 : 33;
-    g.beginPath(); g.moveTo(x, y-ph*s); g.lineTo(x, y-ph*s-10); g.stroke();
-    g.fillStyle = tRow.color;
-    g.beginPath();
-    g.moveTo(x, y-ph*s-10); g.lineTo(x+8.5, y-ph*s-8); g.lineTo(x, y-ph*s-5.5);
-    g.closePath(); g.fill();
+  for (const f of nodes.filter(q => q.t === 'fold')){
+    const cx = WT(f.x), cz = WT(f.z);
+    for (const [a,b] of D4) box(gB,a?.05:.86,.14,b?.05:.86,0x66763f,cx+a*.42,GROUND_Y+.07,cz+b*.42);
+    for (let i=0;i<3;i++) box(gS,.13,.09,.17,0xe8e2d0,cx+(i-1)*.22,GROUND_Y+.1,cz+((i*7)%3-1)*.2,i);
   }
-  if (fire) drawTentFire(p, d, t, fire);
+  // ---- sentry walls: dry-stone with thorn brush; neighbour mask picks segments (§5.6)
+  const ex = nodes.filter(q => q.t !== 'wall');
+  const CC = ex.length ? [ex.reduce((s,q) => s+q.x,0)/ex.length, ex.reduce((s,q) => s+q.z,0)/ex.length] : [CAMP.x-.5, CAMP.y-.5];
+  let cur = 1;
+  const pal = (cx,cz,a,b) => {
+    const hh = .5+.15*cur;
+    for (let i=0;i<4;i++) box(gC,.05,hh,.05,WOOD,cx+a*(.14+i*.1),GROUND_Y+hh/2,cz+b*(.14+i*.1));
+    box(gB,a?.5:.04,.05,b?.5:.04,WOOD2,cx+a*.25,GROUND_Y+hh*.5,cz+b*.25);
+  };
+  const stone = (x,z,w,d) => {
+    const L = cur, hs = [[.16,.13],[.2,.18,.16],[.22,.2,.18,.16]][L-1], tk2 = 1+.1*(L-1);
+    let y = GROUND_Y;
+    hs.forEach((h,i) => {
+      const sc2 = i ? 1-.04*i : 1;
+      box(gB, w*sc2*(w<.4?tk2:1), h, d*sc2*(d<.4?tk2:1), i%2 ? 0xb9a98f : 0xa8977f, x, y+h/2, z);
+      y += h;
+    });
+    if (L === 1) box(gS,w*.5,.09,d*.5,0x66763f,x,GROUND_Y+.32,z);
+    else for (const s of [-1,1]){
+      const ax = w>.4?1:0, az = d>.4?1:0;
+      if (L === 2) box(gB,.06,.2,.06,WOOD,x+ax*s*w*.25,y+.1,z+az*s*d*.25);
+      else box(gB,ax?.14:w,.14,az?.14:d,0xc9a46c,x+ax*s*w*.28,y+.07,z+az*s*d*.28);
+    }
+  };
+  for (const nd of nodes.filter(q => q.t === 'wall')){
+    cur = nd.s||1;
+    const x = nd.x, z = nd.z, cx = WT(x), cz = WT(z),
+      m = D4.map(([a,b]) => { const k = K(x+a,z+b); return (k === K_SENTRY || k === K_TOWER) ? 1 : 0; }),
+      n = m[0]+m[1]+m[2]+m[3];
+    nd.links = m;
+    const sv = Math.floor(whash(x+3,z+47)*3), pw = .38+.12*whash(x+9,z+21);
+    let topH = [.29,.54,.76][cur-1];
+    if (sv === 0) stone(cx,cz,pw,pw);
+    else if (sv === 1){
+      box(gC,pw*.6,topH,pw*.6,0xa8977f,cx,GROUND_Y+topH/2,cz);
+      box(gC,pw*.68,.08,pw*.68,0xb9a98f,cx,GROUND_Y+topH,cz);
+    } else {
+      const ph2 = .6+.15*cur;
+      for (const sa of [-1,1]) for (const sb of [-1,1]) box(gB,.06,ph2,.06,WOOD,cx+sa*.14,GROUND_Y+ph2/2,cz+sb*.14);
+      box(gP,.5,.28,.5,0x8a6a40,cx,GROUND_Y+ph2+.14,cz,PI/4);
+      topH = ph2+.3;
+    }
+    D4.forEach(([a,b],d) => {
+      if (m[d]){
+        (sv === 2 ? pal(cx,cz,a,b) : stone(cx+a*.25,cz+b*.25,a?.5:.3,b?.5:.3));
+        const pa = b?1:0, pb = a?1:0, sgn = ((x-CC[0])*pa + (z-CC[1])*pb) >= 0 ? 1 : -1;
+        box(gS,a?.42:.1,cur>1?.12:.1,b?.42:.1,0x66763f,cx+a*.25+pa*sgn*(cur>1?.22:.14),GROUND_Y+(cur>1?.06:.3),cz+b*.25+pb*sgn*(cur>1?.22:.14));
+        box(gB,a?.5:.14,.07,b?.5:.14,0x9a8a74,cx+a*.25-pa*sgn*.2,GROUND_Y+.035,cz+b*.25-pb*sgn*.2);
+      }
+    });
+    {
+      let o = 0, bs = -9;
+      D4.forEach(([a,b],d) => {
+        const s = a*(x-CC[0]) + b*(z-CC[1]);
+        if (s > bs){ bs = s; o = d; }
+      });
+      const [oa,ob] = D4[o];
+      if (!m[o]) stone(cx+oa*.36,cz+ob*.36,oa?.2:.86,ob?.2:.86);
+    }
+    if (n <= 1){
+      const hp = topH;
+      box(gB,.07,.7,.07,WOOD,cx,GROUND_Y+hp+.35,cz);
+      box(gB,.3,.18,.03,0xa8322a,cx+.17,GROUND_Y+hp+.6,cz);
+    } else if (n >= 3){
+      const hp = topH;
+      box(gB,.14,.14,.14,0,cx,GROUND_Y+hp+.1,cz,0,0,0,MG(0xffc34a));
+    }
+  }
+  // ---- watch towers: WFC arrow slits / log beam ends per face (§5.7)
+  const sl = new Map();
+  for (const nd of nodes.filter(q => q.t === 'tower'))
+    for (let l=0;l<nd.n;l++) for (let f=0;f<4;f++)
+      sl.set([nd.x,nd.z,l,f]+"", { x:nd.x, z:nd.z, l, f, v:null, dom:{ S:2, B:1, O:1 } });
+  for (const s of sl.values()){
+    const c = scache.get([s.x,s.z,s.l,s.f]+"");
+    if (c) s.v = c;
+  }
+  for (const s of sl.values()) if (s.v)
+    for (const dl of [1,-1]){
+      const n = sl.get([s.x,s.z,s.l+dl,s.f]+"");
+      if (n && !n.v) delete n.dom[s.v];
+    }
+  const op = [...sl.values()].filter(s => !s.v);
+  while (op.length){
+    let b = null, be = 1e9;
+    for (const s of op){ const e = Object.keys(s.dom).length + r()*.1; if (e < be){ be = e; b = s; } }
+    const ks = Object.keys(b.dom);
+    let tot = 0; ks.forEach(k => tot += b.dom[k]);
+    let u = r()*tot;
+    b.v = ks.length ? ks[0] : 'O';
+    for (const k of ks){ u -= b.dom[k]; if (u <= 0){ b.v = k; break; } }
+    op.splice(op.indexOf(b), 1);
+    for (const dl of [1,-1]){
+      const n = sl.get([b.x,b.z,b.l+dl,b.f]+"");
+      if (n && !n.v) delete n.dom[b.v];
+    }
+  }
+  scache = new Map([...sl].map(([k,s]) => [k, s.v]));
+  for (const nd of nodes.filter(q => q.t === 'tower')){
+    const x = nd.x, z = nd.z, n = nd.n, cx = WT(x), cz = WT(z),
+      tv = Math.floor(whash(x+13,z+29)*3), t2 = Math.floor(whash(x+31,z+17)*4),
+      tp = [.05,.02,.07][tv], wc = [0xc9a46c,0xb8b0a0,0xe3d7bb][tv], wb = [0x9d8c75,0x8f8878,0xa89a80][tv],
+      rd2 = whash(x+53,z+11) < .4, fpT = .8+.2*whash(x+61,z+7),
+      gd = nd.role === 'gate' ? D4.findIndex(([a,b]) => K(x+a,z+b) === K_SENTRY) : -1;
+    for (let l=0;l<n;l++){
+      const y0 = GROUND_Y+l*TL, w = (.92-tp*l)*fpT;
+      rd2 ? box(gC,w/2,TL,w/2,l?wc:wb,cx,y0+TL/2,cz) : box(gB,w,TL,w,l?wc:wb,cx,y0+TL/2,cz);
+      if (rd2 && l && tv) box(gC,w/2+.015,.05,w/2+.015,tv===2?WOOD:0xcfc8b6,cx,y0+.03,cz);
+      if (tv === 2 && l && !rd2) box(gB,w+.03,.05,w+.03,WOOD,cx,y0+.03,cz);
+      if (tv === 1 && l && !rd2) box(gB,w+.02,.04,w+.02,0xcfc8b6,cx,y0+TL*.5,cz);
+      if (tv === 2 && !l && !rd2) for (const sx of [-1,1]) for (const sz of [-1,1]) box(gB,.14,TL*.8,.14,wb,cx+sx*(w/2),GROUND_Y+TL*.4,cz+sz*(w/2));
+      if (!l){
+        rd2 ? box(gC,w/2+.04,.12,w/2+.04,0x8a7a65,cx,GROUND_Y+.06,cz) : box(gB,w+.08,.12,w+.08,0x8a7a65,cx,GROUND_Y+.06,cz);
+      }
+      D4.forEach(([a,b],f) => {
+        const v = sl.get([x,z,l,f]+"").v, o = w/2+.01;
+        if (v === 'S') box(gB,a?.04:.07,.3,b?.04:.07,0x2a2018,cx+a*o,y0+TL*.58,cz+b*o);
+        else if (v === 'B') for (const sg of [-1,1]) box(gB,a?.16:.07,.07,b?.16:.07,WOOD,cx+a*(o+.03)+(a?0:sg*.2),y0+TL*.82,cz+b*(o+.03)+(b?0:sg*.2));
+      });
+    }
+    if (gd >= 0){
+      const [a,b] = D4[gd];
+      box(gB,a?.05:.3,.42,b?.05:.3,0x241a12,cx+a*(.46*fpT),GROUND_Y+.21,cz+b*(.46*fpT));
+      box(gB,a?.1:.46,.07,b?.1:.46,WOOD,cx+a*(.46*fpT),GROUND_Y+.45,cz+b*(.46*fpT));
+    }
+    const y = GROUND_Y+n*TL, tw = (.92-tp*(n-1))*fpT+.1;
+    let ld = D4.findIndex(([a,b],d) => !K(x+a,z+b) && d !== gd);
+    if (ld < 0) ld = gd === 0 ? 1 : 0;
+    rd2 ? box(gC,tw*.58,.08,tw*.58,0xb8996a,cx,y,cz) : box(gB,tw+.08,.08,tw+.08,0xb8996a,cx,y,cz);
+    if (rd2){
+      box(gC,tw*.55,.18,tw*.55,wc,cx,y+.13,cz);
+      box(gC,tw*.45,.02,tw*.45,0x6b5a3a,cx,y+.225,cz);
+      for (let i=0;i<8;i++){
+        const an = i*PI/4;
+        box(gB,.14,t2===1?.45:.2,.14,wc,cx+Math.cos(an)*tw*.5,y+(t2===1?.3:.2),cz+Math.sin(an)*tw*.5,-an);
+      }
+    } else D4.forEach(([a,b]) => box(gB,a?.08:tw,.16,b?.08:tw,wc,cx+a*tw/2,y+.12,cz+b*tw/2));
+    if (!rd2) for (const sx of [-1,1]) for (const sz of [-1,1]) box(gB,.18,t2===1?.5:.26,.18,wc,cx+sx*tw/2,y+(t2===1?.29:.17),cz+sz*tw/2);
+    const [la,lb2] = D4[ld];
+    for (const sg of [-1,1]) box(gB,.05,n*TL+.2,.05,WOOD,cx+la*(.46*fpT+.04)+(la?0:sg*.12),GROUND_Y+(n*TL+.2)/2,cz+lb2*(.46*fpT+.04)+(lb2?0:sg*.12));
+    for (let k=0;k<n*3;k++) box(gB,la?.04:.28,.04,lb2?.04:.28,WOOD,cx+la*(.46*fpT+.04),GROUND_Y+.2+k*.23,cz+lb2*(.46*fpT+.04));
+    if (nd.role === 'beacon'){
+      box(gC,.2,.14,.2,0x333333,cx,y+.12,cz);
+      box(gP,.3,.5,.3,0,cx,y+.42,cz,PI/4,0,0,MG(0xff7a1a));
+    } else {
+      for (const sx of [-1,1]) for (const sz of [-1,1]) box(gB,.05,.5,.05,WOOD,cx+sx*tw*.42,y+.33,cz+sz*tw*.42);
+      if (rd2) box(gCone,tw*.62,.7,tw*.62,0xa9894f,cx,y+.95,cz);
+      else if (t2 === 1) box(gP,tw+.3,.8,tw+.3,0xa9894f,cx,y+.9,cz,PI/4);
+      else if (t2 === 3) box(gB,tw*.8,tw*.8,tw+.1,0xb8472f,cx,y+.55,cz,(x+z)%2?PI/2:0,0,PI/4);
+      else if (t2 === 2){ box(gB,tw+.3,.16,tw+.3,WOOD,cx,y+.08,cz); box(gB,tw+.14,.07,tw+.14,0x8a6a40,cx,y+.6,cz); }
+      else box(gB,tw+.14,.07,tw+.14,0xa9894f,cx,y+.6,cz);
+    }
+    if (nd.role === 'gate'){
+      box(gB,.04,.7,.04,WOOD,cx+tw/2,y+.5,cz+tw/2);
+      box(gB,.28,.16,.03,0xa8322a,cx+tw/2+.15,y+.72,cz+tw/2);
+    }
+    for (const [dx2,dz2] of [[2,0],[0,2]])
+      if (K(x+dx2,z+dz2) === K_TOWER && lvl[x+dx2][z+dz2] === n && ter[x+dx2][z+dz2] === ter[x][z] && !K(x+dx2/2,z+dz2/2)){
+        box(gB,dx2?1:.24,.06,dz2?1:.24,WOOD2,cx+dx2/2,y+.03,cz+dz2/2);
+        for (const sg of [-1,1]) box(gB,dx2?1:.03,.03,dz2?1:.03,0xd8c8a0,cx+dx2/2+(dx2?0:sg*.12),y+.2,cz+dz2/2+(dx2?sg*.12:0));
+      }
+  }
+  // ---- THE TABERNACLE (§5.8): fence ring round a 6x1 interior, tent of
+  //      meeting at the west end, bronze altar fire, gate in the east fence.
+  smoke.length = 0;
+  {
+    const tb = tbRect(), x0 = tb.x0, z0 = tb.z0;
+    const xa = WT(x0), xb = WT(x0+TBSIZE.w-1), za = WT(z0), zb = WT(z0+TBSIZE.l-1);
+    const zc = (za+zb)/2, len = TBSIZE.w-1, wd = TBSIZE.l-1;
+    const LIN = 0xe9e0c8, BRZ = 0xb5832f, GOLD = 0xc9a24a, CC3 = [0x3f5f9a,0x6a3f7a,0xb02e2e];
+    tabLabel = { tx: x0 + (TBSIZE.w-1)/2, ty: z0 + (TBSIZE.l-1)/2 };
+    const post = (x,z) => { box(gB,.07,.6,.07,WOOD2,x,GROUND_Y+.3,z); box(gB,.1,.05,.1,BRZ,x,GROUND_Y+.62,z); };
+    const hang = (x,z,ln,ax) => box(gB, ax?ln:.03, .4, ax?.03:ln, LIN, x, GROUND_Y+.3, z);
+    for (let i=0;i<=len*2;i++){
+      const x = xa+i*.5;
+      post(x,za); post(x,zb);
+      if (i < len*2){ hang(x+.25,za,.46,1); hang(x+.25,zb,.46,1); }
+    }
+    for (let j=0;j<=wd*2;j++){
+      const z = za+j*.5;
+      if (j > 0 && j < wd*2){ post(xa,z); if (Math.abs(z-zc) > .01) post(xb,z); }
+      if (j < wd*2){
+        hang(xa,z+.25,.46,0);
+        if (!(z >= zc-.51 && z+.5 <= zc+.51)) hang(xb,z+.25,.46,0);
+      }
+    }
+    for (const s of [-1,1]) box(gB,.09,.85,.09,GOLD,xb,GROUND_Y+.42,zc+s*.5);
+    CC3.forEach((c,i) => box(gB,.04,.24,.33,c,xb,GROUND_Y+.7,zc+(i-1)*.33));
+    // + + + : the tent, three tiles long, door at its east end facing the court
+    const tx = WT(x0+2), te = tx+1.5;
+    box(gB,2.9,.5,.86,0x8a3d2e,tx,GROUND_Y+.25,zc);
+    box(gB,2.96,.66,.66,0x4b3d34,tx,GROUND_Y+.5,zc,0,PI/4,0);
+    box(gB,2.98,.05,.05,0x6b5a48,tx,GROUND_Y+.97,zc);
+    for (let i=0;i<3;i++) box(gB,.07,.66,.07,GOLD,te+.01,GROUND_Y+.33,zc+(i-1)*.32);
+    for (let i=0;i<2;i++) box(gB,.03,.5,.3,CC3[i],te+.02,GROUND_Y+.27,zc+(i-.5)*.32);
+    box(gB,.04,.12,.86,CC3[2],te+.02,GROUND_Y+.6,zc);
+    // % : the fire on a bronze altar, with rising smoke
+    const ax = WT(x0+5);
+    box(gB,.5,.3,.5,BRZ,ax,GROUND_Y+.15,zc);
+    for (const sa of [-1,1]) for (const sb of [-1,1]) box(gB,.06,.12,.06,BRZ,ax+sa*.22,GROUND_Y+.36,zc+sb*.22);
+    box(gP,.28,.42,.28,0,ax,GROUND_Y+.5,zc,PI/4,0,0,MG(0xff7a1a));
+    for (let i=0;i<5;i++){
+      const m = new THREE.Mesh(gS, new THREE.MeshBasicMaterial({ color:0xd0c8c0, transparent:true, opacity:.5 }));
+      m.position.set(ax, GROUND_Y+.7, zc);
+      T3.add(m);
+      smoke.push({ m, y:GROUND_Y+.7, ph:i/5 });
+    }
+  }
+  // ---- pens: low fence, one tile gate, trough with water, hay (§5.10)
+  for (const pn of pens){
+    const xa = WT(pn.x0)-.5, xb = WT(pn.x0+2)+.5, za = WT(pn.z0)-.5, zb = WT(pn.z0+1)+.5;
+    const gz = pn.sgn < 0 ? za : zb, g0 = WT(pn.x0+1)-.5, g1 = WT(pn.x0+1)+.5, zm = (za+zb)/2;
+    const fp = (x,z,h) => box(gB,.06,h,.06,WOOD,x,GROUND_Y+h/2,z);
+    for (let i=0;i<=6;i++){ fp(xa+i*.5,za,.34); fp(xa+i*.5,zb,.34); }
+    for (let j=1;j<4;j++){ fp(xa,za+j*.5,.34); fp(xb,za+j*.5,.34); }
+    for (const hy of [.14,.27]){
+      for (const zz of [za,zb]){
+        if (zz === gz){
+          box(gB,g0-xa,.04,.03,WOOD2,(xa+g0)/2,GROUND_Y+hy,zz);
+          box(gB,xb-g1,.04,.03,WOOD2,(g1+xb)/2,GROUND_Y+hy,zz);
+        } else box(gB,xb-xa,.04,.03,WOOD2,(xa+xb)/2,GROUND_Y+hy,zz);
+      }
+      box(gB,.03,.04,zb-za,WOOD2,xa,GROUND_Y+hy,zm);
+      box(gB,.03,.04,zb-za,WOOD2,xb,GROUND_Y+hy,zm);
+    }
+    fp(g0,gz,.55); fp(g1,gz,.55);
+    const pcx = WT(pn.x0+1), pcz = WT(pn.z0)+.5;
+    box(gB,.5,.1,.16,0x7a5a3a,pcx-1,GROUND_Y+.05,pcz-pn.sgn*.7);
+    box(gB,.42,.02,.1,0x4a9ab8,pcx-1,GROUND_Y+.105,pcz-pn.sgn*.7);
+    box(gB,.34,.14,.22,0xd8c07a,pcx+1.05,GROUND_Y+.07,pcz-pn.sgn*.7);
+  }
+  // ---- dressing: palms, grass tufts, scrub, rocks (hash driven, §5.9/§10g)
+  const occS = new Set(nodes.map(q => q.x+","+q.z));
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    if (occS.has(x+","+z) || kind[x][z] || nodeCells.has(x+","+z)) continue;
+    const h = whash(x,z), cx = WT(x), cz = WT(z);
+    const ox = (whash(z,x)-.5)*.4, oz = (whash(x+5,z+1)-.5)*.4, gt = gtype[x][z];
+    if (palm[x][z]) drawTree(x, z, cx+ox, cz+oz);
+    else if (gt === 1){
+      if (h < .6) for (let i=0;i<3;i++)
+        box(gB,.03,.12+.06*((i+Math.floor(h*7))%2),.03,0x5f9a3a,cx+(i-1)*.18+ox*.3,GROUND_Y+.07,cz+((i*.37+h)%.5-.25),h*9+i);
+    } else if (gt === 0 && dune[x][z] < 0 && h < .12){
+      box(gS,.22,.14,.22,0x7d8a4a,cx+ox,GROUND_Y+.05,cz+oz);
+    }
+  }
+  // ---- dunes: multi-tile groups, each tile a mound joined to its neighbours
+  const dcol = [0xdcb67c,0xe3c088,0xd6ad72];
+  for (const dn of dunes){
+    const col = dcol[dn.id%3];
+    const free = (x,z) => inMap(x,z) && !kind[x][z] && !occS.has(x+","+z) && dune[x][z] === dn.id;
+    for (const [x,z] of dn.cells){
+      if (!free(x,z)) continue;
+      let nb = 0;
+      for (const [a,b] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]])
+        if (inMap(x+a,z+b) && dune[x+a][z+b] === dn.id) nb++;
+      const hh = .16+.045*nb, cx = WT(x), cz = WT(z);
+      box(gS,.62,hh,.62,col,cx,GROUND_Y,cz,whash(x,z)*6);
+      for (const [a,b] of [[1,0],[0,1],[1,1],[1,-1]])
+        if (free(x+a,z+b)) box(gS,.5,hh*.92,.5,col,cx+a/2,GROUND_Y,cz+b/2,whash(x+a,z+b)*6);
+    }
+  }
+  // stone footings under pieces on sloping ground
+  for (const q of nodes)
+    if ((q.t === 'tent' || q.t === 'wall' || q.t === 'tower') && inMap(q.x,q.z) && FD[q.x][q.z] > .03){
+      const f = FD[q.x][q.z]+.05;
+      box(gB,1,f,1,0x8a7a65,WT(q.x),GROUND_Y+.02-f/2,WT(q.z));
+    }
+  spawnFlocks();
 }
 
-function drawTentFire(p, d, t, fire){
-  const s = d.s;
-  const now = performance.now()/1000;
-  const age = now - fire.start;
-  const left = Math.max(0, fire.until - now);
-  const strength = clamp(Math.min(age / 1.2, left / 4), 0, 1);
-  const flick = state.reducedMotion ? 1 : 1 + Math.sin(t*13 + fire.phase)*0.16 + Math.sin(t*21 + fire.phase)*0.08;
-  g.save();
-  // Char the canvas over the tent roof.
-  g.globalAlpha = 0.34 * strength;
-  g.fillStyle = '#2b160d';
-  g.beginPath();
-  g.moveTo(p.x-17*s,p.y-1*s);
-  g.lineTo(p.x,p.y-22*s);
-  g.lineTo(p.x+16*s,p.y-2*s);
-  g.lineTo(p.x,p.y+7*s);
-  g.closePath(); g.fill();
-  g.globalAlpha = 1;
-  // Flames licking from the roof and door.
-  const baseY = p.y - 10*s;
-  for (let i=0;i<3;i++){
-    const dx = (i-1)*7*s;
-    const h = (13 + i*4) * s * flick * strength;
-    g.fillStyle = i === 1 ? '#ffc24a' : '#e87424';
-    g.beginPath();
-    g.moveTo(p.x+dx, baseY);
-    g.quadraticCurveTo(p.x+dx+5*s, baseY-h*0.45, p.x+dx+1.5*s, baseY-h);
-    g.quadraticCurveTo(p.x+dx-4*s, baseY-h*0.35, p.x+dx-3*s, baseY);
-    g.closePath(); g.fill();
-  }
-  g.fillStyle = '#ffe28a';
-  g.beginPath();
-  g.moveTo(p.x, baseY-2*s);
-  g.quadraticCurveTo(p.x+3*s, baseY-8*s*flick, p.x, baseY-14*s*flick);
-  g.quadraticCurveTo(p.x-3*s, baseY-7*s*flick, p.x-1*s, baseY-2*s);
-  g.closePath(); g.fill();
-  // Smoke drifts up and thins out.
-  for (let i=0;i<4;i++){
-    const drift = Math.sin(t*0.9 + fire.phase + i*1.7) * 5;
-    const rise = ((t*8 + i*13) % 44) * s;
-    g.globalAlpha = (0.17 - i*0.025) * strength;
-    g.fillStyle = '#3a2a20';
-    g.beginPath();
-    g.arc(p.x + drift*s + (i%2?4:-3)*s, baseY - 12*s - rise, (5 + i*2)*s, 0, 6.28);
-    g.fill();
-  }
-  g.globalAlpha = 0.22 * strength;
-  g.globalCompositeOperation = 'lighter';
-  const grd = g.createRadialGradient(p.x, baseY, 1, p.x, baseY, 32*s);
-  grd.addColorStop(0,'rgba(255,170,60,.5)');
-  grd.addColorStop(1,'rgba(255,90,20,0)');
-  g.fillStyle = grd;
-  g.beginPath(); g.arc(p.x, baseY, 32*s, 0, 6.28); g.fill();
-  g.restore();
-}
-
-/* The Tabernacle stands at the centre of the map (Exodus 25-27): a linen
-   court fenced in turquoise, purple and scarlet, the gold-pillared gate, the
-   ram-skin tent of meeting at the west end, and the bronze altar with its
-   perpetual fire and rising smoke in the open court. */
-function drawTabernacle(cx,cy,t){
-  const p = W2S(cx,cy);
-  if (p.x < -260 || p.x > W+260 || p.y < -260 || p.y > H+260) return;
-  const base = W2S(cx - 2.1, cy - 0.4);   // west end of the court
-  const px = base.x, py = base.y;
-  // Court is 4 tiles wide (x) by 2 tiles deep (y), drawn in isometric axes.
-  const tileW = HW, tileH = HH;
-  // Helper: iso offset from the west-corner anchor.
-  const iso = (ix,iy) => ({ x: px + ix*tileW + iy*tileW, y: py + ix*tileH - iy*tileH });
-  const corner = {
-    nw: iso(0,2), ne: iso(4,2), se: iso(4,0), sw: iso(0,0)
-  };
-  const sandY = -3;
-  // Court floor: pale sand.
-  g.fillStyle = '#e6d7ae';
-  g.beginPath();
-  g.moveTo(corner.nw.x, corner.nw.y+sandY); g.lineTo(corner.ne.x, corner.ne.y+sandY);
-  g.lineTo(corner.se.x, corner.se.y+sandY); g.lineTo(corner.sw.x, corner.sw.y+sandY);
-  g.closePath(); g.fill();
-
-  // Linen fence on posts around the court, with the gate on the east side.
-  const post = (x,y,h=22) => {
-    g.strokeStyle = '#6b5334'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(x,y); g.lineTo(x,y-h); g.stroke();
-    g.fillStyle = '#c9a24a';
-    g.beginPath(); g.arc(x,y-h-1.6,2,0,6.28); g.fill();
-  };
-  const hangSeg = (a,b,col) => {
-    g.strokeStyle = col; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(a.x, a.y-13); g.lineTo(b.x, b.y-13); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(a.x, a.y-10); g.lineTo(b.x, b.y-10); g.stroke();
-  };
-  const nSteps = 8, sSteps = 8, wSteps = 4;
-  const HC = ['#3f5f9a','#6a3f7a','#b02e2e'];
-  // North and south fences (long sides).
-  for (let i=0;i<nSteps;i++){
-    const a = iso(i*4/nSteps, 2), b = iso((i+1)*4/nSteps, 2);
-    if (i) post(a.x,a.y); else post(a.x,a.y,26);
-    hangSeg(a,b, HC[i%3]);
-  }
-  post(corner.ne.x, corner.ne.y, 26);
-  for (let i=0;i<sSteps;i++){
-    const a = iso(i*4/sSteps, 0), b = iso((i+1)*4/sSteps, 0);
-    if (i) post(a.x,a.y); else post(a.x,a.y,26);
-    hangSeg(a,b, HC[(i+1)%3]);
-  }
-  post(corner.se.x, corner.se.y, 26);
-  // West fence (back, behind the tent).
-  for (let i=0;i<wSteps;i++){
-    const a = iso(0, 2 - i*2/wSteps), b = iso(0, 2 - (i+1)*2/wSteps);
-    if (i) post(a.x,a.y);
-    hangSeg(a,b, HC[(i+2)%3]);
-  }
-  post(corner.nw.x, corner.nw.y, 26);
-  // East side: the gate — gold pillars with blue, purple and scarlet valances.
-  const gateA = iso(4,2), gateB = iso(4,0);
-  for (let i=0;i<3;i++){
-    const fy = 2 - i*(2/3);
-    const gp = iso(4, fy);
-    g.strokeStyle = '#c9a24a'; g.lineWidth = 3.5;
-    g.beginPath(); g.moveTo(gp.x,gp.y); g.lineTo(gp.x,gp.y-26); g.stroke();
-    g.fillStyle = '#e8c96a';
-    g.beginPath(); g.arc(gp.x,gp.y-28,3.2,0,6.28); g.fill();
-  }
-  hangSeg(gateA, iso(4, 4/3), HC[0]);
-  hangSeg(iso(4, 4/3), iso(4, 2/3), HC[1]);
-  hangSeg(iso(4, 2/3), gateB, HC[2]);
-
-  // The tent of meeting: three tiles at the west end, red walls and a dark
-  // goat-hair ridge roof running along x.
-  const tentC = iso(1.5, 1);
-  shadow(tentC, 44, 12);
-  g.fillStyle = '#8a3d2e';
-  g.beginPath();
-  g.moveTo(tentC.x - 40, tentC.y + 2); g.lineTo(tentC.x - 40 + 4, tentC.y - 18);
-  g.lineTo(tentC.x + 40, tentC.y - 2); g.lineTo(tentC.x + 40 - 4, tentC.y + 16);
-  g.closePath(); g.fill();
-  g.fillStyle = '#a84a38';
-  g.beginPath();
-  g.moveTo(tentC.x - 40, tentC.y + 2); g.lineTo(tentC.x - 36, tentC.y - 18);
-  g.lineTo(tentC.x + 36, tentC.y - 20); g.lineTo(tentC.x + 40, tentC.y - 2);
-  g.lineTo(tentC.x + 20, tentC.y - 8); g.lineTo(tentC.x - 20, tentC.y + 6);
-  g.closePath(); g.fill();
-  // Dark badger-skin roof ridge along x.
-  g.strokeStyle = '#4b3d34'; g.lineWidth = 5;
-  g.beginPath(); g.moveTo(tentC.x - 38, tentC.y - 15); g.lineTo(tentC.x + 38, tentC.y - 17); g.stroke();
-  // Gold pillars and coloured hangings at the tent's east face (the door).
-  const doorC = iso(3, 1);
-  for (const dy of [-9, 9]){
-    g.strokeStyle = '#c9a24a'; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(doorC.x+6, doorC.y+dy); g.lineTo(doorC.x+6, doorC.y+dy-20); g.stroke();
-  }
-  hangSeg({x:doorC.x+6,y:doorC.y-9},{x:doorC.x+6,y:doorC.y+9}, HC[1]);
-
-  // The bronze altar with the perpetual fire, one court tile east of the tent.
-  const altar = iso(3.05, 1);
-  shadow(altar, 15, 6);
-  g.fillStyle = '#b5832f';
-  g.beginPath();
-  g.moveTo(altar.x-10, altar.y); g.lineTo(altar.x, altar.y+5); g.lineTo(altar.x+10, altar.y); g.lineTo(altar.x, altar.y-5);
-  g.closePath(); g.fill();
-  g.fillStyle = '#9a6f24';
-  g.fillRect(altar.x-9, altar.y-8, 18, 5);
-  // Flames.
-  const flick = state.reducedMotion ? 1 : 1 + Math.sin(t*11)*0.18 + Math.sin(t*19+1)*0.09;
-  for (let i=0;i<3;i++){
-    const dx = (i-1)*4.5;
-    const h = (11 + i*3.4) * flick;
-    g.fillStyle = i === 1 ? '#ffc24a' : '#e87424';
-    g.beginPath();
-    g.moveTo(altar.x+dx, altar.y-6);
-    g.quadraticCurveTo(altar.x+dx+3.4, altar.y-6-h*0.5, altar.x+dx+1.2, altar.y-6-h);
-    g.quadraticCurveTo(altar.x+dx-3, altar.y-6-h*0.4, altar.x+dx-2.6, altar.y-6);
-    g.closePath(); g.fill();
-  }
-  g.fillStyle = '#ffe28a';
-  g.beginPath();
-  g.moveTo(altar.x, altar.y-8);
-  g.quadraticCurveTo(altar.x+2.6, altar.y-13*flick, altar.x, altar.y-18*flick);
-  g.quadraticCurveTo(altar.x-2.6, altar.y-12*flick, altar.x, altar.y-8);
-  g.closePath(); g.fill();
-  // Smoke rising from the altar.
-  if (!state.reducedMotion){
-    for (let i=0;i<4;i++){
-      const drift = Math.sin(t*0.8 + i*1.9) * 6;
-      const rise = ((t*7 + i*15) % 52);
-      g.globalAlpha = Math.max(0, 0.16 - i*0.03) * (1 - rise/52);
-      g.fillStyle = '#cfc4b8';
-      g.beginPath();
-      g.arc(altar.x + drift + (i%2?4:-3), altar.y - 20 - rise, 4.5 + i*2, 0, 6.28);
-      g.fill();
+/* ---- tree and rock variation (hash driven so they never move, §10g) ---- */
+const TRCOL = [0x7a5a3a,0x6a4a2e,0x8a6a40], FRCOL = [0x5f8a3a,0x4f7a32,0x6f9a45];
+const RKCOL = [0x9a8a78,0xb09a7a,0x8a7a6a,0xb8a88c,0xa0665a,0xc4b9a0];
+const treeType = (x,z) => Math.floor(whash(x+17,z+29)*(gtype[x][z] === 1 ? 4 : 6));
+function drawTree(x, z, cx, cz){
+  const tt = treeType(x,z), h3 = whash(x+19,z+5), tc = TRCOL[Math.floor(h3*3)], fc = FRCOL[Math.floor(whash(x+23,z+11)*3)];
+  const fr = (n,y,rad,drop,ox0,oz0) => {
+    for (let i=0;i<n;i++){
+      const a = i*PI*2/n + h3*3;
+      box(gB,.55,.03,.12,fc,cx+ox0+Math.cos(a)*rad,GROUND_Y+y,cz+oz0-Math.sin(a)*rad,a,0,-drop);
     }
-    g.globalAlpha = 1;
+  };
+  if (tt === 0){
+    const H = .95+h3*.25;
+    box(gC,.07,H,.07,tc,cx,GROUND_Y+H/2,cz); fr(7,H+.01,.24,.45,0,0);
+    for (let i=0;i<3;i++) box(gB,.07,.1,.07,0x7a4a22,cx+(i-1)*.07,GROUND_Y+H-.08,cz+.05);
+  } else if (tt === 1){
+    const H = .55+h3*.15;
+    box(gC,.09,H,.09,tc,cx,GROUND_Y+H/2,cz); fr(8,H+.01,.2,.6,0,0);
+  } else if (tt === 2){
+    box(gC,.07,.55,.07,tc,cx,GROUND_Y+.27,cz,0,0,.18);
+    box(gC,.06,.5,.06,tc,cx+.12,GROUND_Y+.78,cz,0,0,-.12);
+    fr(6,1.05,.24,.45,.17,0);
+  } else if (tt === 3){
+    box(gC,.07,1,.07,tc,cx-.08,GROUND_Y+.5,cz);
+    box(gC,.06,.7,.06,tc,cx+.1,GROUND_Y+.35,cz+.05);
+    fr(6,1.01,.22,.45,-.08,0); fr(5,.71,.2,.5,.1,.05);
+  } else if (tt === 4){
+    box(gC,.05,.55,.05,tc,cx,GROUND_Y+.27,cz,0,0,.08);
+    box(gS,.4,.09,.36,0x7d9a45,cx+.03,GROUND_Y+.6,cz,h3*6);
+    box(gS,.26,.07,.24,0x6f8a3c,cx-.06,GROUND_Y+.68,cz+.03,h3*4);
+  } else {
+    box(gC,.06,.35,.06,tc,cx,GROUND_Y+.17,cz,0,.15,.12);
+    for (let i=0;i<3;i++) box(gS,.2-i*.03,.16,.2-i*.03,[0x7d8a4a,0x8a9a5a,0x6f7f42][i],cx+(i-1)*.13,GROUND_Y+.42+(i%2)*.08,cz+(i-1)*.04);
   }
-  // Name label floats over the court.
-  g.fillStyle = 'rgba(20,12,7,.78)';
-  g.fillRect(p.x-46, p.y-58, 92, 14);
-  g.fillStyle = '#f2cc6b';
-  g.font = '700 10px Cinzel, Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText('THE TABERNACLE', p.x, p.y-48);
 }
-
+function drawRock(x, z, cx, cz){
+  const rt = Math.floor(whash(x+41,z+7)*6), c = RKCOL[Math.floor(whash(x+3,z+43)*6)];
+  const c2 = RKCOL[Math.floor(whash(x+5,z+47)*6)], s = .8+whash(x+9,z+13)*.5, ry = whash(x,z)*20;
+  if (rt === 0) box(gB,.32*s,.2*s,.26*s,c,cx,GROUND_Y+.08*s,cz,ry);
+  else if (rt === 1) box(gS,.2*s,.15*s,.18*s,c,cx,GROUND_Y+.02,cz,ry);
+  else if (rt === 2) box(gB,.12*s,.42*s,.2*s,c,cx,GROUND_Y+.2*s,cz,ry,0,.1);
+  else if (rt === 3){
+    box(gB,.2*s,.12,.16*s,c,cx-.1,GROUND_Y+.06,cz,ry);
+    box(gB,.14*s,.1,.12*s,c2,cx+.08,GROUND_Y+.05,cz+.06,ry+1);
+    box(gB,.1,.07,.1,c,cx+.02,GROUND_Y+.035,cz-.1,ry+2);
+  } else if (rt === 4) box(gB,.5*s,.07,.4*s,c,cx,GROUND_Y+.035,cz,ry);
+  else {
+    box(gB,.3*s,.16,.26*s,c,cx,GROUND_Y+.08,cz,ry);
+    box(gB,.16*s,.12,.14*s,c2,cx+.03,GROUND_Y+.22,cz-.02,ry+.7);
+  }
+}
 function igniteTents(count = 1, reason = 'A tent is burning after the raid. It will smoulder for a while.'){
   const now = performance.now()/1000;
   const candidates = [];
   for (const st of structures) if (st.kind === 'tent') candidates.push({ ref:st, x:st.x, y:st.y });
-  for (const d of decor) if (d.kind === 'tent') candidates.push({ ref:d, x:d.x, y:d.y });
+  for (const d of campTents) candidates.push({ ref:d, x:d.x, y:d.y });
   const free = candidates.filter(c => !tentFires.some(f => f.ref === c.ref));
   let lit = 0;
   for (let i=0;i<count && free.length;i++){
@@ -7788,598 +7526,803 @@ function igniteTents(count = 1, reason = 'A tent is burning after the raid. It w
   return lit;
 }
 
-function drawMarket(p,d,t){
-  const s = d.s;
-  shadow(p, 24, 8);
-  g.strokeStyle = '#6b4524'; g.lineWidth = 3;
-  for (const dx of [-18,18]){
-    g.beginPath(); g.moveTo(p.x+dx,p.y); g.lineTo(p.x+dx,p.y-24); g.stroke();
-  }
-  g.fillStyle = '#a8482f';
-  g.beginPath(); g.moveTo(p.x-26,p.y-24); g.lineTo(p.x,p.y-14); g.lineTo(p.x+26,p.y-24); g.lineTo(p.x,p.y-34); g.closePath(); g.fill();
-  const stripes = ['#e8b84a','#a8482f','#e8b84a','#a8482f'];
-  for (let i=0;i<4;i++){
-    g.fillStyle = stripes[i];
-    g.globalAlpha = 0.85;
-    const x0 = p.x-26 + i*13;
-    g.beginPath(); g.moveTo(x0,p.y-24 - (i%2)*2); g.lineTo(x0+13,p.y-30); g.lineTo(x0+13,p.y-22); g.lineTo(x0,p.y-18); g.closePath(); g.fill();
-  }
-  g.globalAlpha = 1;
-  g.fillStyle = '#7a4a24';
-  g.fillRect(p.x-22,p.y-10,44,10);
-  g.fillStyle = '#d8c9a8';
-  for (let i=0;i<5;i++){
-    g.beginPath(); g.arc(p.x-16+i*8,p.y-13,2.6,0,6.28); g.fill();
+/* ---- 3D entities: everything alive is positioned from its data each frame.
+   Groups are pooled per source object, so nothing is rebuilt per frame. ---- */
+const ENT3 = new THREE.Group();
+S3.add(ENT3);
+function keyedPool(cat, key, make){
+  const m = cat._pool || (cat._pool = new Map());
+  let gp = m.get(key);
+  if (!gp){ gp = make(); cat.add(gp); m.set(key, gp); }
+  gp.userData._seen = true;
+  return gp;
+}
+function sweepPool(cat){
+  const m = cat._pool;
+  if (!m) return;
+  for (const [k, gp] of m){
+    if (!gp.userData._seen){ cat.remove(gp); m.delete(k); }
+    else gp.userData._seen = false;
   }
 }
+const PEOPLE3 = new THREE.Group(), RAID3 = new THREE.Group(), MANNA3 = new THREE.Group(),
+  NODE3 = new THREE.Group(), FOE3 = new THREE.Group(), STN3 = new THREE.Group(), FIRE3 = new THREE.Group();
+S3.add(PEOPLE3, RAID3, MANNA3, NODE3, FOE3, STN3, FIRE3);
 
-function drawCrate(p,d){
-  const s = d.s;
-  g.fillStyle = '#7a4a24'; g.fillRect(p.x-5*s,p.y-9*s,10*s,9*s);
-  g.strokeStyle = '#a8783c'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(p.x-5*s,p.y-5*s); g.lineTo(p.x+5*s,p.y-5*s); g.stroke();
-}
-
-function drawFire(p,d,t){
-  const flick = 1 + Math.sin(t*12)*0.12 + Math.sin(t*19)*0.06;
-  shadow(p, 16, 6);
-  g.strokeStyle = '#5a3a1d'; g.lineWidth = 3.5;
-  g.beginPath(); g.moveTo(p.x-10,p.y+2); g.lineTo(p.x+10,p.y-2); g.stroke();
-  g.beginPath(); g.moveTo(p.x-3,p.y-2); g.lineTo(p.x+6,p.y+4); g.stroke();
-  g.fillStyle = '#e87424';
-  g.beginPath();
-  g.moveTo(p.x,p.y-28*flick);
-  g.quadraticCurveTo(p.x+11,p.y-15,p.x+5,p.y+1);
-  g.quadraticCurveTo(p.x,p.y+4,p.x-5,p.y+1);
-  g.quadraticCurveTo(p.x-12,p.y-14,p.x,p.y-28*flick);
-  g.fill();
-  g.fillStyle = '#ffc24a';
-  g.beginPath();
-  g.moveTo(p.x,p.y-19*flick);
-  g.quadraticCurveTo(p.x+6,p.y-10,p.x+2,p.y+1);
-  g.quadraticCurveTo(p.x,p.y+2,p.x-2,p.y+1);
-  g.quadraticCurveTo(p.x-6,p.y-9,p.x,p.y-19*flick);
-  g.fill();
-  g.globalCompositeOperation = 'lighter';
-  const grd = g.createRadialGradient(p.x,p.y-10,1,p.x,p.y-10,34);
-  grd.addColorStop(0,'rgba(255,180,70,.22)'); grd.addColorStop(1,'rgba(255,120,20,0)');
-  g.fillStyle = grd; g.beginPath(); g.arc(p.x,p.y-10,34,0,6.28); g.fill();
-  g.globalCompositeOperation = 'source-over';
-}
-
-function drawPerson(p,t){
-  const s = W2S(p.x,p.y);
-  if (s.x < -30 || s.x > W+30 || s.y < -40 || s.y > H+40) return;
-  const bob = p.sick ? Math.sin(p.phase*0.4)*0.4 : Math.sin(p.phase)*1.2;
-  shadow(s, 6, 2.6);
+/* Israelites: robe, head, trait ring, carrying marker. */
+function personGroup(p){
+  const gp = new THREE.Group();
+  const col = new THREE.Color(p.sick ? '#9a8f7a' : p.col);
+  const robe = new THREE.Mesh(gC, new THREE.MeshStandardMaterial({ color:col, roughness:.9, flatShading:true }));
+  robe.scale.set(.055,.13,.045); robe.position.y = .12; robe.castShadow = true;
+  const head = new THREE.Mesh(gS, M(0xd9b08a));
+  head.scale.setScalar(.032); head.position.y = .21; head.castShadow = true;
+  const wrap = new THREE.Mesh(gC, M(0x4b3520));
+  wrap.scale.set(.034,.008,.034); wrap.position.y = .228;
   const trait = TRAITS[p.trait] || TRAITS.ordinary;
-  // Trait ring on the ground.
-  g.strokeStyle = trait.color;
-  g.globalAlpha = p.trait === 'ordinary' ? 0.28 : 0.65;
-  g.lineWidth = 1.4;
-  g.beginPath(); g.ellipse(s.x, s.y, 7.5, 3.4, 0, 0, Math.PI*2); g.stroke();
-  g.globalAlpha = 1;
-  g.fillStyle = p.sick ? '#9a8f7a' : p.col;
-  g.beginPath();
-  g.moveTo(s.x-4.5, s.y-13+bob); g.lineTo(s.x+4.5, s.y-13+bob);
-  g.lineTo(s.x+5.5, s.y+1); g.lineTo(s.x-5.5, s.y+1); g.closePath(); g.fill();
-  g.fillStyle = p.sick ? '#b8a98e' : '#d9b08a';
-  g.beginPath(); g.arc(s.x, s.y-16+bob, 3.4, 0, 6.28); g.fill();
-  g.fillStyle = '#4b3520';
-  g.fillRect(s.x-3.6, s.y-19.5+bob, 7.2, 2.2);
-  if (p.carry > 0 || p.woodCarry > 0){
-    g.fillStyle = p.woodCarry > 0 ? '#a8783c' : '#ffe27a';
-    g.beginPath(); g.arc(s.x+5, s.y-13+bob, 2.4, 0, 6.28); g.fill();
-  }
-  if (p.hoard > 0){
-    g.fillStyle = '#e0a24a';
-    g.beginPath(); g.arc(s.x-5, s.y-11+bob, 2.6, 0, 6.28); g.fill();
-  }
-  if (p.sick){
-    /* Small sick-mark cross, drawn rather than typed. */
-    g.save();
-    g.translate(s.x, s.y-26+bob);
-    g.fillStyle = '#8fbf5f';
-    g.fillRect(-1.2, -4, 2.4, 8);
-    g.fillRect(-4, -1.2, 8, 2.4);
-    g.restore();
-  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.085,.115,20), new THREE.MeshBasicMaterial({ color:trait.color, transparent:true, opacity:p.trait === 'ordinary' ? .22 : .5, side:THREE.DoubleSide }));
+  ring.rotation.x = -PI/2; ring.position.y = .012;
+  const carry = new THREE.Mesh(gS, MG(p.woodCarry > 0 ? 0xc99a5a : 0xffe27a));
+  carry.scale.setScalar(.02); carry.position.set(.05,.2,0); carry.visible = false;
+  gp.add(robe, head, wrap, ring, carry);
+  gp.userData = { robe, head, ring, carry };
+  return gp;
 }
-
-function drawWoodNode(n,t){
-  const p = W2S(n.x,n.y);
-  if (p.x < -60 || p.x > W+60 || p.y < -60 || p.y > H+60) return;
-  shadow(p, 18, 6);
-  const sway = Math.sin(t*0.7 + n.h)*2;
-  g.strokeStyle = '#5a3d22'; g.lineWidth = 4; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(p.x,p.y); g.lineTo(p.x+5, p.y-23); g.stroke();
-  g.fillStyle = '#4f7a3a';
-  g.beginPath(); g.ellipse(p.x+5+sway, p.y-27, 22, 7, -0.12, 0, 6.28); g.fill();
-  g.fillStyle = '#6b9a4a';
-  g.beginPath(); g.ellipse(p.x+2+sway, p.y-30, 16, 5, 0.1, 0, 6.28); g.fill();
-  g.fillStyle = '#3f6430';
-  g.beginPath(); g.ellipse(p.x+9+sway, p.y-24, 13, 4.5, -0.2, 0, 6.28); g.fill();
-  if (n.wood > 0){
-    g.fillStyle = 'rgba(20,12,7,.65)';
-    g.fillRect(p.x-17, p.y-42, 34, 11);
-    g.fillStyle = '#c99a5a';
-    g.font = '700 9px Georgia, serif';
-    g.textAlign = 'center';
-    g.fillText(`${n.wood} wood`, p.x, p.y-34);
+function updatePeopleVisuals(t){
+  for (const p of people){
+    const gp = keyedPool(PEOPLE3, p, () => personGroup(p));
+    const u = gp.userData;
+    const bob = p.sick ? Math.sin(p.phase*.4)*.004 : Math.sin(t*2.4 + p.phase)*.008;
+    gp.position.set(WT(p.x), gyAt(p.x,p.y) + Math.abs(bob), WT(p.y));
+    u.carry.visible = (p.carry > 0 || p.woodCarry > 0);
+    u.ring.material.color.set(TRAITS[p.trait]?.color || '#d8c9a8');
+    u.robe.material.color.set(p.sick ? '#9a8f7a' : p.col);
   }
+  sweepPool(PEOPLE3);
 }
-
-/* A collectible boulder — gathers into the stone store until it is rubble. */
-function drawRockNode(n,t){
-  const p = W2S(n.x,n.y);
-  if (p.x < -60 || p.x > W+60 || p.y < -60 || p.y > H+60) return;
-  shadow(p, 20, 7);
-  if (n.stone <= 0){
-    // Depleted: a scatter of pebbles remains.
-    for (let i=0;i<4;i++){
-      const a = i*1.9 + n.h;
-      g.fillStyle = i%2 ? '#a8977f' : '#9a8a78';
-      g.beginPath(); g.ellipse(p.x+Math.cos(a)*7, p.y+Math.sin(a)*3, 3.4, 2, 0, 0, 6.28); g.fill();
-    }
-    return;
-  }
-  if (n.rv === 1){
-    // Flat slab outcrop.
-    g.fillStyle = '#8c7a66';
-    g.beginPath(); g.ellipse(p.x, p.y-4, 17, 10, 0, 0, 6.28); g.fill();
-    g.fillStyle = '#a89478';
-    g.beginPath(); g.ellipse(p.x-1, p.y-9, 14, 7.5, 0, 0, 6.28); g.fill();
-    g.strokeStyle = 'rgba(60,40,26,.4)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(p.x-10,p.y-8); g.lineTo(p.x+3,p.y-11); g.lineTo(p.x+12,p.y-7); g.stroke();
-  } else if (n.rv === 2){
-    // Round boulder cluster.
-    g.fillStyle = '#857259';
-    g.beginPath(); g.ellipse(p.x+10,p.y-4,8,6,0,0,6.28); g.fill();
-    g.beginPath(); g.ellipse(p.x-11,p.y-3,7,5.5,0,0,6.28); g.fill();
-    g.fillStyle = '#a89478';
-    g.beginPath(); g.ellipse(p.x,p.y-12,11,9,0,0,6.28); g.fill();
-    g.fillStyle = '#bfae95';
-    g.beginPath(); g.ellipse(p.x-3,p.y-15,5,3.6,0,0,6.28); g.fill();
-  } else if (n.rv === 3){
-    // Twin standing shards.
-    g.fillStyle = '#8f7c66';
-    g.beginPath(); g.moveTo(p.x-12,p.y+1); g.lineTo(p.x-7,p.y-20); g.lineTo(p.x-2,p.y+1); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(p.x+1,p.y+1); g.lineTo(p.x+6,p.y-16); g.lineTo(p.x+12,p.y+1); g.closePath(); g.fill();
-    g.fillStyle = '#a89478';
-    g.beginPath(); g.moveTo(p.x-7,p.y-20); g.lineTo(p.x-2,p.y+1); g.lineTo(p.x+1,p.y+1); g.lineTo(p.x-1,p.y-19); g.closePath(); g.fill();
-  } else {
-    g.fillStyle = '#8c7a66';
-    g.beginPath();
-    g.moveTo(p.x-16,p.y+1); g.lineTo(p.x-8,p.y-15); g.lineTo(p.x+6,p.y-18); g.lineTo(p.x+16,p.y-4); g.lineTo(p.x+8,p.y+3); g.closePath(); g.fill();
-    g.fillStyle = '#a89478';
-    g.beginPath();
-    g.moveTo(p.x-8,p.y-15); g.lineTo(p.x+6,p.y-18); g.lineTo(p.x+13,p.y-8); g.lineTo(p.x+2,p.y-6); g.closePath(); g.fill();
-  }
-  g.strokeStyle = 'rgba(60,40,26,.4)'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(p.x-6,p.y-9); g.lineTo(p.x+2,p.y-11); g.lineTo(p.x+9,p.y-5); g.stroke();
-  g.fillStyle = 'rgba(20,12,7,.65)';
-  g.fillRect(p.x-17, p.y-30, 34, 11);
-  g.fillStyle = '#cbb8a0';
-  g.font = '700 9px Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText(`${n.stone} stone`, p.x, p.y-22);
+/* Moses: blue robe, cream headwrap, staff. */
+const mosesG = new THREE.Group();
+{
+  const robe = new THREE.Mesh(gC, M(0x3f5f9a));
+  robe.scale.set(.07,.2,.055); robe.position.y = .16; robe.castShadow = true;
+  const sash = new THREE.Mesh(gC, M(0xb8862f));
+  sash.scale.set(.072,.015,.057); sash.position.y = .2;
+  const head = new THREE.Mesh(gS, M(0xe0b890));
+  head.scale.setScalar(.04); head.position.y = .3;
+  const wrap = new THREE.Mesh(gC, M(0xf2e6cf));
+  wrap.scale.set(.042,.012,.042); wrap.position.y = .325;
+  const beard = new THREE.Mesh(gS, M(0x2a1a10));
+  beard.scale.set(.028,.036,.028); beard.position.set(0,.265,.02);
+  const staff = new THREE.Mesh(gC, M(0x6b4524));
+  staff.scale.set(.009,.5,.009); staff.position.set(.09,.28,0); staff.castShadow = true;
+  const hook = new THREE.Mesh(gC, M(0x6b4524));
+  hook.scale.set(.009,.06,.009); hook.position.set(.105,.53,0); hook.rotation.z = .5;
+  mosesG.add(robe, sash, head, wrap, beard, staff, hook);
 }
-
-/* A hostile encampment: dark tents and a red banner where a named foe waits. */
-function drawFoeCamp(c,t){
-  const foe = FOES[c.id];
-  if (!foe) return;
-  const p = W2S(c.x,c.y);
-  if (p.x < -90 || p.x > W+90 || p.y < -90 || p.y > H+90) return;
-  const pulse = 0.5 + 0.5*Math.sin(t*3 + c.phase);
-  shadow(p, 34, 11);
-  // Dark goatskin tents ringed by spears.
+S3.add(mosesG);
+/* Raiders (Desert Outpost raider) with a health sprite. */
+function makeRaider(){
+  const gp = new THREE.Group();
+  const b = new THREE.Mesh(gC, M(0x7a2b22)); b.scale.set(.09,.3,.09); b.position.y = .17; b.castShadow = true;
+  const h = new THREE.Mesh(gS, M(0xd2a37a)); h.scale.setScalar(.075); h.position.y = .39;
+  const tb = new THREE.Mesh(gS, M(0x1d1a17)); tb.scale.set(.085,.045,.085); tb.position.y = .45;
+  const sp = new THREE.Mesh(gC, M(0x6a4628)); sp.scale.set(.012,.5,.012); sp.position.set(.11,.27,0);
+  const tip = new THREE.Mesh(gB, M(0xb8b8c0)); tip.scale.set(.02,.06,.02); tip.position.set(.11,.56,0);
+  const hb = new THREE.Sprite(new THREE.SpriteMaterial({ color:0xd04030 }));
+  hb.scale.set(.3,.04,1); hb.position.y = .68;
+  gp.add(b,h,tb,sp,tip,hb);
+  gp.userData = { hb, lx:0, lz:0 };
+  return gp;
+}
+function updateRaiderVisuals(t){
+  for (const r of raiders){
+    const gp = keyedPool(RAID3, r, makeRaider);
+    gp.position.set(WT(r.x), gyAt(r.x,r.y), WT(r.y));
+    const u = gp.userData;
+    const dx = r.x - u.lx, dz = r.y - u.lz;
+    if (Math.abs(dx)+Math.abs(dz) > 1e-4) gp.rotation.y = Math.atan2(dx,dz);
+    u.lx = r.x; u.lz = r.y;
+    u.hb.scale.x = Math.max(.02, .3*r.hp/Math.max(1,r.maxHp||100));
+    u.hb.material.color.set(r.hp/(r.maxHp||100) > .5 ? 0xe0a24a : 0xe0584a);
+  }
+  sweepPool(RAID3);
+}
+/* Hostile encampments: dark tents, a red banner and sentinels. */
+function foeGroup(c){
+  const gp = new THREE.Group();
   for (let i=0;i<4;i++){
-    const a = i/4*Math.PI*2 + c.phase;
-    const tx = p.x + Math.cos(a)*13, ty = p.y + Math.sin(a)*6;
-    g.fillStyle = '#3a2620';
-    g.beginPath(); g.moveTo(tx-9,ty); g.lineTo(tx,ty+4); g.lineTo(tx,ty-13); g.closePath(); g.fill();
-    g.fillStyle = '#4a3226';
-    g.beginPath(); g.moveTo(tx+9,ty); g.lineTo(tx,ty+4); g.lineTo(tx,ty-13); g.closePath(); g.fill();
-    g.strokeStyle = '#5d4432'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(tx,ty-13); g.lineTo(tx,ty+4); g.stroke();
+    const a = i/4*PI*2 + c.phase;
+    const tent = new THREE.Mesh(gCone, M(0x3a2620));
+    tent.scale.set(.28,.42,.28);
+    tent.position.set(Math.cos(a)*.42, .21, Math.sin(a)*.42);
+    tent.castShadow = true;
+    gp.add(tent);
   }
-  // Central banner in hostile red.
-  g.strokeStyle = '#24140c'; g.lineWidth = 2.5;
-  g.beginPath(); g.moveTo(p.x,p.y); g.lineTo(p.x,p.y-30); g.stroke();
-  g.fillStyle = '#8a2418';
-  g.beginPath();
-  g.moveTo(p.x,p.y-30); g.lineTo(p.x+15,p.y-27); g.lineTo(p.x,p.y-21); g.closePath(); g.fill();
-  g.fillStyle = '#e0b24a';
-  g.beginPath(); g.arc(p.x,p.y-31,2.6,0,6.28); g.fill();
-  // Sentinels.
-  for (const [sx,sz] of [[-18,3],[18,4]]){
-    g.fillStyle = '#5a2a20';
-    g.fillRect(p.x+sx-2.4,p.y-9,4.8,9);
-    g.fillStyle = '#c9976a';
-    g.beginPath(); g.arc(p.x+sx,p.y-11,2.4,0,6.28); g.fill();
+  const pole = new THREE.Mesh(gC, M(0x24140c));
+  pole.scale.set(.014,.85,.014); pole.position.y = .42;
+  const cloth = new THREE.Mesh(gB, M(0x8a2418));
+  cloth.scale.set(.3,.14,.012); cloth.position.set(.16,.78,0);
+  const gem = new THREE.Mesh(gS, MG(0xe0b24a));
+  gem.scale.setScalar(.025); gem.position.y = .88;
+  for (const [sx,sz] of [[-.6,.12],[.6,.16]]){
+    const sentry = new THREE.Mesh(gC, M(0x5a2a20));
+    sentry.scale.set(.035,.14,.035); sentry.position.set(sx,.07,sz);
+    const sh = new THREE.Mesh(gS, M(0xc9976a));
+    sh.scale.setScalar(.028); sh.position.set(sx,.17,sz);
+    gp.add(sentry, sh);
   }
-  // Warning ring + name.
-  g.strokeStyle = `rgba(224,88,74,${0.35+0.35*pulse})`;
-  g.lineWidth = 2;
-  g.beginPath(); g.ellipse(p.x,p.y+2, 26+4*pulse, 11+2*pulse, 0, 0, Math.PI*2); g.stroke();
-  g.fillStyle = 'rgba(20,10,8,.75)';
-  g.fillRect(p.x-52, p.y-46, 104, 13);
-  g.fillStyle = '#ff9a86';
-  g.font = '700 9.5px Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText(foe.name.toUpperCase(), p.x, p.y-37);
+  gp.add(pole, cloth, gem);
+  return gp;
 }
-
-function drawStructure(st,t){
-  const p = W2S(st.x,st.y);
-  if (p.x < -80 || p.x > W+80 || p.y < -100 || p.y > H+80) return;
-  const v = Math.floor(hash(st.x*0.71, st.y*1.13)*3);
-  if (st.kind === 'tent'){
-    drawTent(p, { s:1.05, h:0, tribe:st.tribe, v:Math.floor(hash(st.x*0.71,st.y*1.13)*7) }, t, tentFires.find(f => f.ref === st));
-  } else if (st.kind === 'sentry'){
-    shadow(p, 18, 7);
-    if (v === 1){
-      // Round stone cairn post.
-      g.fillStyle = '#8a7a66';
-      g.beginPath(); g.ellipse(p.x, p.y-13, 10, 15, 0, 0, 6.28); g.fill();
-      g.fillStyle = '#a89882';
-      g.beginPath(); g.ellipse(p.x+2, p.y-13, 8, 13, 0, 0, 6.28); g.fill();
-      g.strokeStyle = 'rgba(70,48,30,.35)'; g.lineWidth = 1.2;
-      for (let yy=p.y-8; yy>p.y-24; yy-=5){
-        g.beginPath(); g.ellipse(p.x, yy, 9.6, 3.2, 0, 0, 6.28); g.stroke();
-      }
-      g.fillStyle = '#7f8fae';
-      g.fillRect(p.x-4,p.y-29,8,10);
-      g.fillStyle = '#d9b08a';
-      g.beginPath(); g.arc(p.x,p.y-32,3.6,0,6.28); g.fill();
-      g.strokeStyle = '#e0b24a'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(p.x+8,p.y-4); g.lineTo(p.x+8,p.y-40); g.stroke();
-      g.fillStyle = '#e0b24a';
-      g.beginPath(); g.moveTo(p.x+8,p.y-42); g.lineTo(p.x+12,p.y-38); g.lineTo(p.x+8,p.y-35); g.closePath(); g.fill();
-    } else if (v === 2){
-      // Timber palisade post with a pitched thatch cap.
-      g.fillStyle = '#7c5a34';
-      for (let i=-2;i<=2;i++){
-        g.fillRect(p.x+i*5-1.6, p.y-20, 3.2, 20);
-      }
-      g.fillStyle = '#8a5a2a';
-      g.fillRect(p.x-11, p.y-24, 22, 3.5);
-      g.fillStyle = '#a8783c';
-      g.beginPath(); g.moveTo(p.x-13,p.y-24); g.lineTo(p.x,p.y-31); g.lineTo(p.x+13,p.y-24); g.closePath(); g.fill();
-      g.fillStyle = '#7f8fae';
-      g.fillRect(p.x-4,p.y-27,8,10);
-      g.fillStyle = '#d9b08a';
-      g.beginPath(); g.arc(p.x,p.y-30,3.6,0,6.28); g.fill();
-      g.strokeStyle = '#e0b24a'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(p.x+8,p.y-4); g.lineTo(p.x+8,p.y-38); g.stroke();
-      g.fillStyle = '#e0b24a';
-      g.beginPath(); g.moveTo(p.x+8,p.y-40); g.lineTo(p.x+12,p.y-36); g.lineTo(p.x+8,p.y-33); g.closePath(); g.fill();
-    } else {
-      // Low stone-and-timber sentry platform.
-      g.fillStyle = '#8a7a66';
-      g.beginPath(); g.ellipse(p.x, p.y, 15, 7, 0, 0, 6.28); g.fill();
-      g.fillStyle = '#a89882';
-      g.beginPath(); g.ellipse(p.x, p.y-2, 13, 6, 0, 0, 6.28); g.fill();
-      g.strokeStyle = '#6b4524'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(p.x-11,p.y-2); g.lineTo(p.x-9,p.y-22); g.stroke();
-      g.beginPath(); g.moveTo(p.x+11,p.y-2); g.lineTo(p.x+9,p.y-22); g.stroke();
-      g.strokeStyle = '#8a5a2a'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(p.x-10,p.y-14); g.lineTo(p.x+10,p.y-14); g.stroke();
-      g.fillStyle = '#7f8fae';
-      g.fillRect(p.x-4,p.y-25,8,11);
-      g.fillStyle = '#d9b08a';
-      g.beginPath(); g.arc(p.x,p.y-28,3.6,0,6.28); g.fill();
-      g.strokeStyle = '#e0b24a'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(p.x+7,p.y-4); g.lineTo(p.x+7,p.y-38); g.stroke();
-      g.fillStyle = '#e0b24a';
-      g.beginPath(); g.moveTo(p.x+7,p.y-40); g.lineTo(p.x+11,p.y-36); g.lineTo(p.x+7,p.y-33); g.closePath(); g.fill();
-    }
-  } else if (st.kind === 'tower'){
-    shadow(p, 16, 6);
-    if (v === 1){
-      // Stone tower: a broad masonry shaft with a square crown.
-      g.fillStyle = '#8a7a66';
-      g.beginPath(); g.moveTo(p.x-10,p.y); g.lineTo(p.x-7,p.y-36); g.lineTo(p.x+7,p.y-36); g.lineTo(p.x+10,p.y); g.closePath(); g.fill();
-      g.fillStyle = '#a89882';
-      g.beginPath(); g.moveTo(p.x+2,p.y); g.lineTo(p.x+3,p.y-36); g.lineTo(p.x+7,p.y-36); g.lineTo(p.x+10,p.y); g.closePath(); g.fill();
-      g.strokeStyle = 'rgba(70,48,30,.3)'; g.lineWidth = 1.1;
-      for (let yy=p.y-6; yy>p.y-34; yy-=6){
-        g.beginPath(); g.moveTo(p.x-9+(p.y-yy)/10, yy); g.lineTo(p.x+9-(p.y-yy)/10, yy); g.stroke();
-      }
-      g.fillStyle = '#6e5138';
-      g.fillRect(p.x-10, p.y-41, 20, 5);
-      g.fillStyle = '#c8b088';
-      for (let i=-2;i<=2;i++) g.fillRect(p.x+i*4.4-1.2, p.y-45.5, 2.4, 4.5);
-      g.fillStyle = '#a8783c';
-      g.beginPath(); g.moveTo(p.x-12,p.y-41); g.lineTo(p.x,p.y-49); g.lineTo(p.x+12,p.y-41); g.closePath(); g.fill();
-    } else if (v === 2){
-      // Round watchtower: cylinder shaft and conical thatch roof.
-      g.fillStyle = '#96856e';
-      g.beginPath(); g.ellipse(p.x, p.y-18, 9, 18, 0, 0, 6.28); g.fill();
-      g.fillStyle = '#b0a08a';
-      g.beginPath(); g.ellipse(p.x+2, p.y-18, 7, 17, 0, 0, 6.28); g.fill();
-      g.fillStyle = '#8a5a2a';
-      g.beginPath(); g.ellipse(p.x, p.y-37, 11, 3.6, 0, 0, 6.28); g.fill();
-      g.fillStyle = '#a8783c';
-      g.beginPath(); g.moveTo(p.x-11,p.y-37); g.lineTo(p.x,p.y-48); g.lineTo(p.x+11,p.y-37); g.closePath(); g.fill();
-      g.fillStyle = '#e0b24a';
-      g.beginPath(); g.moveTo(p.x+8,p.y-45); g.lineTo(p.x+14,p.y-42.5); g.lineTo(p.x+8,p.y-40); g.closePath(); g.fill();
-      g.fillStyle = '#4b3520';
-      g.beginPath(); g.ellipse(p.x,p.y-5,2.6,3.6,0,0,6.28); g.fill();
-    } else {
-      // Timber-frame tower.
-      g.strokeStyle = '#6b4524'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(p.x-9,p.y); g.lineTo(p.x-6,p.y-38); g.stroke();
-      g.beginPath(); g.moveTo(p.x+9,p.y); g.lineTo(p.x+6,p.y-38); g.stroke();
-      g.beginPath(); g.moveTo(p.x-4,p.y-4); g.lineTo(p.x-3,p.y-34); g.stroke();
-      g.beginPath(); g.moveTo(p.x+4,p.y-4); g.lineTo(p.x+3,p.y-34); g.stroke();
-      g.fillStyle = '#8a5a2a';
-      g.fillRect(p.x-12, p.y-42, 24, 5);
-      g.fillStyle = '#a8783c';
-      g.beginPath(); g.moveTo(p.x-14,p.y-42); g.lineTo(p.x,p.y-50); g.lineTo(p.x+14,p.y-42); g.closePath(); g.fill();
-    }
-    g.fillStyle = '#e0b24a';
-    g.beginPath(); g.moveTo(p.x+10,p.y-48); g.lineTo(p.x+16,p.y-45); g.lineTo(p.x+10,p.y-42); g.closePath(); g.fill();
+function updateFoeVisuals(t){
+  for (const c of foeCamps){
+    const gp = keyedPool(FOE3, c.id, () => foeGroup(c));
+    gp.position.set(WT(c.x), gyAt(c.x,c.y), WT(c.y));
+    gp.rotation.y = Math.sin(t*.3 + c.phase)*.2;
   }
+  sweepPool(FOE3);
 }
-
-function drawRaider(r,t){
-  const p = W2S(r.x,r.y);
-  if (p.x < -40 || p.x > W+40 || p.y < -40 || p.y > H+40) return;
-  const bob = Math.sin(t*8 + r.phase)*1.4;
-  shadow(p, 7, 3);
-  g.fillStyle = '#7a2a22';
-  g.beginPath();
-  g.moveTo(p.x-4.5,p.y-13+bob); g.lineTo(p.x+4.5,p.y-13+bob);
-  g.lineTo(p.x+5.5,p.y+1); g.lineTo(p.x-5.5,p.y+1); g.closePath(); g.fill();
-  g.fillStyle = '#d9b08a';
-  g.beginPath(); g.arc(p.x,p.y-16+bob,3.4,0,6.28); g.fill();
-  g.strokeStyle = '#ddd'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(p.x+6,p.y-5); g.lineTo(p.x+12,p.y-17); g.stroke();
-  const w = 18, hpk = clamp(r.hp/r.maxHp,0,1);
-  g.fillStyle = 'rgba(20,10,8,.8)';
-  g.fillRect(p.x-w/2, p.y-28, w, 3);
-  g.fillStyle = hpk > 0.5 ? '#e0a24a' : '#e0584a';
-  g.fillRect(p.x-w/2, p.y-28, w*hpk, 3);
-  // Pulsing alert marker above the raider.
-  const pulse = 0.55 + 0.45*Math.sin(t*6 + r.phase);
-  g.strokeStyle = `rgba(224,88,74,${0.45+0.35*pulse})`;
-  g.lineWidth = 2;
-  g.beginPath(); g.ellipse(p.x, p.y+1, 11, 5, 0, 0, Math.PI*2); g.stroke();
-  g.fillStyle = '#e0584a';
-  g.beginPath(); g.moveTo(p.x,p.y-42); g.lineTo(p.x+6,p.y-35); g.lineTo(p.x,p.y-28); g.lineTo(p.x-6,p.y-35); g.closePath(); g.fill();
-  g.fillStyle = '#fff6ef';
-  g.font = '700 9px Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText('!', p.x, p.y-31);
-  if (r.loot > 0){
-    g.fillStyle = '#ffe27a';
-    g.beginPath(); g.arc(p.x-5,p.y-10,2.4,0,6.28); g.fill();
+/* The eight stations: standing stones, an altar and a tribe-coloured banner
+   — with Sinai's mountain and Rephidim's rock as landmarks. */
+function stationGroup(s){
+  const gp = new THREE.Group();
+  for (const sx of [-1,1]){
+    const stone = new THREE.Mesh(gB, M(0x6f6252));
+    stone.scale.set(.22,.38,.2); stone.position.set(sx*.48,.19,0);
+    stone.castShadow = true;
+    const cap = new THREE.Mesh(gP, M(0x8a7a66));
+    cap.scale.set(.22,.1,.2); cap.position.set(sx*.48,.43,0);
+    gp.add(stone, cap);
+    const pole = new THREE.Mesh(gC, M(0x6b4524));
+    pole.scale.set(.012,.75,.012); pole.position.set(sx*.36,.37,0);
+    const cloth = new THREE.Mesh(gB, new THREE.MeshStandardMaterial({ color:s.color, roughness:.9, flatShading:true }));
+    cloth.scale.set(.2,.11,.012); cloth.position.set(sx*.36 + sx*.11,.66,0);
+    gp.add(pole, cloth);
   }
-}
-
-function drawBuildGhost(){
-  if (state.layoutEdit){
-    if (state.layoutEdit.selected != null){
-      const st = structures[state.layoutEdit.selected];
-      if (st){
-        const sp = W2S(st.x, st.y);
-        g.globalAlpha = 0.8; g.strokeStyle = '#7fc4e8'; g.lineWidth = 2.5;
-        g.beginPath(); g.ellipse(sp.x, sp.y, HW*1.15, HH*1.15, 0, 0, 6.28); g.stroke();
-        g.globalAlpha = 1;
-      }
-      if (state.mouseWorld){
-        // Footprint preview on the half-tile grid: shows the true 1-unit
-        // separation circle and keeps the banner reason in sync.
-        const spot = snapStructureSpot(state.mouseWorld.x, state.mouseWorld.y);
-        const reason = layoutSpotOk(spot.x, spot.y, state.layoutEdit.selected);
-        if (reason !== state.layoutEdit.reason){
-          state.layoutEdit.reason = reason;
-          showLayoutBanner(reason);
-        }
-        const p = W2S(spot.x, spot.y);
-        g.save();
-        g.globalAlpha = 0.35;
-        g.fillStyle = reason ? 'rgba(224,88,74,.16)' : 'rgba(242,204,107,.16)';
-        g.beginPath(); g.ellipse(p.x, p.y, HW, HH, 0, 0, 6.28); g.fill();
-        g.globalAlpha = 0.9;
-        g.strokeStyle = reason ? '#e0584a' : '#f2cc6b'; g.lineWidth = 2; g.setLineDash([5,4]);
-        g.beginPath(); g.ellipse(p.x, p.y, HW, HH, 0, 0, 6.28); g.stroke();
-        g.restore();
-      }
-    }
-    return;
-  }
-  if (!state.buildMode || !state.mouseWorld) return;
-  const { x, y } = state.mouseWorld;
-  const p = W2S(x,y);
-  const invalid = blocked(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y) > CAMP_RADIUS;
-  g.globalAlpha = 0.55;
-  g.strokeStyle = invalid ? '#e0584a' : '#f2cc6b';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(p.x,p.y); g.lineTo(p.x+HW,p.y+HH); g.lineTo(p.x,p.y+2*HH); g.lineTo(p.x-HW,p.y+HH); g.closePath();
-  g.stroke();
-  g.fillStyle = invalid ? 'rgba(224,88,74,.15)' : 'rgba(242,204,107,.15)';
-  g.fill();
-  g.globalAlpha = 1;
-}
-
-function drawDefenseCoverage(){
-  if (!(state.buildMode || state.layoutEdit || state.raidDefense)) return;
-  for (const st of structures){
-    if (st.kind !== 'tower' && st.kind !== 'sentry') continue;
-    const p = W2S(st.x, st.y);
-    const radius = st.kind === 'tower' ? 5.5 : 5.0;
-    g.save();
-    g.globalAlpha = st.kind === 'tower' ? 0.14 : 0.1;
-    g.fillStyle = st.kind === 'tower' ? '#7fc4e8' : '#e8b84a';
-    g.beginPath(); g.ellipse(p.x, p.y, radius*HW, radius*HH, 0, 0, 6.28); g.fill();
-    g.globalAlpha = 0.55;
-    g.strokeStyle = st.kind === 'tower' ? '#7fc4e8' : '#e8b84a'; g.lineWidth = 1.5;
-    g.beginPath(); g.ellipse(p.x, p.y, radius*HW, radius*HH, 0, 0, 6.28); g.stroke();
-    g.restore();
-  }
-}
-
-function drawPlayer(t){
-  const p = state.player;
-  const s = W2S(p.x,p.y);
-  const bob = p.moving ? Math.abs(Math.sin(t*9))*2.2 : Math.sin(t*1.8)*0.8;
-  shadow(s, 10, 4.4);
-  // robe
-  g.fillStyle = '#3f5f9a';
-  g.beginPath();
-  g.moveTo(s.x-6, s.y-22-bob); g.lineTo(s.x+6, s.y-22-bob);
-  g.lineTo(s.x+8, s.y+1); g.lineTo(s.x-8, s.y+1); g.closePath(); g.fill();
-  g.fillStyle = '#2f487c';
-  g.beginPath();
-  g.moveTo(s.x-6, s.y-22-bob); g.lineTo(s.x-1, s.y-22-bob); g.lineTo(s.x-2, s.y+1); g.lineTo(s.x-8, s.y+1); g.closePath(); g.fill();
-  // sash
-  g.fillStyle = '#b8862f'; g.fillRect(s.x-6, s.y-15-bob, 12, 2.4);
-  // head + headwrap
-  g.fillStyle = '#e0b890';
-  g.beginPath(); g.arc(s.x, s.y-27-bob, 4.6, 0, 6.28); g.fill();
-  g.fillStyle = '#f2e6cf';
-  g.beginPath(); g.arc(s.x, s.y-29.5-bob, 4.8, Math.PI, Math.PI*2); g.fill();
-  g.fillStyle = '#ddd0b5';
-  g.fillRect(s.x-5, s.y-29-bob, 10, 2);
-  // beard
-  g.fillStyle = '#2a1a10';
-  g.beginPath(); g.moveTo(s.x-2.5,s.y-24-bob); g.lineTo(s.x+2.5,s.y-24-bob); g.lineTo(s.x,s.y-20-bob); g.closePath(); g.fill();
-  // staff
-  g.strokeStyle = '#6b4524'; g.lineWidth = 2.2; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(s.x+9, s.y+1); g.lineTo(s.x+10, s.y-34-bob); g.quadraticCurveTo(s.x+10,s.y-38,s.x+13,s.y-36); g.stroke();
-}
-
-function drawManna(m,t){
-  const p = W2S(m.x,m.y);
-  if (p.x < -30 || p.x > W+30 || p.y < -30 || p.y > H+30) return;
-  const bob = Math.sin(t*3 + m.seed)*2;
-  const glow = 0.5 + 0.5*Math.sin(t*2.4 + m.seed);
-  g.globalCompositeOperation = 'lighter';
-  g.fillStyle = `rgba(255,235,150,${0.10+0.10*glow})`;
-  g.beginPath(); g.arc(p.x,p.y-5+bob,10,0,6.28); g.fill();
-  g.globalCompositeOperation = 'source-over';
-  g.fillStyle = '#fff4bc';
-  g.beginPath();
-  g.moveTo(p.x,p.y-9+bob); g.lineTo(p.x+4,p.y-5+bob); g.lineTo(p.x,p.y-1+bob); g.lineTo(p.x-4,p.y-5+bob); g.closePath(); g.fill();
-  g.strokeStyle = 'rgba(255,255,230,.55)'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(p.x-4,p.y-5+bob); g.lineTo(p.x+4,p.y-5+bob); g.stroke();
-}
-
-function drawStation(s,i,t){
-  const p = W2S(s.x,s.y);
-  if (p.x < -120 || p.x > W+120 || p.y < -140 || p.y > H+80) return;
-  const active = state.stationIndex === i;
-  const visited = state.visited.has(i);
-  shadow(p, 22, 8);
-
-  // Standing stones and a small altar.
-  const base = s.color;
-  g.fillStyle = '#6f6252';
-  g.fillRect(p.x-20,p.y-15,9,15);
-  g.fillRect(p.x+11,p.y-15,9,15);
-  g.fillStyle = '#8a7a66';
-  g.beginPath(); g.moveTo(p.x-20,p.y-15); g.lineTo(p.x-15.5,p.y-20); g.lineTo(p.x-11,p.y-15); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(p.x+11,p.y-15); g.lineTo(p.x+15.5,p.y-20); g.lineTo(p.x+20,p.y-15); g.closePath(); g.fill();
-  g.strokeStyle = base; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(p.x-15,p.y-19); g.lineTo(p.x-15,p.y-33); g.stroke();
-  g.beginPath(); g.moveTo(p.x+15,p.y-19); g.lineTo(p.x+15,p.y-33); g.stroke();
-  g.fillStyle = base;
-  g.beginPath(); g.moveTo(p.x-15,p.y-33); g.lineTo(p.x-8,p.y-30); g.lineTo(p.x-15,p.y-27); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(p.x+15,p.y-33); g.lineTo(p.x+22,p.y-30); g.lineTo(p.x+15,p.y-27); g.closePath(); g.fill();
-  g.fillStyle = '#8a7a66';
-  g.fillRect(p.x-8,p.y-6,16,6);
-  g.fillStyle = '#a89882';
-  g.fillRect(p.x-6,p.y-9,12,3);
-
-  // Special landmarks.
+  const altar = new THREE.Mesh(gB, M(0x8a7a66));
+  altar.scale.set(.4,.14,.26); altar.position.y = .07;
+  const altarTop = new THREE.Mesh(gB, M(0xa89882));
+  altarTop.scale.set(.3,.04,.18); altarTop.position.y = .16;
+  gp.add(altar, altarTop);
   if (s.id === 'sinai'){
-    g.fillStyle = '#6a5a7f';
-    g.beginPath(); g.moveTo(p.x-46,p.y+2); g.lineTo(p.x-22,p.y-58); g.lineTo(p.x-4,p.y+2); g.closePath(); g.fill();
-    g.fillStyle = '#7f6e96';
-    g.beginPath(); g.moveTo(p.x-22,p.y-58); g.lineTo(p.x-4,p.y+2); g.lineTo(p.x+4,p.y-38); g.closePath(); g.fill();
-    g.fillStyle = 'rgba(240,230,255,.55)';
-    g.beginPath(); g.arc(p.x-22,p.y-62,3.5,0,6.28); g.fill();
+    const mount = new THREE.Mesh(gP, M(0x6a5a7f));
+    mount.scale.set(3,1.9,3); mount.position.set(-.8,1,-.8);
+    mount.castShadow = true;
+    const mount2 = new THREE.Mesh(gP, M(0x7f6e96));
+    mount2.scale.set(3.4,2.2,3.4); mount2.position.set(1.2,1.1,.9);
+    gp.add(mount, mount2);
   } else if (s.id === 'rephidim'){
-    g.fillStyle = '#8a7a68';
-    g.beginPath(); g.moveTo(p.x-30,p.y+2); g.lineTo(p.x-24,p.y-22); g.lineTo(p.x-8,p.y-26); g.lineTo(p.x+2,p.y+2); g.closePath(); g.fill();
-    g.strokeStyle = '#4b3f34'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(p.x-16,p.y-24); g.lineTo(p.x-13,p.y-12); g.lineTo(p.x-17,p.y-2); g.stroke();
+    const rock = new THREE.Mesh(gB, M(0x8a7a68));
+    rock.scale.set(.9,.5,.6); rock.position.set(-.6,.25,-.3);
+    rock.rotation.y = .4; rock.castShadow = true;
+    gp.add(rock);
   } else if (s.id === 'shore'){
-    g.strokeStyle = '#3f8fb0'; g.lineWidth = 2;
     for (let i=0;i<3;i++){
-      g.beginPath(); g.arc(p.x-28+i*4,p.y+4,8+i*3,Math.PI*0.1,Math.PI*0.9); g.stroke();
+      const wave = new THREE.Mesh(new THREE.TorusGeometry(.3+i*.14,.02,6,20,PI), new THREE.MeshBasicMaterial({ color:0x3f8fb0, transparent:true, opacity:.5 }));
+      wave.rotation.x = -PI/2; wave.position.set(-.7+i*.1,.02,.3);
+      gp.add(wave);
     }
   }
-
-  // Label.
+  return gp;
+}
+function updateStationVisuals(t){
+  for (let i=0;i<STATIONS.length;i++){
+    const s = STATIONS[i];
+    const gp = keyedPool(STN3, i, () => stationGroup(s));
+    gp.position.set(WT(s.x), gyAt(s.x,s.y), WT(s.y));
+    gp.rotation.y = hash(i,3)*PI*2;
+  }
+  sweepPool(STN3);
+}
+/* The Pillar of Cloud & Fire: a shaft of light with rising rings, a ground
+   halo and a real light — cloud by day, fire by night. */
+const pillarG = new THREE.Group();
+const pillarShaft = new THREE.Mesh(new THREE.CylinderGeometry(.45,.7,9,10,1,true), new THREE.MeshBasicMaterial({ color:0xfff8e0, transparent:true, opacity:.3, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
+pillarShaft.position.y = 4.5;
+pillarG.add(pillarShaft);
+const pillarRings = [];
+for (let i=0;i<6;i++){
+  const ring = new THREE.Mesh(gS, new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:.2, blending:THREE.AdditiveBlending, depthWrite:false }));
+  ring.scale.set(.7,.1,.7);
+  pillarG.add(ring);
+  pillarRings.push(ring);
+}
+const pillarHalo = new THREE.Mesh(new THREE.CircleGeometry(2.2,24), new THREE.MeshBasicMaterial({ color:0xffd9a0, transparent:true, opacity:.2, blending:THREE.AdditiveBlending, depthWrite:false }));
+pillarHalo.rotation.x = -PI/2; pillarHalo.position.y = .03;
+pillarG.add(pillarHalo);
+const pillarLight = new THREE.PointLight(0xffd9a0, 0, 14);
+pillarLight.position.y = 1.2;
+pillarG.add(pillarLight);
+S3.add(pillarG);
+function updatePillar(t){
+  const s = currentStation();
+  if (!s){ pillarG.visible = false; return; }
+  pillarG.visible = true;
+  const night = state.hour >= 19 || state.hour < 5.5;
+  pillarG.position.set(WT(s.x), gyAt(s.x,s.y), WT(s.y));
+  pillarShaft.material.color.set(night ? 0xff9a40 : 0xfff8e0);
+  pillarShaft.material.opacity = night ? .38 : .26;
+  pillarHalo.material.color.set(night ? 0xff8c28 : 0xfff2cc);
+  pillarHalo.material.opacity = .16 + Math.sin(t*1.4)*.05;
+  for (let i=0;i<pillarRings.length;i++){
+    const u = ((t*.35 + i/6) % 1);
+    const ring = pillarRings[i];
+    ring.position.y = .3 + u*8;
+    const rr = (night ? .5 : .65) + i*.12 + Math.sin(t*2+i)*.1;
+    ring.scale.set(rr,.09,rr);
+    ring.material.color.set(night ? 0xffb060 : 0xffffff);
+    ring.material.opacity = (night ? .3 : .22) * (1-u);
+  }
+  pillarLight.color.set(night ? 0xff9a40 : 0xfff4d8);
+  pillarLight.intensity = (night ? 1.4 : .5) * (0.9 + Math.sin(t*7)*.1);
+}
+/* Manna flakes: small glowing diamonds that bob. */
+function updateMannaVisuals(t){
+  for (const m of manna){
+    const gp = keyedPool(MANNA3, m, () => {
+      const flake = new THREE.Mesh(gP, MG(0xffe27a));
+      flake.scale.set(.05,.07,.05);
+      flake.rotation.y = PI/4;
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(.14,12), new THREE.MeshBasicMaterial({ color:0xffe27a, transparent:true, opacity:.25, blending:THREE.AdditiveBlending, depthWrite:false }));
+      halo.rotation.x = -PI/2; halo.position.y = .015;
+      const grp = new THREE.Group();
+      grp.add(flake, halo);
+      grp.userData = { flake };
+      return grp;
+    });
+    const bob = Math.sin(t*3 + m.seed)*.015;
+    gp.position.set(WT(m.x), gyAt(m.x,m.y) + .08 + bob, WT(m.y));
+    gp.userData.flake.rotation.y = t*.8 + m.seed;
+  }
+  sweepPool(MANNA3);
+}
+/* Gathering nodes: acacias for wood, boulders for stone; spent nodes show a
+   stump or pebbles (v5 recipes). */
+function nodeGroup(n, isWood){
+  const gp = new THREE.Group();
+  const cx = 0, cz = 0, s = isWood ? 1.9 : 1.6;
+  if (isWood){
+    // Acacia (v5 tree type 4): gnarled trunk, flat umbrella crown.
+    const trunk = new THREE.Mesh(gC, M(0x6a4a2e));
+    trunk.scale.set(.05,.55,.05); trunk.position.y = .27; trunk.rotation.z = .08;
+    trunk.castShadow = true;
+    const crown = new THREE.Mesh(gS, M(0x7d9a45));
+    crown.scale.set(.42*s/1.9,.09,.38*s/1.9); crown.position.set(.03,.62,0);
+    const crown2 = new THREE.Mesh(gS, M(0x6f8a3c));
+    crown2.scale.set(.27*s/1.9,.07,.24*s/1.9); crown2.position.set(-.06,.68,.03);
+    gp.add(trunk, crown, crown2);
+    gp.userData.depleted = () => n.wood <= 0;
+    gp.userData.stump = () => {
+      const st = new THREE.Mesh(gC, M(0x6a4a2e));
+      st.scale.set(.09,.14,.09); st.position.y = .07;
+      const chip = new THREE.Mesh(gB, M(0x8a6a40));
+      chip.scale.set(.1,.03,.04); chip.position.set(.12,.015,.05); chip.rotation.y = .6;
+      return [st, chip];
+    };
+  } else {
+    // Boulder cluster (v5 rock recipe, scaled up as a gatherable node).
+    const rv = n.rv || 0;
+    if (rv === 1){
+      const slab = new THREE.Mesh(gS, M(0x8c7a66));
+      slab.scale.set(.3*s,.17,.26*s); slab.position.y = .08;
+      const slab2 = new THREE.Mesh(gS, M(0xa89478));
+      slab2.scale.set(.24*s,.14,.21*s); slab2.position.set(-.02,.13,0);
+      gp.add(slab, slab2);
+    } else if (rv === 2){
+      const b1 = new THREE.Mesh(gS, M(0x857259));
+      b1.scale.set(.16*s,.12,.13*s); b1.position.set(.2,.06,.1);
+      const b2 = new THREE.Mesh(gS, M(0x857259));
+      b2.scale.set(.14*s,.11,.12*s); b2.position.set(-.22,.055,-.08);
+      const b3 = new THREE.Mesh(gS, M(0xa89478));
+      b3.scale.set(.22*s,.18,.19*s); b3.position.set(0,.11,0);
+      const b4 = new THREE.Mesh(gS, M(0xbfae95));
+      b4.scale.set(.1,.075,.08); b4.position.set(-.06,.2,0);
+      gp.add(b1,b2,b3,b4);
+    } else if (rv === 3){
+      const s1 = new THREE.Mesh(gB, M(0x8f7c66));
+      s1.scale.set(.12,.42,.2); s1.position.set(-.12,.21,0); s1.rotation.z = .1;
+      const s2 = new THREE.Mesh(gB, M(0xa89478));
+      s2.scale.set(.1,.34,.17); s2.position.set(.12,.17,.04); s2.rotation.z = -.06;
+      gp.add(s1,s2);
+    } else {
+      const b1 = new THREE.Mesh(gB, M(0x8c7a66));
+      b1.scale.set(.3*s,.2,.24*s); b1.position.y = .09;
+      const b2 = new THREE.Mesh(gB, M(0xa89478));
+      b2.scale.set(.2*s,.13,.16*s); b2.position.set(.06,.14,.03);
+      gp.add(b1,b2);
+    }
+    gp.userData.depleted = () => n.stone <= 0;
+    gp.userData.stump = () => {
+      const parts = [];
+      for (let i=0;i<4;i++){
+        const a = i*1.9 + n.h;
+        const peb = new THREE.Mesh(gS, M(i%2 ? 0xa8977f : 0x9a8a78));
+        peb.scale.set(.03,.02,.025);
+        peb.position.set(Math.cos(a)*.07, .02, Math.sin(a)*.05);
+        parts.push(peb);
+      }
+      return parts;
+    };
+  }
+  gp.userData.base = gp.children.slice();
+  gp.userData.shown = 'full';
+  return gp;
+}
+function updateNodeVisuals(){
+  for (const n of woodNodes){
+    const gp = keyedPool(NODE3, n, () => nodeGroup(n, true));
+    updateNodeState(gp, n, WT(n.x), WT(n.y));
+  }
+  for (const n of rockNodes){
+    const gp = keyedPool(NODE3, n, () => nodeGroup(n, false));
+    updateNodeState(gp, n, WT(n.x), WT(n.y));
+  }
+  sweepPool(NODE3);
+}
+function updateNodeState(gp, n, wx, wz){
+  const u = gp.userData;
+  const want = u.depleted() ? 'spent' : 'full';
+  if (want !== u.shown){
+    while (gp.children.length) gp.remove(gp.children[0]);
+    if (want === 'spent') for (const m of u.stump()) gp.add(m);
+    else for (const m of u.base) gp.add(m);
+    u.shown = want;
+  }
+  gp.position.set(wx, gyAt(n.x,n.y), wz);
+}
+/* Camp props: market stall, campfire, crates (from decor). */
+function propGroup(d){
+  const gp = new THREE.Group();
+  if (d.kind === 'market'){
+    for (const dx of [-.42,.42]){
+      const pole = new THREE.Mesh(gC, M(0x6b4524));
+      pole.scale.set(.02,.32,.02); pole.position.set(dx,.16,0);
+      gp.add(pole);
+    }
+    for (let i=0;i<4;i++){
+      const stripe = new THREE.Mesh(gB, M(i%2 ? 0xa8482f : 0xe8b84a));
+      stripe.scale.set(.16,.02,.26);
+      stripe.position.set(-.24+i*.16,.3,-.05);
+      stripe.rotation.x = -.28;
+      gp.add(stripe);
+    }
+    const table = new THREE.Mesh(gB, M(0x7a4a24));
+    table.scale.set(.44,.06,.16); table.position.y = .12;
+    gp.add(table);
+    for (let i=0;i<5;i++){
+      const ware = new THREE.Mesh(gS, M(0xd8c9a8));
+      ware.scale.setScalar(.02); ware.position.set(-.16+i*.08,.16,0);
+      gp.add(ware);
+    }
+  } else if (d.kind === 'fire'){
+    for (const [a,b] of [[.5,-.5],[-.5,.5]]){
+      const log = new THREE.Mesh(gB, M(0x5a3a1d));
+      log.scale.set(.3,.03,.04); log.position.y = .03; log.rotation.y = a;
+      gp.add(log);
+    }
+    const flame = new THREE.Mesh(gP, MG(0xff7a1a));
+    flame.scale.set(.16,.3,.16); flame.position.y = .2;
+    const flame2 = new THREE.Mesh(gP, MG(0xffc34a));
+    flame2.scale.set(.09,.2,.09); flame2.position.y = .24;
+    gp.userData.flames = [flame, flame2];
+    gp.add(flame, flame2);
+    for (let i=0;i<4;i++){
+      const m = new THREE.Mesh(gS, new THREE.MeshBasicMaterial({ color:0xcfc4b8, transparent:true, opacity:.4 }));
+      m.position.y = .3;
+      gp.add(m);
+      smoke.push({ m, y:.3, ph:i/4, gp });
+    }
+  } else {   // crate
+    const crate = new THREE.Mesh(gB, M(0x7a4a24));
+    crate.scale.set(.12,.11,.12); crate.position.y = .055;
+    crate.rotation.y = d.h || 0;
+    const strap = new THREE.Mesh(gB, M(0xa8783c));
+    strap.scale.set(.125,.02,.03); strap.position.y = .055;
+    strap.rotation.y = d.h || 0;
+    gp.add(crate, strap);
+  }
+  return gp;
+}
+const fireLight = new THREE.PointLight(0xff9a40, 0, 8);
+S3.add(fireLight);
+function updateDecorProps(t){
+  for (const d of decor){
+    if (d.kind !== 'market' && d.kind !== 'fire' && d.kind !== 'crate') continue;
+    const gp = keyedPool(NODE3, d, () => propGroup(d));
+    gp.position.set(WT(d.x), gyAt(d.x,d.y), WT(d.y));
+    if (d.kind === 'fire' && gp.userData.flames){
+      const night = state.hour >= 19 || state.hour < 5.5;
+      const flick = 1 + Math.sin(t*12)*.12 + Math.sin(t*19)*.06;
+      gp.userData.flames[0].scale.set(.16,.3*flick,.16);
+      gp.userData.flames[1].scale.set(.09,.22*flick,.09);
+      fireLight.position.set(WT(CAMP.x+.9), gyAt(CAMP.x+.9,CAMP.y+.9)+.5, WT(CAMP.y+.9));
+      fireLight.intensity = night ? .9 + Math.sin(t*9)*.15 : .25;
+    }
+  }
+}
+/* Burning tents after a raid: emissive flames licking from the roof. */
+function updateTentFires(t){
+  for (const f of tentFires){
+    const gp = keyedPool(FIRE3, f, () => {
+      const grp = new THREE.Group();
+      const fl = new THREE.Mesh(gP, MG(0xe87424));
+      fl.scale.set(.2,.34,.2); fl.position.y = .16;
+      const fl2 = new THREE.Mesh(gP, MG(0xffc24a));
+      fl2.scale.set(.11,.24,.11); fl2.position.y = .2;
+      grp.add(fl, fl2);
+      grp.userData = { fl, fl2 };
+      return grp;
+    });
+    const u = gp.userData;
+    const flick = 1 + Math.sin(t*13 + f.phase)*.16 + Math.sin(t*21 + f.phase)*.08;
+    u.fl.scale.set(.2,.34*flick,.2);
+    u.fl2.scale.set(.11,.26*flick,.11);
+    gp.position.set(WT(f.x), gyAt(f.x,f.y), WT(f.y));
+  }
+  sweepPool(FIRE3);
+}
+/* Build ghost + layout rings + defense coverage, in-scene. */
+const ghostTile = new THREE.Mesh(new THREE.BoxGeometry(1,.05,1), new THREE.MeshBasicMaterial({ color:0xf2cc6b, transparent:true, opacity:.4 }));
+ghostTile.visible = false;
+S3.add(ghostTile);
+const pickRing = new THREE.Mesh(new THREE.RingGeometry(.36,.44,24), new THREE.MeshBasicMaterial({ color:0xf2cc6b, transparent:true, opacity:.9, side:THREE.DoubleSide }));
+pickRing.rotation.x = -PI/2; pickRing.visible = false;
+S3.add(pickRing);
+const moveRing = pickRing.clone();
+moveRing.material = pickRing.material.clone();
+moveRing.material.color.set(0x7fc4e8);
+S3.add(moveRing);
+const COV3 = new THREE.Group();
+S3.add(COV3);
+const covPool = new Map();
+function updateGhost(){
+  const editing = !!state.layoutEdit, building = !!state.buildMode;
+  COV3.visible = !!(building || editing || state.raidDefense);
+  // coverage discs
+  const want = new Set();
+  if (COV3.visible){
+    for (const st of structures){
+      if (st.kind !== 'tower' && st.kind !== 'sentry') continue;
+      want.add(st);
+      let disc = covPool.get(st);
+      if (!disc){
+        disc = new THREE.Mesh(new THREE.CircleGeometry(st.kind === 'tower' ? 5.5 : 5.0, 36), new THREE.MeshBasicMaterial({ color: st.kind === 'tower' ? 0x7fc4e8 : 0xe8b84a, transparent:true, opacity:.1, side:THREE.DoubleSide, depthWrite:false }));
+        COV3.add(disc);
+        covPool.set(st, disc);
+      }
+      disc.position.set(WT(st.x), gyAt(st.x,st.y)+.02, WT(st.y));
+    }
+  }
+  for (const [st, disc] of covPool) if (!want.has(st)){ COV3.remove(disc); covPool.delete(st); }
+  // layout editor rings
+  if (editing && state.layoutEdit.selected != null){
+    const st = structures[state.layoutEdit.selected];
+    if (st){
+      pickRing.visible = true;
+      pickRing.position.set(WT(st.x), gyAt(st.x,st.y)+.03, WT(st.y));
+    } else pickRing.visible = false;
+  } else pickRing.visible = false;
+  if (editing && state.layoutEdit.selected != null && state.mouseWorld){
+    const spot = snapStructureSpot(state.mouseWorld.x, state.mouseWorld.y);
+    const reason = layoutSpotOk(spot.x, spot.y, state.layoutEdit.selected);
+    if (reason !== state.layoutEdit.reason){
+      state.layoutEdit.reason = reason;
+      showLayoutBanner(reason);
+    }
+    moveRing.visible = true;
+    moveRing.material.color.set(reason ? 0xe0584a : 0xf2cc6b);
+    moveRing.position.set(WT(spot.x), gyAt(spot.x,spot.y)+.04, WT(spot.y));
+  } else moveRing.visible = false;
+  // build placement ghost
+  if (!editing && building && state.mouseWorld){
+    const { x, y } = state.mouseWorld;
+    const invalid = blocked(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y) > CAMP_RADIUS;
+    ghostTile.visible = true;
+    ghostTile.material.color.set(invalid ? 0xe0584a : 0xf2cc6b);
+    ghostTile.position.set(WT(x), gyAt(x,y)+.04, WT(y));
+  } else ghostTile.visible = false;
+}
+/* ---- sky: Desert Outpost keyframes anchored to the 24h game clock ---- */
+const SKY = [
+  [5.0,  0xf4c49a, 0xffd9b8, 0x8a6a50, 0xffb070, .5, .5],
+  [6.5,  0xf3dcae, 0xfff0d6, 0xb08a5a, 0xffe2b0, .9, .75],
+  [12.5, 0xf2e6c0, 0xfff6e0, 0xb89a6a, 0xfff4d8, 1, .85],
+  [17.0, 0xf0d7a4, 0xfff0d6, 0xb08a5a, 0xffd9a0, .9, .75],
+  [18.75,0xe8a070, 0xffb890, 0x6a5060, 0xff9a55, .6, .5],
+  [20.5, 0x1a2342, 0x3a4a7a, 0x1a1a2a, 0x8fa8ff, 0, .3],
+  [28.5, 0x1a2342, 0x3a4a7a, 0x1a1a2a, 0x8fa8ff, 0, .3],
+  [29.4, 0x5a4a70, 0x7a6a98, 0x2a2030, 0xffb070, 0, .38],
+  [29.99,0xf4c49a, 0xffd9b8, 0x8a6a50, 0xffb070, .5, .5]
+];
+const _c1 = new THREE.Color(), _c2 = new THREE.Color();
+function skyAt(){
+  const h = state.hour < 5 ? state.hour + 24 : state.hour;
+  let i = 0;
+  while (i < SKY.length-2 && h >= SKY[i+1][0]) i++;
+  const a = SKY[i], b = SKY[i+1], u = clamp((h-a[0])/Math.max(.001, b[0]-a[0]), 0, 1);
+  const mix = k => _c1.set(a[k]).lerp(_c2.set(b[k]), u);
+  S3.background.copy(mix(1));
+  hemi.color.copy(mix(2));
+  hemi.groundColor.copy(mix(3));
+  sunL.color.copy(mix(4));
+  hemi.intensity = a[6] + (b[6]-a[6])*u;
+  const vis = clamp((h-5.5)/1.5, 0, 1) * clamp((19.5-h)/1.5, 0, 1);
+  sunL.intensity = (a[5] + (b[5]-a[5])*u) * Math.max(0, vis);
+  const ang = clamp((h-5.5)/14, 0, 1) * PI;
+  sunL.position.set(tgt.x + Math.cos(ang)*22, 4 + Math.sin(ang)*15, tgt.z + 9);
+  sunL.target.position.set(tgt.x, 0, tgt.z);
+  sunL.target.updateMatrixWorld();
+  moonL.intensity = .34 * (h >= 20.5 ? clamp((h-20.5)/1.5, 0, 1) : h < 5 ? clamp((5-h)/1.5, 0, 1) : 0);
+}
+/* ---- flocks of sheep and goats (Desert Outpost §5.10) ---- */
+let animals = [];
+const walkable = (x,z) => inMap(x,z) && !kind[x][z] && gtype[x][z] !== 2;
+function makeAnimal(goat, r){
+  const gp = new THREE.Group();
+  const c = goat ? [0x6b4a32,0x2a2018,0xb8a58a][Math.floor(r()*3)] : 0xf1ecdc;
+  const body = new THREE.Mesh(gS, M(c));
+  body.scale.set(goat?.14:.17, goat?.09:.11, goat?.08:.1); body.position.y = .17; body.castShadow = true;
+  const head = new THREE.Mesh(gB, M(0x3a2a1c));
+  head.scale.set(.09,.08,.08); head.position.set(goat?.17:.18,.24,0);
+  gp.add(body, head);
+  for (const s of [-1,1]){
+    const l = new THREE.Mesh(gB, M(0x4a3a2c));
+    l.scale.set(.05,.1,.05); l.position.set(s*.08,.05,.03);
+    gp.add(l);
+    const l2 = l.clone(); l2.position.z = -.03;
+    gp.add(l2);
+  }
+  if (goat) for (const s of [-1,1]){
+    const horn = new THREE.Mesh(gB, M(0xd8c8a0));
+    horn.scale.set(.02,.07,.02); horn.position.set(.15,.3,s*.03); horn.rotation.z = .4;
+    gp.add(horn);
+  }
+  gp.userData.head = head;
+  gp.userData.hx = goat?.17:.18;
+  return gp;
+}
+function findWalk(cx,cz){
+  for (let rr=0;rr<8;rr++)
+    for (let i=-rr;i<=rr;i++) for (let j=-rr;j<=rr;j++)
+      if (Math.max(Math.abs(i),Math.abs(j)) === rr && walkable(cx+i,cz+j)) return [cx+i,cz+j];
+  return [cx,cz];
+}
+function spawnFlocks(){
+  for (const a of animals) FL3.remove(a.m);
+  animals = [];
+  if (!pens.length) return;
+  const r = srand(seed*13+5);
+  for (let f=0;f<4;f++){
+    const pen = pens[f % pens.length];
+    const [cx,cz] = findWalk(pen.x0+1, pen.z0 + (pen.sgn < 0 ? -2 : 3));
+    const goatFlock = r() < .45, cnt = 5 + Math.floor(r()*4);
+    const fl = { x:WT(cx), z:WT(cz), tx:WT(cx), tz:WT(cz), st:'rest', tmr:Math.random()*3,
+      next:6+Math.random()*10, last:0, drinkAt:8+Math.random()*8, pen };
+    for (let i=0;i<cnt;i++){
+      const gt = goatFlock ? r() < .8 : r() < .15;
+      const m = makeAnimal(gt, r);
+      m.position.set(fl.x + (r()-.5)*1.4, GROUND_Y, fl.z + (r()-.5)*1.4);
+      FL3.add(m);
+      animals.push({ m, fl, head:m.userData.head, hx:m.userData.hx, hd:0, lie:0, slot:i,
+        gz:r(), ox:(r()-.5)*1.6, oz:(r()-.5)*1.6, sp:.25+r()*.15, ph:r()*6 });
+    }
+  }
+}
+const HOME = new Set(['tohome','enter','sleep','leave']);
+const slotPos = (pen,i) => [WT(pen.x0+1) + ((i%4)-1.5)*.55, WT(pen.z0+.5) - pen.sgn*(((i>>2)&1)*.6-.3)];
+function moveFlocks(dt, t){
+  const seen = new Set();
+  const night = state.hour >= 20.5 || state.hour < 5 || raiders.length > 0;
+  const day = state.day;
+  for (const a of animals){
+    const fl = a.fl, pen = fl.pen;
+    if (!seen.has(fl)){
+      seen.add(fl); fl.tmr -= dt;
+      if (pen && night && !HOME.has(fl.st)){ fl.st = 'tohome'; fl.tx = WT(pen.x0+1); fl.tz = WT(pen.z0 + (pen.sgn < 0 ? -.6 : 2.6)); }
+      else if (pen && !night && fl.st === 'sleep'){ fl.st = 'leave'; fl.tx = WT(pen.x0+1); fl.tz = WT(pen.z0 + (pen.sgn < 0 ? -.6 : 2.6)); }
+      if (!night && !HOME.has(fl.st) && fl.st !== 'water' && fl.st !== 'drink' && fl.last < day && state.hour >= fl.drinkAt && state.hour < 18){
+        let best = null, bd = 1e9;
+        for (const [sx,sz] of shore){
+          if (!walkable(sx,sz)) continue;
+          const d = (WT(sx)-fl.x)**2 + (WT(sz)-fl.z)**2;
+          if (d < bd){ bd = d; best = [WT(sx), WT(sz)]; }
+        }
+        if (best){ fl.st = 'water'; fl.tx = best[0]; fl.tz = best[1]; }
+        else fl.last = day;
+      }
+      const dx = fl.tx-fl.x, dz = fl.tz-fl.z, d = Math.hypot(dx,dz);
+      const wk = (x,z) => walkable(x,z) || (HOME.has(fl.st) && inMap(x,z) && kind[x][z] === K_PEN);
+      const go = sp => {
+        const nx = fl.x + dx/d*sp*dt, nz = fl.z + dz/d*sp*dt;
+        if (wk(cellOf(nx), cellOf(nz)) && !cliffBetween(fl.x,fl.z,nx,nz)){ fl.x = nx; fl.z = nz; }
+        else if (HOME.has(fl.st) && pen){
+          fl.st = night ? 'sleep' : 'rest';
+          fl.x = WT(pen.x0+1); fl.z = WT(pen.z0+.5) - pen.sgn*.4;
+          fl.tx = fl.x; fl.tz = fl.z;
+        } else {
+          fl.tx = fl.x; fl.tz = fl.z;
+          if (fl.st === 'water'){ fl.st = 'rest'; fl.last = day; }
+        }
+      };
+      if (fl.st === 'tohome'){ if (d < .35){ fl.st = 'enter'; fl.tx = WT(pen.x0+1); fl.tz = WT(pen.z0+.5) - pen.sgn*.4; } else go(.5); }
+      else if (fl.st === 'enter'){ if (d < .3) fl.st = 'sleep'; else go(.4); }
+      else if (fl.st === 'sleep'){ }
+      else if (fl.st === 'leave'){ if (d < .35){ fl.st = 'rest'; fl.tmr = 1; fl.next = 8+Math.random()*10; } else go(.5); }
+      else if (fl.st === 'water'){ if (d < .4){ fl.st = 'drink'; fl.tmr = 6+Math.random()*3; } else go(.5); }
+      else if (fl.st === 'drink'){ if (fl.tmr <= 0){ fl.st = 'rest'; fl.last = day; fl.tmr = 1; } }
+      else if (fl.st === 'stop'){ if (fl.tmr <= 0){ fl.st = 'rest'; fl.tmr = .5; fl.next = 8+Math.random()*10; } }
+      else if (fl.st === 'rest'){
+        if (fl.tmr <= 0){
+          for (let k=0;k<12;k++){
+            const an = Math.random()*PI*2, dd = 2+Math.random()*3;
+            const nx = fl.x + Math.cos(an)*dd, nz = fl.z + Math.sin(an)*dd;
+            if (walkable(cellOf(nx), cellOf(nz))){ fl.tx = nx; fl.tz = nz; fl.st = 'move'; break; }
+          }
+          if (fl.st === 'rest') fl.tmr = 2;
+        }
+      } else {
+        fl.next -= dt;
+        if (d < .3){ fl.st = 'rest'; fl.tmr = 2+Math.random()*4; }
+        else if (fl.next <= 0){ fl.st = 'stop'; fl.tmr = 3+Math.random()*4; }
+        else go(.3);
+      }
+    }
+    const sleeping = fl.st === 'sleep';
+    const still = fl.st === 'stop' || fl.st === 'drink' || sleeping;
+    const p = a.m.position;
+    const sl = sleeping && pen ? slotPos(pen, a.slot) : null;
+    const tight = HOME.has(fl.st) ? .3 : 1;
+    const gx = sl ? sl[0] : fl.x + a.ox*tight + Math.sin(t*.4+a.ph)*.25*tight;
+    const gz = sl ? sl[1] : fl.z + a.oz*tight + Math.cos(t*.35+a.ph)*.25*tight;
+    const dx = gx-p.x, dz = gz-p.z, d = Math.hypot(dx,dz);
+    const sp = still && !sleeping ? .04 : a.sp;
+    if (d > .05){
+      const k = Math.min(sp*dt, d)/d;
+      const nx = p.x + dx*k, nz = p.z + dz*k;
+      if ((walkable(cellOf(nx),cellOf(nz)) || (HOME.has(fl.st) && inMap(cellOf(nx),cellOf(nz)) && kind[cellOf(nx)][cellOf(nz)] === K_PEN)) && !cliffBetween(p.x,p.z,nx,nz)){
+        p.x = nx; p.z = nz;
+        if (!still || sleeping) a.m.rotation.y = Math.atan2(-dz,dx);
+      }
+    }
+    a.lie += ((sleeping && d < .12 ? 1 : 0) - a.lie) * Math.min(1, dt*2);
+    a.m.scale.y = 1*(1 - .4*a.lie + (a.lie > .5 ? Math.sin(t*1.5+a.ph)*.015 : 0));
+    const graze = fl.st === 'drink' || (fl.st === 'stop' && a.gz < .6);
+    const gaze = fl.st === 'stop' && !graze;
+    const ht = a.lie > .5 ? .7 : graze ? 1 : 0;
+    a.hd += (ht - a.hd) * Math.min(1, dt*4);
+    a.head.position.set(a.hx + .03*a.hd, .24 - .13*a.hd + (gaze?.03:0), 0);
+    a.head.rotation.z = -.55*a.hd;
+    a.head.rotation.y = gaze ? Math.sin(t*1.6+a.ph)*.6 : 0;
+    p.y = gyAt(p.x,p.z) + (!still && d > .08 ? Math.abs(Math.sin(t*8+a.ph))*.02 : 0);
+  }
+}
+/* Ambient animation: flags sway, smoke rises. */
+function animateAmbient(t){
+  for (const f of flags) f.g.rotation.y = f.r0 + Math.sin(t*2.2 + f.ph)*.18;
+  for (const s of smoke){
+    const u = (t*.25 + s.ph) % 1;
+    const base = s.gp ? s.gp.position.y : s.y;
+    s.m.position.y = (s.gp ? s.y : s.y) + u*.9;
+    s.m.position.x = (s.gp ? s.gp.position.x : 0);
+    s.m.position.z = (s.gp ? s.gp.position.z : 0);
+    s.m.scale.setScalar(.08 + u*.2);
+    s.m.material.opacity = .55*(1-u);
+  }
+}
+/* Master visual update, then screen-space labels on the overlay canvas. */
+function updateEntities(dt){
+  const t = performance.now()/1000;
+  skyAt();
+  updatePeopleVisuals(t);
+  updateRaiderVisuals(t);
+  updateFoeVisuals(t);
+  updateStationVisuals(t);
+  updatePillar(t);
+  updateMannaVisuals(t);
+  updateNodeVisuals();
+  updateDecorProps(t);
+  updateTentFires(t);
+  updateGhost();
+  moveFlocks(dt, t);
+  animateAmbient(t);
+  mosesG.position.set(WT(state.player.x), gyAt(state.player.x,state.player.y), WT(state.player.y));
+  mosesG.rotation.y = settledYaw() + PI;
+}
+/* Overlay labels projected from the 3D camera. */
+function drawLabels(){
+  const t = performance.now()/1000;
+  // The Tabernacle name floats above the court.
+  if (tabLabel){
+    const p = W2S(tabLabel.tx, tabLabel.ty);
+    if (p.x > -80 && p.x < W+80 && p.y > -40 && p.y < H+40){
+      g.fillStyle = 'rgba(20,12,7,.78)';
+      g.fillRect(p.x-46, p.y-62, 92, 14);
+      g.fillStyle = '#f2cc6b';
+      g.font = '700 10px Cinzel, Georgia, serif';
+      g.textAlign = 'center';
+      g.fillText('THE TABERNACLE', p.x, p.y-52);
+    }
+  }
+  // Station name labels.
   g.font = '600 10.5px Cinzel, Georgia, serif';
   g.textAlign = 'center';
-  const label = s.name;
-  const y = p.y-46;
-  g.fillStyle = 'rgba(20,12,7,.72)';
-  const w = g.measureText(label).width + 14;
-  g.fillRect(p.x-w/2,y-10,w,14);
-  g.strokeStyle = active ? '#e8b84a' : 'rgba(232,184,74,.24)';
-  g.lineWidth = 1; g.strokeRect(p.x-w/2,y-10,w,14);
-  g.fillStyle = visited ? '#9dbb74' : active ? '#f6e9d0' : '#cbb894';
-  g.fillText(label, p.x, y);
-  if (visited){
-    g.fillStyle = '#9dbb74';
-    g.beginPath(); g.arc(p.x+w/2-5,y-3,2.4,0,6.28); g.fill();
+  for (let i=0;i<STATIONS.length;i++){
+    const s = STATIONS[i];
+    const p = W2S(s.x, s.y);
+    if (p.x < -120 || p.x > W+120 || p.y < -60 || p.y > H+40) continue;
+    const active = state.stationIndex === i, visited = state.visited.has(i);
+    const w = g.measureText(s.name).width + 14;
+    g.fillStyle = 'rgba(20,12,7,.72)';
+    g.fillRect(p.x-w/2, p.y-56, w, 14);
+    g.strokeStyle = active ? '#e8b84a' : 'rgba(232,184,74,.24)';
+    g.lineWidth = 1;
+    g.strokeRect(p.x-w/2, p.y-56, w, 14);
+    g.fillStyle = visited ? '#9dbb74' : active ? '#f6e9d0' : '#cbb894';
+    g.fillText(s.name, p.x, p.y-46);
+    if (visited){
+      g.fillStyle = '#9dbb74';
+      g.beginPath(); g.arc(p.x+w/2-5, p.y-49, 2.4, 0, 6.28); g.fill();
+    }
+  }
+  // Gathering node counters.
+  g.font = '700 9px Georgia, serif';
+  for (const n of woodNodes){
+    if (n.wood <= 0) continue;
+    const p = W2S(n.x, n.y);
+    if (p.x < -40 || p.x > W+40 || p.y < -30 || p.y > H+30) continue;
+    g.fillStyle = 'rgba(20,12,7,.65)';
+    g.fillRect(p.x-17, p.y-52, 34, 11);
+    g.fillStyle = '#c99a5a';
+    g.fillText(`${n.wood} wood`, p.x, p.y-44);
+  }
+  for (const n of rockNodes){
+    if (n.stone <= 0) continue;
+    const p = W2S(n.x, n.y);
+    if (p.x < -40 || p.x > W+40 || p.y < -30 || p.y > H+30) continue;
+    g.fillStyle = 'rgba(20,12,7,.65)';
+    g.fillRect(p.x-19, p.y-40, 38, 11);
+    g.fillStyle = '#cbb8a0';
+    g.fillText(`${n.stone} stone`, p.x, p.y-32);
+  }
+  // Foe camps: warning ring and name.
+  for (const c of foeCamps){
+    const foe = FOES[c.id];
+    if (!foe) continue;
+    const p = W2S(c.x, c.y);
+    if (p.x < -90 || p.x > W+90 || p.y < -70 || p.y > H+50) continue;
+    const pulse = 0.5 + 0.5*Math.sin(t*3 + c.phase);
+    g.strokeStyle = `rgba(224,88,74,${0.35+0.35*pulse})`;
+    g.lineWidth = 2;
+    g.beginPath(); g.ellipse(p.x, p.y+2, 26+4*pulse, 11+2*pulse, 0, 0, PI*2); g.stroke();
+    g.fillStyle = 'rgba(20,10,8,.75)';
+    g.fillRect(p.x-52, p.y-56, 104, 13);
+    g.fillStyle = '#ff9a86';
+    g.font = '700 9.5px Georgia, serif';
+    g.fillText(foe.name.toUpperCase(), p.x, p.y-47);
+  }
+  // Raider markers: alert ring, exclamation, health bar.
+  for (const r of raiders){
+    const p = W2S(r.x, r.y);
+    if (p.x < -40 || p.x > W+40 || p.y < -60 || p.y > H+40) continue;
+    const pulse = 0.55 + 0.45*Math.sin(t*6 + (r.phase || 0));
+    g.strokeStyle = `rgba(224,88,74,${0.45+0.35*pulse})`;
+    g.lineWidth = 2;
+    g.beginPath(); g.ellipse(p.x, p.y+1, 11, 5, 0, 0, PI*2); g.stroke();
+    g.fillStyle = '#e0584a';
+    g.beginPath();
+    g.moveTo(p.x, p.y-42); g.lineTo(p.x+6, p.y-35); g.lineTo(p.x, p.y-28); g.lineTo(p.x-6, p.y-35);
+    g.closePath(); g.fill();
+    g.fillStyle = '#fff6ef';
+    g.font = '700 9px Georgia, serif';
+    g.textAlign = 'center';
+    g.fillText('!', p.x, p.y-31);
+    const w = 18, hpk = clamp(r.hp/(r.maxHp||100), 0, 1);
+    g.fillStyle = 'rgba(20,10,8,.8)';
+    g.fillRect(p.x-w/2, p.y-24, w, 3);
+    g.fillStyle = hpk > 0.5 ? '#e0a24a' : '#e0584a';
+    g.fillRect(p.x-w/2, p.y-24, w*hpk, 3);
   }
 }
-
-function drawPillarBase(s,t){
-  const p = W2S(s.x,s.y);
-  const night = state.hour >= 19 || state.hour < 5.5;
-  const h = 104 + Math.sin(t*1.2)*4;
-  g.globalCompositeOperation = 'lighter';
-
-  const grd = g.createLinearGradient(p.x, p.y, p.x, p.y-h);
-  if (night){
-    grd.addColorStop(0,'rgba(255,120,30,.55)');
-    grd.addColorStop(0.35,'rgba(255,160,50,.35)');
-    grd.addColorStop(1,'rgba(255,80,20,0)');
-  } else {
-    grd.addColorStop(0,'rgba(255,255,240,.48)');
-    grd.addColorStop(0.55,'rgba(230,245,255,.24)');
-    grd.addColorStop(1,'rgba(220,240,255,0)');
-  }
-  g.fillStyle = grd;
-  g.fillRect(p.x-9, p.y-h, 18, h);
-
-  for (let i=0;i<6;i++){
-    const yy = p.y - 12 - i*16 - Math.sin(t*1.4+i)*3;
-    const r = (night ? 6 : 8) + i*1.2 + Math.sin(t*2+i)*1.5;
-    g.fillStyle = night ? `rgba(255,${120+i*12},40,${0.16-i*0.018})` : `rgba(255,255,245,${0.20-i*0.022})`;
-    g.beginPath(); g.arc(p.x + Math.sin(t+i)*3, yy, r, 0, 6.28); g.fill();
-  }
-  if (night){
-    g.fillStyle = 'rgba(255,210,120,.9)';
-    g.beginPath(); g.arc(p.x, p.y-10, 4.5+Math.sin(t*9)*1.2, 0, 6.28); g.fill();
-  }
-  g.globalCompositeOperation = 'source-over';
-}
-
-function applyDayTint(){
-  const h = state.hour;
-  let tint = 0;
-  if (h >= 21 || h < 4.5) tint = 0.58;
-  else if (h >= 18) tint = (h-18)/3*0.58;
-  else if (h >= 4.5 && h < 7) tint = (7-h)/2.5*0.58;
-  else if (h >= 17) tint = (h-17)/1*0.12;
-  if (tint <= 0.01) return;
-  g.globalCompositeOperation = 'multiply';
-  const k = tint/0.58;
-  g.fillStyle = `rgb(${Math.round(255-k*185)},${Math.round(255-k*172)},${Math.round(255-k*112)})`;
-  g.fillRect(0,0,W,H);
-  g.globalCompositeOperation = 'source-over';
-}
-
 function drawPops(){
   if (!pops.length) return;
   g.textAlign = 'center';
@@ -8409,81 +8352,30 @@ function drawParticles(){
   g.globalCompositeOperation = 'source-over';
 }
 
-/* One full world pass with the given camera quarter and its ground bitmap.
-   Callers own the transform, the clear and the backdrop. */
-function renderWorld(rot, groundCanvas){
-  const savedRot = view.rot, savedCanvas = terrainCanvas;
-  view.rot = rot;
-  terrainCanvas = groundCanvas;
-  g.save();
-  applyViewTransform();
-  drawBackdrop();
-  drawTerrain();
-  drawWater();
-  drawGroundHalo();
-  drawDefenseCoverage();
-  drawEntities();
-  drawBuildGhost();
+/* One full frame: the camera tracks Moses through the 3D world, a queued
+   rebuild re-draws every piece from the grids after an edit, then the 2D
+   overlay canvas paints screen-space feedback above the scene. */
+function draw(dt = 0){
+  const px = WT(state.player.x), pz = WT(state.player.y);
+  const k = Math.min(1, dt*5 || .12);
+  tgt.x += (px + camX - tgt.x)*k;
+  tgt.z += (pz + camY - tgt.z)*k;
+  const m = N/2;
+  tgt.x = clamp(tgt.x, -m, m);
+  tgt.z = clamp(tgt.z, -m, m);
+  if (gridDirty){ gridDirty = false; syncGrid(); build(); }
+  updateEntities(state.mode === 'playing' ? dt : 0);
+  cam3(dt);
+  R3.render(S3, CAM);
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.clearRect(0,0,W,H);
   const tNow = performance.now()/1000;
-  const s = currentStation();
-  if (s) drawPillarBase(s, tNow);
   drawFx(tNow);
   drawTutorialHint(tNow);
   drawFlights();
+  drawLabels();
   drawPops();
   drawParticles();
-  g.restore();
-  view.rot = savedRot;
-  terrainCanvas = savedCanvas;
-}
-
-function draw(dt = 0){
-  const p = state.player;
-  const psx = (p.x-p.y)*HW;
-  const psy = (p.x+p.y)*HH - groundElev(p.x,p.y);
-  camX += (psx-camX)*0.12;
-  camY += (psy-camY)*0.12;
-  ox = W/2 - camX;
-  oy = H/2 - camY;
-
-  g.setTransform(DPR,0,0,DPR,0,0);
-  g.clearRect(0,0,W,H);
-
-  // The whole world (terrain bitmap and entities) is drawn through the
-  // view transform; full-screen overlays stay untransformed.
-  if (view.trans){
-    const tr = view.trans;
-    tr.t += dt;
-    const p = clamp(tr.t/tr.dur, 0, 1);
-    const eased = 1 - Math.pow(1-p, 3);
-    const r = eased * tr.r1;
-    // Old camera under the wipe.
-    renderWorld(tr.from, tr.canvasOld);
-    // New camera through the growing circle.
-    if (!transCanvas || transCanvas.width !== cv.width || transCanvas.height !== cv.height){
-      transCanvas = document.createElement('canvas');
-      transCanvas.width = cv.width; transCanvas.height = cv.height;
-      transCtx = transCanvas.getContext('2d');
-    }
-    transCtx.setTransform(1,0,0,1,0,0);
-    transCtx.clearRect(0,0,transCanvas.width,transCanvas.height);
-    const saved = g;
-    g = transCtx;
-    g.setTransform(DPR,0,0,DPR,0,0);
-    renderWorld(tr.to, tr.canvasNew);
-    g = saved;
-    g.save();
-    g.beginPath();
-    g.arc(tr.cx, tr.cy, r, 0, Math.PI*2);
-    g.clip();
-    g.drawImage(transCanvas, 0, 0, W, H);
-    g.restore();
-    if (p >= 1) view.trans = null;
-  } else {
-    renderWorld(view.rot, terrainCanvas);
-  }
-  applyDayTint();
-
   if (state.mode === 'menu' || state.mode === 'station' || state.mode === 'market' || state.mode === 'map' || state.mode === 'paused' || state.mode === 'about' || state.mode === 'credits' || state.mode === 'camp' || state.mode === 'report' || state.mode === 'event' || state.mode === 'raid' || state.mode === 'end'){
     g.fillStyle = 'rgba(14,9,5,.30)';
     g.fillRect(0,0,W,H);
@@ -8617,9 +8509,10 @@ function drawMap(){
   for (let x=0;x<N;x++) for (let y=0;y<N;y++){
     if (!state.explored.has(x*100+y)) continue;
     let col = '#cdb07a';
-    if (WATER[x][y]) col = '#679ab0';
-    else if (HT[x][y] > 0) col = '#a98b6a';
-    else if (TRAIL[x][y]) col = '#dcc490';
+    if (gtype[x][y] === 2) col = '#679ab0';
+    else if (kind[x][y] === K_TAB) col = '#e8dcbe';
+    else if (ter[x][y] >= 2) col = '#a98b6a';
+    else if (ter[x][y] === 1) col = '#c2a478';
     mg.fillStyle = col;
     mg.fillRect(mx(x),my(y),scale+0.5,scale+0.5);
   }
@@ -8837,10 +8730,12 @@ let dragStart = null, dragMoved = false, dragLast = null;
 /* Drag pans the camera (the Desert Outpost style): any drag over 6px moves
    the view and suppresses the click, so building and walking still work. */
 function panView(dx,dy){
-  const k = 1/(view.zoom || 1);
-  camX -= dx*k;
-  camY -= dy*k;
-  const lim = (N+2)*HW;
+  const s = 2*(9.5/zoom3)/Math.max(1,H);
+  const rx = Math.sin(yaw), rz = -Math.cos(yaw);
+  const fx = -Math.cos(yaw), fz = -Math.sin(yaw);
+  camX += -rx*dx*s + fx*dy*s/.577;
+  camY += -rz*dx*s + fz*dy*s/.577;
+  const lim = N/2;
   camX = clamp(camX, -lim, lim);
   camY = clamp(camY, -lim, lim);
 }
@@ -9167,10 +9062,6 @@ function frame(ts){
   syncScreenWake();
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts;
-  // Smooth the isometric view toward its target yaw and zoom.
-  /* Camera turns are instant switches revealed by the circle wipe; no
-     continuous animation state to settle. */
-  view.zoom += (view.zoomT - view.zoom) * Math.min(1, dt*11);
   if (state.mode === 'playing') update(dt);
   else updatePeople(dt * 0.5);
   if (state.mode === 'map') drawMap();
@@ -9186,11 +9077,12 @@ function boot(){
   loadAppSettings();
   buildTerrain();
   buildDecor();
-  terrainCanvas = buildTerrainCanvas();
+  syncGrid();
+  build();
   state.explored = new Set();
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
-  camX = (CAMP.x-CAMP.y)*HW;
-  camY = (CAMP.x+CAMP.y)*HH;
+  camX = 0;
+  camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   renderLog();
   renderTribeStats();
