@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pillar of Fire</title>
+<style>
+:root{--panel:rgba(14,16,24,.8);--fg:#e8ecf4;--mut:#9aa3b5;--ac:#ff8a2a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0;height:100%;color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;background:#05070f}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+canvas.gl{position:fixed;inset:0;display:block;touch-action:none;z-index:1}
+#ui{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--panel);backdrop-filter:blur(8px);border-radius:12px;padding:12px 14px;width:220px;font-size:13px;z-index:2}
+#ui label{display:flex;justify-content:space-between;margin-top:8px;color:var(--mut)}
+#ui input[type=range]{width:100%;accent-color:var(--ac)}
+#ui button{margin-top:10px;width:100%;padding:7px;border:0;border-radius:8px;background:#2c2f38;color:var(--fg);font-weight:600;cursor:pointer}
+#ui button.on{background:var(--ac);color:#1a1006}
+#hint{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;color:var(--mut);font-size:12px;pointer-events:none;z-index:2}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="hint">Drag to rotate · scroll to zoom</div>
+<div id="ui">
+  <label>Fire <span id="vi">1.0</span></label><input id="i" type="range" min="0.3" max="1.8" step="0.05" value="1">
+  <label>Height <span id="vh">1.0</span></label><input id="h" type="range" min="0.5" max="1.5" step="0.05" value="1">
+  <label>Smoke <span id="vs">1.0</span></label><input id="s" type="range" min="0" max="2" step="0.05" value="1">
+  <button id="rot" class="on">Auto-rotate</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ---------- background sky ----------
+const bgc=document.getElementById('bg'),bx=bgc.getContext('2d');let stars=[];
+for(let i=0;i<300;i++)stars.push([Math.random(),Math.random()*.85,Math.random()*1.3+.2,Math.random()*.7+.2]);
+function drawBg(){bgc.width=innerWidth;bgc.height=innerHeight;const w=bgc.width,h=bgc.height;
+  const g=bx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#03050d');g.addColorStop(.6,'#0b0d1c');g.addColorStop(1,'#1c0f0d');bx.fillStyle=g;bx.fillRect(0,0,w,h);
+  const r=bx.createRadialGradient(w/2,h*.55,0,w/2,h*.55,h*.7);r.addColorStop(0,'rgba(255,110,30,.28)');r.addColorStop(1,'rgba(255,110,30,0)');bx.fillStyle=r;bx.fillRect(0,0,w,h);
+  stars.forEach(s=>{bx.fillStyle=`rgba(255,244,225,${s[3]})`;bx.beginPath();bx.arc(s[0]*w,s[1]*h,s[2],0,6.3);bx.fill()})}
+
+// ---------- renderer ----------
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true});
+R.domElement.className='gl';R.setPixelRatio(Math.min(devicePixelRatio,2));
+R.shadowMap.enabled=true;document.body.appendChild(R.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,-60,90);
+let zoom=1,ang=Math.PI/4,auto=true;const TGT=new THREE.Vector3(0,4.5,0);
+function placeCam(){const d=26,e=Math.atan(1/Math.SQRT2);cam.position.set(TGT.x+Math.cos(ang)*d*Math.cos(e),TGT.y+d*Math.sin(e),TGT.z+Math.sin(ang)*d*Math.cos(e));cam.lookAt(TGT)}
+function resize(){const w=innerWidth,h=innerHeight,a=w/h,s=10.5/zoom*(a<1?1/(a*1.1):1);R.setSize(w,h);cam.left=-s*a;cam.right=s*a;cam.top=s;cam.bottom=-s;cam.updateProjectionMatrix();drawBg()}
+addEventListener('resize',resize);
+
+// ---------- lights ----------
+scene.add(new THREE.AmbientLight(0x2a3466,.7));
+const moon=new THREE.DirectionalLight(0x7e92d8,.35);moon.position.set(-8,14,6);scene.add(moon);
+const fl=new THREE.PointLight(0xff8a30,3.6,32,1.3);fl.position.set(0,2.4,0);fl.castShadow=true;fl.shadow.mapSize.set(1024,1024);fl.shadow.camera.far=32;fl.shadow.bias=-.003;scene.add(fl);
+const fl2=new THREE.PointLight(0xffb060,2,30,1.3);fl2.position.set(0,9,0);scene.add(fl2);
+
+// ---------- ground ----------
+function dirtTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#6b5034';x.fillRect(0,0,128,128);
+ for(let i=0;i<1000;i++){const v=50+Math.random()*60|0;x.fillStyle=`rgba(${v+50},${v+25},${v-5},.45)`;x.fillRect(Math.random()*128,Math.random()*128,2+Math.random()*4,2+Math.random()*4)}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(10,10);return t}
+function radialAlpha(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'#fff');g.addColorStop(.62,'#fff');g.addColorStop(.98,'#000');g.addColorStop(1,'#000');x.fillStyle=g;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)}
+const ground=new THREE.Mesh(new THREE.CircleGeometry(28,48),new THREE.MeshLambertMaterial({map:dirtTex(),alphaMap:radialAlpha(),transparent:true}));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const rock=new THREE.MeshLambertMaterial({color:0x5a5248,flatShading:true});
+for(let i=0;i<40;i++){const s=.15+Math.random()*.45,m=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),rock),a=Math.random()*6.28,d=3.5+Math.random()*17;
+  m.position.set(Math.cos(a)*d,s*.4,Math.sin(a)*d);m.rotation.set(Math.random()*3,Math.random()*3,0);m.castShadow=m.receiveShadow=true;scene.add(m)}
+const mt=new THREE.MeshLambertMaterial({color:0x2a2018,flatShading:true});
+for(let i=0;i<14;i++){const a=i/14*6.28+Math.random()*.3,d=21+Math.random()*3,h=3+Math.random()*4,m=new THREE.Mesh(new THREE.ConeGeometry(3.5+Math.random()*3,h,5),mt);
+  m.position.set(Math.cos(a)*d,h/2-.3,Math.sin(a)*d);m.rotation.y=Math.random()*6;scene.add(m)}
+
+// ---------- altar ----------
+const stone=new THREE.MeshLambertMaterial({color:0x6e655a,flatShading:true});
+const altar=new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.3,.7,16),new THREE.MeshLambertMaterial({color:0x2a211a,flatShading:true}));altar.position.y=.35;altar.castShadow=altar.receiveShadow=true;scene.add(altar);
+for(let L=0;L<2;L++)for(let i=0;i<14;i++){const a=i/14*6.28+L*.22,b=new THREE.Mesh(new THREE.BoxGeometry(.95,.36,.7),stone);
+  b.position.set(Math.cos(a)*2.2,.18+L*.36,Math.sin(a)*2.2);b.rotation.y=-a;b.castShadow=true;scene.add(b)}
+const coals=[];
+for(let i=0;i<12;i++){const c=new THREE.Mesh(new THREE.IcosahedronGeometry(.2+Math.random()*.12,0),new THREE.MeshBasicMaterial({color:0xff4010})),a=Math.random()*6.28,r=Math.random()*1.4;
+  c.position.set(Math.cos(a)*r,.72,Math.sin(a)*r);c.rotation.set(Math.random()*3,Math.random()*3,0);scene.add(c);coals.push(c)}
+
+// ---------- tent camp (instanced) ----------
+const tg=new THREE.ConeGeometry(.85,1.1,4);tg.translate(0,.55,0);tg.rotateY(Math.PI/4);
+const items=[];
+[4.8,6.6,8.4,10.2,12,13.8].forEach((r,ri)=>{const n=Math.floor(6.28*r/1.9);for(let i=0;i<n;i++){const a=i/n*6.28+(ri%2)*.15+(Math.random()-.5)*.1,d=r+(Math.random()-.5)*.5;
+  items.push({x:Math.cos(a)*d,z:Math.sin(a)*d,ry:-a+Math.PI/4+(Math.random()-.5)*.4,sc:.8+Math.random()*.45,k:Math.random()<.5?0:1})}});
+const dummy=new THREE.Object3D();
+[0x2b1e16,0x3d2b1f].forEach((col,k)=>{const list=items.filter(t=>t.k===k),im=new THREE.InstancedMesh(tg,new THREE.MeshLambertMaterial({color:col,flatShading:true}),list.length);
+  list.forEach((t,i)=>{dummy.position.set(t.x,0,t.z);dummy.rotation.set(0,t.ry,0);dummy.scale.set(t.sc,t.sc*(.85+Math.random()*.3),t.sc);dummy.updateMatrix();im.setMatrixAt(i,dummy.matrix)});
+  im.castShadow=im.receiveShadow=true;scene.add(im)});
+
+// ---------- textures ----------
+function blob(stops,noise){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
+  const g=x.createRadialGradient(32,32,0,32,32,32);stops.forEach(s=>g.addColorStop(s[0],s[1]));x.fillStyle=g;x.fillRect(0,0,64,64);
+  if(noise)for(let i=0;i<5;i++){const px=14+Math.random()*36,py=14+Math.random()*36,gg=x.createRadialGradient(px,py,0,px,py,14);gg.addColorStop(0,'rgba(255,255,255,.35)');gg.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gg;x.fillRect(0,0,64,64)}
+  return new THREE.CanvasTexture(c)}
+const fireTex=blob([[0,'rgba(255,255,255,1)'],[.35,'rgba(255,255,255,.55)'],[1,'rgba(255,255,255,0)']]);
+const dotTex=blob([[0,'rgba(255,255,255,1)'],[.55,'rgba(255,255,255,.9)'],[.7,'rgba(255,255,255,.2)'],[1,'rgba(255,255,255,0)']]);
+const smokeTex=blob([[0,'rgba(255,255,255,.9)'],[.5,'rgba(255,255,255,.4)'],[1,'rgba(255,255,255,0)']],true);
+
+// camp lamps
+const lp=[];items.filter(()=>Math.random()<.3).forEach(t=>lp.push(t.x+(Math.random()-.5)*.6,.35,t.z+(Math.random()-.5)*.6));
+const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
+scene.add(new THREE.Points(lg,new THREE.PointsMaterial({map:dotTex,size:6,sizeAttenuation:false,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffa040})));
+
+// ---------- the pillar (shader flame shells) ----------
+const uT={value:0};
+const VS=`uniform float uTime,uH;varying vec3 vPos;varying vec3 vN;varying float vH;
+void main(){vec3 p=position;float h=p.y/uH;
+ p.x+=(sin(p.y*.5+uTime*1.3)*.28+sin(p.y*1.3-uTime*2.1)*.1)*h;p.z+=cos(p.y*.45+uTime*1.1)*.28*h;
+ vPos=p;vH=h;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`;
+const FS=`uniform float uTime,uInt,uRim,uSeed;varying vec3 vPos;varying vec3 vN;varying float vH;
+float hash(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float noise(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(hash(i),hash(i+vec3(1.,0.,0.)),f.x),mix(hash(i+vec3(0.,1.,0.)),hash(i+vec3(1.,1.,0.)),f.x),f.y),
+            mix(mix(hash(i+vec3(0.,0.,1.)),hash(i+vec3(1.,0.,1.)),f.x),mix(hash(i+vec3(0.,1.,1.)),hash(i+vec3(1.,1.,1.)),f.x),f.y),f.z);}
+float fbm(vec3 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=.5;}return v;}
+void main(){float h=vH;float tw=h*5.+uTime*.6+uSeed;float c=cos(tw),s=sin(tw);
+ vec2 q=mat2(c,-s,s,c)*vPos.xz;
+ float n=fbm(vec3(q*1.3,vPos.y*.3-uTime*1.9+uSeed*3.));
+ float rim=pow(abs(vN.z),uRim);
+ float top=1.-smoothstep(.5,1.,h+(n-.5)*.5);float bot=smoothstep(0.,.04,h);
+ float a=(n*1.5-.1)*rim*top*bot*uInt;
+ vec3 col=mix(vec3(.6,.05,0.),vec3(1.,.4,.05),smoothstep(.1,.5,a));
+ col=mix(col,vec3(1.,.85,.35),smoothstep(.45,.85,a));col=mix(col,vec3(1.,1.,.85),smoothstep(.85,1.3,a));
+ gl_FragColor=vec4(col,clamp(smoothstep(.04,.55,a),0.,1.));}`;
+const H=14,pillar=new THREE.Group();pillar.position.y=.7;scene.add(pillar);
+const shells=[];
+[[1.9,.55,1.6,0],[1.0,1.15,1.2,3.1],[.55,1.5,1.0,6.3]].forEach(([Rr,int,rim,seed])=>{
+  const pts=[];for(let i=0;i<=30;i++){const h=i/30;pts.push(new THREE.Vector2(Rr*(.5+1.0*Math.pow(1-h,3.5)+.12*Math.sin(h*7))*(h>.9?1-(h-.9)*4:1),h*H))}
+  const m=new THREE.ShaderMaterial({uniforms:{uTime:uT,uH:{value:H},uInt:{value:int},uRim:{value:rim},uSeed:{value:seed}},vertexShader:VS,fragmentShader:FS,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  m.userData.base=int;pillar.add(new THREE.Mesh(new THREE.LatheGeometry(pts,28),m));shells.push(m)});
+const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:fireTex,color:0xff7a20,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:.55}));
+glow.scale.set(14,14,1);glow.position.y=2.5;scene.add(glow);
+
+// ---------- particles ----------
+const P=[];
+function mk(type,n){for(let i=0;i<n;i++){
+  const m=new THREE.SpriteMaterial({map:type==='smoke'?smokeTex:type==='spark'?dotTex:fireTex,transparent:true,depthWrite:false,blending:type==='smoke'?THREE.NormalBlending:THREE.AdditiveBlending,opacity:0});
+  const s=new THREE.Sprite(m);s.visible=false;scene.add(s);P.push({s,type,age:1e9,life:1,v:new THREE.Vector3(),seed:Math.random()*100,size:1,ang:0,rad:0,w:0})}}
+mk('smoke',55);mk('base',70);mk('spark',150);
+const ctl={i:1,h:1,s:1};
+[['i','vi'],['h','vh'],['s','vs']].forEach(([k,v])=>{const e=document.getElementById(k);e.oninput=()=>{ctl[k]=+e.value;document.getElementById(v).textContent=(+e.value).toFixed(1)}});
+const rb=document.getElementById('rot');rb.onclick=()=>{auto=!auto;rb.classList.toggle('on',auto)};
+function spawn(p){const a=Math.random()*6.28;
+  if(p.type==='base'){const r=.5+Math.random()*1.1;p.s.position.set(Math.cos(a)*r,.9,Math.sin(a)*r);p.v.set(Math.cos(a)*(.4+Math.random()*.8),1.6+Math.random()*1.2,Math.sin(a)*(.4+Math.random()*.8));p.life=.9+Math.random()*.9;p.size=1.4+Math.random()*1}
+  else if(p.type==='smoke'){const r=Math.random()*.8;p.s.position.set(Math.cos(a)*r,(11+Math.random()*3)*ctl.h,Math.sin(a)*r);p.v.set((Math.random()-.5)*.4,.5+Math.random()*.5,(Math.random()-.5)*.4);p.life=6+Math.random()*4;p.size=2.4+Math.random()*1.4}
+  else{p.ang=a;p.rad=.4+Math.random()*1.1;p.s.position.set(Math.cos(a)*p.rad,.9,Math.sin(a)*p.rad);p.v.set(0,3+Math.random()*4,0);p.w=(Math.random()<.5?1:-1)*(.4+Math.random()*1.2);p.life=3+Math.random()*3.5;p.size=.08+Math.random()*.12}
+  p.age=0}
+const cA=new THREE.Color(1,.92,.55),cB=new THREE.Color(1,.5,.1),cC=new THREE.Color(.55,.06,0),tmp=new THREE.Color();
+let last=performance.now(),T=0;
+function tick(now){
+  const dt=Math.min((now-last)/1000,.05);last=now;T+=dt;uT.value=T;
+  if(auto)ang+=dt*.12;placeCam();
+  pillar.scale.y=ctl.h;shells.forEach(m=>m.uniforms.uInt.value=m.userData.base*ctl.i);
+  for(const p of P){
+    const rate=p.type==='smoke'?ctl.s*.9:p.type==='base'?ctl.i*4:ctl.i*1.6;
+    if(p.age>p.life){if(Math.random()<dt*rate)spawn(p);else{p.s.visible=false;continue}}
+    p.age+=dt;const t=p.age/p.life,m=p.s.material;p.s.visible=true;
+    if(p.type==='spark'){p.ang+=p.w*dt;p.rad+=dt*(.1+t*.7);p.s.position.set(Math.cos(p.ang)*p.rad,p.s.position.y+p.v.y*dt*Math.sqrt(ctl.h),Math.sin(p.ang)*p.rad);
+      m.color.setRGB(1,.65-.3*t,.2);m.opacity=(1-t)*(.6+.4*Math.sin(T*15+p.seed));p.s.scale.set(p.size,p.size,1)}
+    else if(p.type==='base'){p.s.position.addScaledVector(p.v,dt);
+      tmp.copy(t<.3?cA.clone().lerp(cB,t/.3):cB.clone().lerp(cC,(t-.3)/.7));m.color.copy(tmp);m.opacity=Math.min(1,(1-t)*1.5)*.6*Math.min(1,ctl.i);const sc=p.size*(1+t*.4);p.s.scale.set(sc,sc*1.3,1)}
+    else{p.s.position.addScaledVector(p.v,dt);const k=Math.min(1,t*1.5);m.color.setRGB(.34-.24*k,.18-.1*k,.12-.02*k);
+      m.opacity=Math.sin(Math.min(t*3,1)*Math.PI/2)*(1-t)*.4;const sc=p.size*(1+t*2.6);p.s.scale.set(sc,sc,1)}
+  }
+  const f=.85+Math.sin(T*11)*.1+Math.sin(T*23.3)*.07+Math.random()*.06;
+  fl.intensity=3.6*f*ctl.i;fl2.intensity=2*f*ctl.i;fl2.position.y=9*ctl.h;
+  glow.material.opacity=.45*f*Math.min(1.3,ctl.i);glow.scale.setScalar(13+f*2);
+  coals.forEach((c,i)=>c.material.color.setRGB(1,.14+.2*Math.sin(T*3+i*1.7)**2,.04));
+  R.render(scene,cam);requestAnimationFrame(tick)}
+let dn=false,lx=0;
+R.domElement.addEventListener('pointerdown',e=>{dn=true;lx=e.clientX;auto=false;rb.classList.remove('on')});
+addEventListener('pointerup',()=>dn=false);
+addEventListener('pointermove',e=>{if(dn){ang-=(e.clientX-lx)*.01;lx=e.clientX}});
+R.domElement.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.min(2.2,Math.max(.6,zoom*(e.deltaY>0?.93:1.07)));resize()},{passive:false});
+resize();placeCam();requestAnimationFrame(tick);
+</script>
+</body>
+</html>

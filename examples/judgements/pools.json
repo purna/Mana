@@ -1,0 +1,45 @@
+{
+  "people": {
+    "man": {
+      "g": "m",
+      "items": [
+        "Simeon","Asher","Jonathan","Malachi","Nadab","Caleb","Micah","Elihu","Reuben","Joab","Baruch","Eliab",
+        "Hanan","Obadiah","Gershom","Shimei","Zebulun","Amos","Heber","Jair","Kenaz","Lemuel","Nahshon","Othniel",
+        "Palti","Raphu","Sheva","Tobiah","Uriel","Zimri","Abiel","Barak","Eli","Gad","Hosea","Ithamar","Jesse",
+        "Kelub","Mattan","Nethaneel","Omri","Pedahel","Rimmon","Shobal","Talmai","Uzzi","Zadok","Ahiam","Boaz",
+        "Ehud","Gera","Hushai","Ira","Jether","Mered","Naaman","Obed","Padon","Seraiah","Zerah"
+      ]
+    },
+    "woman": {
+      "g": "f",
+      "items": [
+        "Hannah","Miriam","Tamar","Naomi","Milcah","Hoglah","Tirzah","Adah","Jemimah","Zillah","Abigail",
+        "Shiphrah","Ruth","Bilhah","Orpah","Keturah","Abital","Dinah","Mahlah","Hodesh","Jerioth","Zibiah"
+      ]
+    }
+  },
+
+  "lists": {
+    "town": [
+      "Beth-Horon","Shiloh","Beersheba","Tekoa","Anathoth","Beth-Shemesh","Mizpah","Gezer","Timnath","Socoh",
+      "Adullam","Debir","Zorah","Eshtaol","Penuel","Succoth","Lachish","Dothan","Jabesh","Gibeah","Bethel",
+      "Ephron","Abel-Meholah","Hazor","Kiriath-Jearim","Beth-Zur","Ziph","Maon","Carmel","Eltekeh"
+    ],
+    "refugeCity": ["Hebron","Shechem","Kedesh","Bezer","Ramoth-gilead","Golan"],
+    "fieldPlace": [
+      "the threshing floor","the boundary wall","the sheep-fold gate","the village well","the vineyard terrace",
+      "the olive press","the terebinth grove","the stone quarry","the spice market","the ford of the stream"
+    ]
+  },
+
+  "pressures": {
+    "bench": [
+      "A kinsman of one party presses a pouch of {amt} shekels toward your hand and murmurs that his clan has a long memory for kindness.",
+      "A silver-tongued steward whispers that {amt} shekels of silver are waiting at your door for a 'sympathetic' ruling.",
+      "The chief of one litigant's clan stands close and mentions that his family's gifts to the gate would 'continue generously': {amt} shekels this season.",
+      "A veiled messenger leaves a sealed purse of {amt} shekels on the bench with a note: 'For your trouble.'",
+      "An old friend of one party takes your arm in the courtyard and says that {amt} shekels would be 'no burden' if the right outcome were reached."
+    ],
+    "optionTag": "Tempting: {amt} shekels are offered if you choose this ruling."
+  }
+}

@@ -111,6 +111,7 @@ button kbd{font-family:inherit;font-size:10px;color:var(--gold);border:1px solid
 .sheet button.ghost{margin:8px 5px 0;padding:11px 18px}
 .sheet .menuBtns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px}
 .sheet .menuBtns button{margin:0}
+.sheet .menuBtns #menuContinue{order:-1}   /* with a save present, Continue leads */
 #saveHint{font-size:12px;color:var(--sage);min-height:16px;margin:8px 0 0}
 #marketInfo{font-size:12.5px;color:var(--dim);text-align:center}
 #marketBtns{display:grid;gap:8px;margin-top:14px}
@@ -166,6 +167,21 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   border:1px solid rgba(224,173,79,.4);border-radius:10px;box-shadow:0 10px 26px #0007}
 #vitals .vital span{color:#e0cfa8}
 
+/* Daily collection counters: what the camp gathered since dawn. Sits below
+   the vitals card when alerts are showing, else directly under the HUD. */
+#dailyHud{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 104px);width:206px;
+  padding:7px 10px 6px;background:linear-gradient(180deg,rgba(38,29,16,.94),rgba(22,16,9,.92));
+  border:1px solid rgba(224,173,79,.4);border-radius:10px;box-shadow:0 10px 26px #0007}
+#dailyHud .dh-title{font-family:Cinzel,serif;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#a8916a;margin-bottom:3px}
+.dh-row{display:grid;grid-template-columns:12px 1fr auto;gap:7px;align-items:center;font-size:11px;margin:2.5px 0;color:#e0cfa8}
+.dh-row span:nth-child(2){font-variant:small-caps;color:#cbb894}
+.dh-row b{font-family:Cinzel,serif;color:#f2cc6b;font-size:11.5px}
+.dh-dot{width:9px;height:9px;border-radius:3px;box-shadow:inset 0 0 3px #0006}
+.dh-dot.manna{background:linear-gradient(135deg,#ffe27a,#e8b84a)}
+.dh-dot.water{background:linear-gradient(135deg,#6fb6d8,#2f6f94)}
+.dh-dot.wood{background:linear-gradient(135deg,#d8a85c,#8a5a24)}
+.dh-dot.stone{background:linear-gradient(135deg,#cbb894,#8f7a5a)}
+
 #journeyHud{
   position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:14px;z-index:34;
@@ -174,10 +190,6 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   box-shadow:0 12px 34px #0008, inset 0 1px rgba(255,242,196,.12);
   backdrop-filter:blur(6px);pointer-events:none;max-width:calc(100vw - 480px)
 }
-.journey-year{display:flex;flex-direction:column;line-height:1;padding-right:12px;border-right:1px solid rgba(224,173,79,.35);
-  font-family:Cinzel,serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#f2cc6b;white-space:nowrap}
-.journey-year b{font-size:26px;line-height:.95;color:#f7e8bf;font-weight:900}
-.journey-year span{font-size:8.5px;margin-top:2px;letter-spacing:.16em;color:#cfc2a3}
 .journey-station{min-width:0;line-height:1.2}
 .journey-station small{display:block;font-family:Cinzel,serif;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#cfc2a3}
 .journey-station strong{display:block;font-family:Cinzel,serif;font-size:16px;color:#f7e8bf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
@@ -232,6 +244,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   #journeyHud{top:calc(env(safe-area-inset-top,0px) + 100px);left:8px;right:8px;transform:none;max-width:none;justify-content:space-between}
   .journey-station strong{max-width:42vw}
   #vitals{top:calc(env(safe-area-inset-top,0px) + 184px)}
+  #dailyHud{width:min(200px,62vw);top:calc(env(safe-area-inset-top,0px) + 184px)}
   #log{bottom:calc(env(safe-area-inset-bottom,0px) + 175px)}
   #resources{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)}
 }
@@ -242,8 +255,8 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   #topBtns{top:calc(env(safe-area-inset-top,0px) + 8px) !important;gap:4px !important}
   #topBtns .icon-btn{width:40px !important;height:40px !important;font-size:16px !important;padding:0}
   #vitals{width:min(200px,58vw);top:calc(env(safe-area-inset-top,0px) + 166px)}
+  #dailyHud{top:calc(env(safe-area-inset-top,0px) + 166px)}
   #journeyHud{top:calc(env(safe-area-inset-top,0px) + 82px);padding:6px 9px;gap:8px}
-  .journey-year b{font-size:20px}
   .journey-station strong{font-size:12px;max-width:40vw}
   .journey-station span{font-size:9px}
   .compass{width:44px;height:44px}
@@ -774,6 +787,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 @media (max-width:640px){
   .muster-layout{flex-direction:column}
   .ov-list{grid-template-columns:1fr}
+  .ov-col + .ov-col .ov-head{display:none}
   .muster-rail{width:auto;flex-direction:row;flex-wrap:wrap;max-height:none}
   .rail-item{width:calc(50% - 3px)}
   .tribe-cells{grid-template-columns:repeat(3,1fr)}
@@ -882,8 +896,15 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div class="vital" id="vitalCampWater" data-vital="campwater"><span>Camp water</span><div class="bar"><i id="bCampWater"></i></div><b class="vital-val" id="vCampWaterVal">34</b></div>
   </div>
 
+  <div id="dailyHud" class="panel" aria-label="Collected today">
+    <div class="dh-title">Gathered today</div>
+    <div class="dh-row"><span class="dh-dot manna"></span><span>Manna</span><b id="dhManna">0</b></div>
+    <div class="dh-row"><span class="dh-dot water"></span><span>Water</span><b id="dhWater">0</b></div>
+    <div class="dh-row"><span class="dh-dot wood"></span><span>Wood</span><b id="dhWood">0</b></div>
+    <div class="dh-row"><span class="dh-dot stone"></span><span>Stone</span><b id="dhStone">0</b></div>
+  </div>
+
   <div id="journeyHud" aria-label="Pillar guidance">
-    <div class="journey-year">YEAR <b id="yearNum">1</b><span id="monthLabel">OF 40 · MONTH 1/12</span></div>
     <div class="journey-station">
       <small>The Pillar leads to</small>
       <strong id="stationName">The Red Sea Shore</strong>
@@ -924,6 +945,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <button id="btnSpeed" data-act="speed">×1</button>
   </div>
   <div id="buildBar" role="toolbar" aria-label="Build and gather">
+    <button data-mode="walk" title="Walk as Moses — click the ground to move (Esc)"><b>Walk</b><small>move Moses</small></button>
     <button data-tool="tent" title="Build a tent (4)"><b>Tent</b><small>5 wood</small></button>
     <button data-tool="sentry" title="Build a sentry post (5)"><b>Sentry post</b><small>4 wood · 2 stone</small></button>
     <button data-tool="tower" title="Build a watchtower (6)"><b>Watch tower</b><small>6 wood · 6 stone</small></button>
@@ -1395,6 +1417,7 @@ const HW = 32;               // half tile width
 const HH = 16;               // half tile height
 const ELEV = 13;             // screen pixels per terrain height level
 const CAMP = { x: 24, y: 24 };
+const FIREP = { x: CAMP.x+3.2, y: CAMP.y+3.6 };  // the campfire, clear of the tabernacle fence
 const QUOTA = 22;            // manna the camp eats each day
 const DAY_LENGTH = 60;       // real seconds per day/night cycle at ×1
 const DAYS_PER_MONTH = 7;    // a "month" is one week of day/night cycles
@@ -1465,7 +1488,7 @@ const STATIONS = [
     blessing:{ hydration:100, campWater:70, faith:7, health:12 }
   },
   {
-    id:'sinai', name:'Mount Sinai', x:14, y:27, color:'#8a72b0',
+    id:'sinai', name:'Mount Sinai', x:12, y:24, color:'#8a72b0',
     scripture:'Exodus 19:16-20', title:'The mountain trembles',
     text:'Thunder and lightning, a thick cloud upon the mountain, and the sound of a trumpet growing louder. Moses goes up, and the Lord descends in fire.',
     trial:'Choose faithfulness. The covenant shapes the people you lead.',
@@ -2103,6 +2126,11 @@ const GROUND_Y = .3, LV = .4, TL = .7, MAXL = 4;
 const D4 = [[0,1],[1,0],[0,-1],[-1,0]];
 const K_TENT = 1, K_SENTRY = 2, K_TOWER = 3, K_TAB = 4, K_PEN = 5;
 let ter = [], TH = [], gtype = [], kind = [], lvl = [], palm = [], dune = [], dunes = [];
+/* Visual ground field: THV holds the mesh height of each tile centre (base
+   height plus massif jump) so gyAt matches the rendered surface. mesaG marks
+   cliff tiles; sinaiG marks the Mount Sinai massif; TH0V is the base field
+   the mesh is built from. */
+let TH0V = [], THV = [], mesaG = [], sinaiG = [], rampG = [];
 let waterTiles = [];        // pond tiles: the springs the journey drinks from
 let shore = [], pens = [], groundMesh = null;
 let terrainHills = [], hillPhase = [0,0,0,0];
@@ -2157,11 +2185,20 @@ function stampCells(pat, rot, flip){
 }
 
 /* Smooth ground height under a creature: bilinear between tile centres. */
+/* gyAt takes GAMEPLAY coordinates (a tile's height TH[i][j] sits at gameplay
+   (i,j)); convert to mesh space with +N/2-.5 when reading world positions.
+   The old +N/2 offset shifted every gameplay lookup by ~23 tiles, which no
+   one noticed on flat ground but broke picking, ghosts and part heights on
+   every hill. */
 function gyAt(x, z){
-  const u = x + N/2 - .5, v = z + N/2 - .5;
-  const i = Math.floor(u), j = Math.floor(v), fu = u-i, fv = v-j;
-  const h = (a,b) => (inMap(a,b) ? TH[a][b] : GROUND_Y);
+  const i = Math.floor(x), j = Math.floor(z), fu = x-i, fv = z-j;
+  const src = THV.length ? THV : TH;
+  const h = (a,b) => (inMap(a,b) ? src[a][b] : GROUND_Y);
   return (h(i,j)*(1-fu) + h(i+1,j)*fu)*(1-fv) + (h(i,j+1)*(1-fu) + h(i+1,j+1)*fu)*fv;
+}
+/* World-space variant for callers holding mesh coordinates (animals). */
+function gyAtW(wx, wz){
+  return gyAt(wx + N/2 - .5, wz + N/2 - .5);
 }
 /* Creatures cannot cross a cliff (2 or more levels between tiles). */
 function cliffBetween(x0,z0,x1,z1){
@@ -2213,7 +2250,59 @@ function flattenAt(cx,cy,r){
       }
 }
 
+/* The Mount Sinai massif: a terraced mountain west of the camp, four levels
+   tall, with a winding ramp carved into its flank so Moses can climb to the
+   summit. Sandstone up the slopes; granite purple only on the top third
+   (levels 3-4). Off the ramp its tiles are solid rock (blocked). */
+const SINAI = { x: 6.5, z: 24, mr: 4.7, ph: 1.3, levels: 4, lvh: .5, path0: -.5, turns: 1.9 };
+function sinaiGeom(x, y){
+  const d = Math.hypot(x+.5-SINAI.x, y+.5-SINAI.z), an = Math.atan2(y+.5-SINAI.z, x+.5-SINAI.x);
+  const edge = SINAI.mr*(.92 + .16*Math.sin(an*3 + SINAI.ph));
+  return { d, an, edge, t: 1 - d/edge };
+}
+function sinaiLevel(x, y){
+  const g = sinaiGeom(x, y);
+  if (g.t <= 0) return 0;
+  if (g.t > .72) return SINAI.levels;                       // summit plateau
+  const crag = .5 + .5*Math.sin(g.an*4 + SINAI.ph*2)*Math.sin(g.d*1.3 + SINAI.ph);
+  return Math.max(0, Math.min(SINAI.levels-1, Math.floor(g.t*SINAI.levels + crag*.9)));
+}
+/* The climbing ramp: a spiral path wound from the south-east rim to the
+   summit (carved by carveSinaiRamp, which grades every path tile so the
+   climb never rises more than one level per step). */
+function sinaiRampTiles(){
+  const pts = [], NPTS = 260;
+  for (let i=0;i<=NPTS;i++){
+    const s = i/NPTS, an = SINAI.path0 + s*SINAI.turns*Math.PI*2;
+    const edge = SINAI.mr*(.92 + .16*Math.sin(an*3 + SINAI.ph));
+    const r = edge*(1 - s*.94);
+    pts.push({ x: SINAI.x + Math.cos(an)*r, z: SINAI.z + Math.sin(an)*r, s });
+  }
+  return pts;
+}
+function carveSinaiRamp(){
+  rampG = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  const pts = sinaiRampTiles();
+  let prev = 0;
+  for (const pt of pts){
+    const i = Math.floor(pt.x), j = Math.floor(pt.z);
+    if (!inMap(i,j) || sinaiLevel(i, j) <= 0) continue;
+    const natural = sinaiLevel(i, j);
+    const lvl = Math.max(prev-1, Math.min(natural, prev+1));
+    if (lvl <= 0){ prev = 0; continue; }
+    // grade a two-tile-wide tread so continuous movement can follow it
+    for (const [a,b] of [[i,j],[i+1,j],[i,j+1],[i-1,j],[i,j-1]]){
+      if (!inMap(a,b) || sinaiLevel(a,b) <= 0) continue;
+      const nl = Math.max(prev-1, Math.min(sinaiLevel(a,b), prev+1));
+      if (nl <= 0) continue;
+      ter[a][b] = nl; rampG[a][b] = 1;
+    }
+    prev = lvl;
+  }
+}
 function tileTerrainLevel(x, y){
+  const sl = sinaiLevel(x, y);
+  if (sl > 0) return sl;
   for (const p of POOL_SITES) if (Math.hypot(x+.5-p.x, y+.5-p.y) < p.r + 2.5) return 0;
   if (Math.hypot(x+.5-CAMP.x, y+.5-CAMP.y) < 9) return 0;
   if (STATIONS.some(s => Math.hypot(x+.5-s.x, y+.5-s.y) < 4.5)) return 0;
@@ -2268,7 +2357,7 @@ function refreshShoreAndPalms(){
   for (let x=0;x<N;x++) for (let y=0;y<N;y++){
     if (kind[x][y] || gtype[x][y] === 2){ palm[x][y] = 0; continue; }
     const pondRing = gtype[x][y] === 1 && D4.some(([a,b]) => inMap(x+a,y+b) && gtype[x+a][y+b] === 2);
-    palm[x][y] = (whash(x,y) < .04 && gtype[x][y] === 0) || (pondRing && whash(x+71,y+13) < .4) ? 1 : 0;
+    palm[x][y] = (whash(x,y) < .04 && gtype[x][y] === 0 && ter[x][y] === 0) || (pondRing && whash(x+71,y+13) < .4 && ter[x][y] === 0) ? 1 : 0;
   }
 }
 
@@ -2282,7 +2371,7 @@ function placeDunes(r, bandStart = 0){
     if (cs.some(([c,rr]) => {
       const x = x0+c, z = z0+rr;
       if (!inMap(x,z) || x < bandStart) return true;
-      return kind[x][z] || gtype[x][z] !== 0 || palm[x][z] || dune[x][z] >= 0
+      return kind[x][z] || gtype[x][z] !== 0 || palm[x][z] || dune[x][z] >= 0 || ter[x][z] !== 0
         || Math.hypot(x-CAMP.x, z-CAMP.y) < 8
         || STATIONS.some(s => Math.hypot(x-s.x, z-s.y) < 4);
     })) continue;
@@ -2318,6 +2407,7 @@ function buildTerrain(){
     terrainHills.push({ x:cx, y:cy, mr: Math.min(hr, 3.8), ph: r()*6 });
   }
   for (let x=0;x<N;x++) for (let y=0;y<N;y++) ter[x][y] = tileTerrainLevel(x, y);
+  carveSinaiRamp();
   refreshHeights(0, 0, N-1, N-1);
   placePens(r);
   refreshShoreAndPalms();
@@ -2620,7 +2710,7 @@ function buildDecor(){
   // The camp's fixed props (the Tabernacle itself is drawn by build()).
   decor = [];
   decor.push({kind:'market', x:CAMP.x+2.9, y:CAMP.y-3.4, s:1});
-  decor.push({kind:'fire', x:CAMP.x+0.9, y:CAMP.y+0.9, s:1});
+  decor.push({kind:'fire', x:FIREP.x, y:FIREP.y, s:1});
   for (let i=0;i<5;i++){
     const a = i/5*Math.PI*2 + 0.6;
     decor.push({kind:'crate', x:CAMP.x+3.3+Math.cos(a)*1.15, y:CAMP.y-4.6+Math.sin(a)*1.15, s:0.7, h:a});
@@ -2686,10 +2776,10 @@ const state = {
   campFed:false, lastFoodShort:0, lastWaterShort:0, stationWarnCd:0,
   defenseStore:{ sentry:0, tower:0 }, areaHarvest:0, campSites:[], armyCasualties:0, foeCamp:null, foesDefeated:[],
   tribeStats: seedTribeStats(),
-  monthTracking:null, yearTracking:null, lastReport:null,
+  monthTracking:null, yearTracking:null, dayTracking:null, lastReport:null,
   events:{ rock:false, law:false, calf:false, jordan:false },
   tutorialStep:-1, tutorialDone:false, tutorialCampSeen:false,
-  buildMode:null, mouseWorld:null, raidDefense:null,
+  buildMode:null, clickMode:'walk', mouseWorld:null, raidDefense:null,
   keys:{}, log:[], explored:new Set(), exploreTimer:0,
   duskDone:false, nightDone:false, mannaSpawned:false,
   interaction:null, lastHud:0, started:false, endShown:false,
@@ -2727,6 +2817,7 @@ function resetState(){
   state.stamina = 100; state.faith = 68;
   state.manna = 0; state.waterskin = 0; state.campWater = 34; state.silver = 18;
   state.wood = 0; state.stone = 0; state.sick = 0; state.rot = 0; state.calf = 0;
+  state.dayTracking = { manna:0, water:0, wood:0, stone:0 };
   felled = new Set();
   state.defenseStore = { sentry:0, tower:0 }; state.areaHarvest = 0; state.campSites = [];
   state.armyCasualties = 0; state.foeCamp = null; state.foesDefeated = [];
@@ -2742,7 +2833,7 @@ function resetState(){
   state.tribeRoles = seedTribeRoles(); state.roleDay = 0; state.leviBlessDay = 0; state.judgesYear = 0; state.pendingJudges = false;
   state.worldSeed = state.sharedJourney?.seed || DEFAULT_WORLD_SEED;
   beginMonthTracking(); beginYearTracking();
-  state.raidSpawned = false; state.buildMode = null; state.mouseWorld = null;
+  state.raidSpawned = false; state.buildMode = null; state.clickMode = 'walk'; state.mouseWorld = null;
   state.score = 0; state.speed = 1; state.keys = {}; state.log = [];
   state.explored = new Set(); state.exploreTimer = 0;
   state.duskDone = false; state.nightDone = false; state.mannaSpawned = false;
@@ -2782,7 +2873,15 @@ function resetState(){
 function blocked(x,y){
   const i = Math.floor(x), j = Math.floor(y);
   if (i<1||i>N-2||j<1||j>N-2) return true;
+  if (rampG[i] && rampG[i][j]) return false;   // the Sinai ramp is walkable
   return gtype[i][j] === 2 || !!kind[i][j] || ter[i][j] >= 2;
+}
+/* No entity may leap a two-level cliff, ramp tiles included. */
+function canStep(e, nx, ny){
+  if (blocked(nx,ny)) return false;
+  const a = Math.floor(e.x), b = Math.floor(e.y), c = Math.floor(nx), d = Math.floor(ny);
+  if (!inMap(a,b) || !inMap(c,d)) return false;
+  return Math.abs(ter[a][b] - ter[c][d]) < 2;
 }
 
 function say(msg){
@@ -3539,7 +3638,7 @@ function restoreTrialSnapshot(snap){
   felled = new Set(snap.felled || []);
   camX = snap.camX; camY = snap.camY;
   state.mode = 'playing';
-  state.raidDefense = null; state.buildMode = null; state.mouseWorld = null;
+  state.raidDefense = null; state.buildMode = null; state.clickMode = 'walk'; state.mouseWorld = null;
   $('trialPanel').hidden = true;
   $('buildBanner').hidden = true;
   $('raidOverlay').classList.remove('open');
@@ -3593,7 +3692,7 @@ function startTrial(index){
   state.warmth = setup.warmth; state.stamina = setup.stamina; state.faith = setup.faith;
   state.manna = setup.manna; state.campWater = setup.campWater; state.wood = setup.wood; state.silver = setup.silver;
   state.waterskin = 0; state.sick = 0; state.rot = 0; state.calf = 0;
-  state.raidSpawned = false; state.raidDefense = null; state.buildMode = null; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
+  state.raidSpawned = false; state.raidDefense = null; state.buildMode = null; state.clickMode = 'walk'; state.layoutEdit = null; state.layoutUndo = []; state.layoutRedo = [];
   state.tutorialStep = -1; $('tutorialPanel').hidden = true;
   structures = setup.structures.map(s => ({ kind:s.kind, x:s.x, y:s.y, s:1 }));
   raiders = []; manna = []; particles = []; pops = []; flights = [];
@@ -4117,6 +4216,7 @@ function endDay(){
   }
 
   state.day += 1;
+  state.dayTracking = { manna:0, water:0, wood:0, stone:0 };
   state.duskDone = false;
   state.nightDone = false;
   state.mannaSpawned = false;
@@ -4150,9 +4250,19 @@ function update(dt){
     const now = performance.now()/1000;
     tentFires = tentFires.filter(f => f.until > now);
   }
+  // Exodus 18: once a year Moses re-appoints the rulers over thousands,
+  // hundreds, fifties and tens — applied outright, no choice to make.
   if (state.pendingJudges && !state.trial && !raiders.length && !state.raidDefense){
     state.pendingJudges = false;
-    openEvent('judges');
+    state.judgesYear = yearOfMonth();
+    for (const t of TRIBES){
+      const row = state.tribeStats[t.name];
+      if (row) row.unrest = clamp((row.unrest || 0) - 8, 0, 100);
+    }
+    state.faith = clamp(state.faith + 3, 0, 100);
+    state.score += 30;
+    say('Moses appoints rulers of thousands, hundreds, fifties and tens. The hard cases come to Moses; the rest are judged in the camps.');
+    saveGame();
     return;
   }
   const gameDt = dt * state.speed;
@@ -4219,9 +4329,9 @@ function updatePlayer(dt){
 
 function moveEntity(e, dx, dy){
   const nx = e.x + dx, ny = e.y + dy;
-  if (!blocked(nx,ny)){ e.x = nx; e.y = ny; return; }
-  if (!blocked(nx, e.y)){ e.x = nx; return; }
-  if (!blocked(e.x, ny)){ e.y = ny; return; }
+  if (canStep(e, nx, ny)){ e.x = nx; e.y = ny; return; }
+  if (canStep(e, nx, e.y)){ e.x = nx; return; }
+  if (canStep(e, e.x, ny)){ e.y = ny; return; }
   e.tx = null; e.ty = null;
 }
 
@@ -4272,6 +4382,7 @@ function updateManna(dt){
       manna.splice(i,1);
       state.manna++; state.score++;
       if (state.monthTracking) state.monthTracking.mannaGathered++;
+      if (state.dayTracking) state.dayTracking.manna++;
       pops.push({ x:m.x, y:m.y, text:'+1 manna', color:'#ffe27a', t:1, max:1 });
       spawnFlight(m.x, m.y, 'manna', 1, false);
       burst(m.x, m.y, '#ffe27a', 7);
@@ -4374,8 +4485,8 @@ function updateFx(dt){
       fxTimers.fire = 0.16 + Math.random()*0.12;
       fx.push({
         kind:'ember',
-        x: CAMP.x + (Math.random()-0.5)*0.32,
-        y: CAMP.y + (Math.random()-0.5)*0.32,
+        x: FIREP.x + (Math.random()-0.5)*0.32,
+        y: FIREP.y + (Math.random()-0.5)*0.32,
         z: 7 + Math.random()*12,
         vx: (Math.random()-0.5)*0.16, vy: (Math.random()-0.5)*0.16,
         vz: 14 + Math.random()*22,
@@ -4598,9 +4709,9 @@ function moveCitizen(p, tx, ty, speed, dt){
   if (d < 0.12) return 0;
   const step = Math.min(d, speed*dt);
   const nx = p.x + dx/d*step, ny = p.y + dy/d*step;
-  if (!blocked(nx,ny)){ p.x = nx; p.y = ny; p.stuck = 0; }
-  else if (!blocked(nx,p.y)){ p.x = nx; p.stuck += dt; }
-  else if (!blocked(p.x,ny)){ p.y = ny; p.stuck += dt; }
+  if (canStep(p, nx,ny)){ p.x = nx; p.y = ny; p.stuck = 0; }
+  else if (canStep(p, nx,p.y)){ p.x = nx; p.stuck += dt; }
+  else if (canStep(p, p.x,ny)){ p.y = ny; p.stuck += dt; }
   else { p.stuck += dt; }
   return Math.hypot(tx-p.x, ty-p.y);
 }
@@ -4609,6 +4720,7 @@ function depositCitizen(p){
   if (p.carry > 0){
     state.manna += p.carry;
     if (state.monthTracking) state.monthTracking.mannaGathered += p.carry;
+    if (state.dayTracking) state.dayTracking.manna += p.carry;
     spawnFlight(p.x, p.y, 'manna', p.carry, p.carry >= 2);
     p.carry = 0;
   }
@@ -4616,6 +4728,7 @@ function depositCitizen(p){
     state.wood += p.woodCarry;
     state.areaHarvest = (state.areaHarvest || 0) + p.woodCarry;
     if (state.monthTracking) state.monthTracking.woodGathered += p.woodCarry;
+    if (state.dayTracking) state.dayTracking.wood += p.woodCarry;
     spawnFlight(p.x, p.y, 'wood', p.woodCarry, true);
     p.woodCarry = 0;
   }
@@ -5241,6 +5354,7 @@ function gatherWood(node){
   state.wood += amount;
   state.areaHarvest = (state.areaHarvest || 0) + amount;
   if (state.monthTracking) state.monthTracking.woodGathered += amount;
+  if (state.dayTracking) state.dayTracking.wood += amount;
   spawnFlight(node.x, node.y, 'wood', amount, true);
   burst(node.x, node.y, '#c99a5a', 6);
   playSfx('click', 0.2);
@@ -5255,6 +5369,7 @@ function gatherStone(node){
   state.stone += amount;
   state.areaHarvest = (state.areaHarvest || 0) + amount;
   if (state.monthTracking) state.monthTracking.stoneGathered = (state.monthTracking.stoneGathered||0) + amount;
+  if (state.dayTracking) state.dayTracking.stone += amount;
   spawnFlight(node.x, node.y, 'stone', amount, true);
   burst(node.x, node.y, '#a8977f', 6);
   playSfx('click', 0.2);
@@ -5729,8 +5844,13 @@ function updateBuildBar(){
     b.classList.toggle('on', state.buildMode === kind);
     if (kind === 'tent' || kind === 'sentry' || kind === 'tower') b.disabled = !canAfford(kind);
   });
+  const walkBtn = document.querySelector('#buildBar button[data-mode="walk"]');
+  if (walkBtn) walkBtn.classList.toggle('on', state.clickMode === 'walk' && !state.buildMode);
+  document.getElementById('buildBar')?.classList.toggle('walking', state.clickMode === 'walk' && !state.buildMode);
 }
 $('buildBar').addEventListener('click', e => {
+  const w = e.target.closest('button[data-mode="walk"]');
+  if (w){ cancelBuild(); return; }
   const b = e.target.closest('button[data-tool]');
   if (b) toggleBuildTool(b.dataset.tool);
 });
@@ -5755,6 +5875,7 @@ function fellTree(i,j){
   state.wood += 3;
   state.areaHarvest = (state.areaHarvest || 0) + 3;
   if (state.monthTracking) state.monthTracking.woodGathered += 3;
+  if (state.dayTracking) state.dayTracking.wood += 3;
   spawnFlight(i+0.5, j+0.5, 'wood', 3, true);
   burst(i+0.5, j+0.5, '#c99a5a', 6);
   pops.push({ x:i+0.5, y:j+0.5, text:'+3 wood', color:'#c99a5a', t:1.1, max:1.1 });
@@ -5807,15 +5928,19 @@ function startBuild(kind){
     return;
   }
   state.buildMode = kind;
+  state.clickMode = 'build';
   closeCamp();
   showBuildBanner();
+  updateBuildBar();
   updateHud(true);
 }
 
 function cancelBuild(){
   state.buildMode = null;
+  state.clickMode = 'walk';
   state.mouseWorld = null;
   showBuildBanner();
+  updateBuildBar();
   updateHud(true);
 }
 
@@ -5840,6 +5965,7 @@ function placeStructure(x,y){
   if (Math.hypot(x-CAMP.x, y-CAMP.y) > CAMP_RADIUS){ say('Build closer to the camp.'); return true; }
   if (Math.hypot(x-CAMP.x, y-CAMP.y) < TABERNACLE_RADIUS + 0.8){ say('The Tabernacle court is sacred ground — build no shelter there.'); return true; }
   if (blocked(x,y)){ say('You cannot build on rock or water.'); return true; }
+  if (sinaiG[Math.floor(x)]?.[Math.floor(y)]){ say('The mountain of God is sacred ground — build no shelter there.'); return true; }
   if (structures.some(s => Math.hypot(s.x-x, s.y-y) < 1.0)){ say('Something already stands there.'); return true; }
   if (campTents.some(d => Math.hypot(d.x-x, d.y-y) < 0.9)){ say('A tent already stands there.'); return true; }
 
@@ -5909,7 +6035,7 @@ function openLayoutEditor(){
   state.layoutEdit = { selected:null, reason:'' };
   state.layoutUndo = [];
   state.layoutRedo = [];
-  state.buildMode = null;
+  state.buildMode = null; state.clickMode = 'walk';
   showLayoutBanner();
   updateHud(true);
   say('Camp layout: click a structure to move it, or press Esc to finish. Moves snap to the half-tile grid.');
@@ -6069,6 +6195,7 @@ function interact(){
     state.waterskin = 3;
     state.campWater = clamp(state.campWater + 25, 0, 100);
     if (state.monthTracking) state.monthTracking.waterDrawn += 25;
+    if (state.dayTracking) state.dayTracking.water += 25;
     state.hydration = clamp(state.hydration + 12, 0, 100);
     say('You fill the waterskin and carry water back for the camp.');
     burst(state.player.x, state.player.y, '#7fc4e8', 10);
@@ -6205,20 +6332,7 @@ const STORY_EVENTS = {
       { label:'Allow the calf (faith falls, rebellion grows)', action:'allowCalf', cls:'danger' }
     ]
   },
-  judges: {
-    kicker:'Exodus 18:13-26',
-    title:'Appoint Judges',
-    text:`The people stand before Moses from morning until evening. Jethro watches and counsels: the work is too heavy for one man. "Choose able men who fear God, trustworthy and hating a bribe, and place them over the people as rulers of thousands, of hundreds, of fifties and of tens. Let them judge the people at all seasons."`,
-    list:[
-      'Judges settle small disputes in every tribe, at every season.',
-      'With local justice, resentment cools and the camp keeps order all year.'
-    ],
-    choices:[
-      { label:'Rulers over thousands, hundreds, fifties and tens (unrest −8, faith +3)', action:'judgesTiers', cls:'primary' },
-      { label:'Wise men over thousands and hundreds only (unrest −5, faith +2)', action:'judgesSimple' },
-      { label:'Moses will judge alone for now (unrest +8, faith −4)', action:'judgesDecline', cls:'danger' }
-    ]
-  },
+
   moab: {
     kicker:'Deuteronomy 34 · Joshua 3',
     title:'Cross the Jordan',
@@ -6250,31 +6364,6 @@ function closeEvent(){
 }
 
 function handleEventAction(action){
-  if (action === 'judgesTiers' || action === 'judgesSimple' || action === 'judgesDecline'){
-    for (const t of TRIBES){
-      const row = state.tribeStats[t.name];
-      if (!row) continue;
-      if (action === 'judgesTiers') row.unrest = clamp((row.unrest || 0) - 8, 0, 100);
-      else if (action === 'judgesSimple') row.unrest = clamp((row.unrest || 0) - 5, 0, 100);
-      else row.unrest = clamp((row.unrest || 0) + 8, 0, 100);
-    }
-    if (action === 'judgesTiers'){
-      state.faith = clamp(state.faith + 3, 0, 100);
-      state.score += 30;
-      say(`Moses appoints rulers of thousands, hundreds, fifties and tens. The hard cases come to Moses; the rest are judged in the camps.`);
-    } else if (action === 'judgesSimple'){
-      state.faith = clamp(state.faith + 2, 0, 100);
-      state.score += 20;
-      say('Moses sets wise men over thousands and hundreds to judge the people.');
-    } else {
-      state.faith = clamp(state.faith - 4, 0, 100);
-      say('Moses keeps the judging to himself. The queues before his tent grow longer, and tempers shorter.');
-    }
-    state.judgesYear = yearOfMonth();
-    saveGame();
-    closeEvent();
-    return;
-  }
   if (action === 'strikeRock'){
     state.events.rock = true;
     state.campWater = 100;
@@ -6501,7 +6590,7 @@ function savePayload(){
     structures:structures, score:state.score, speed:state.speed,
     felled:[...felled],
     explored:[...state.explored],
-    monthTracking:state.monthTracking, yearTracking:state.yearTracking,
+    monthTracking:state.monthTracking, yearTracking:state.yearTracking, dayTracking:state.dayTracking,
     monthOffenders:state.monthOffenders,
     blueprints:state.blueprints, raidLog:state.raidLog, raidSeed:state.raidSeed,
     tribeRoles:state.tribeRoles, roleDay:state.roleDay, leviBlessDay:state.leviBlessDay,
@@ -6563,6 +6652,20 @@ function readSave(){
   return null;
 }
 
+/* Older saves remember the old flat-topped Sinai; re-grade the massif and
+   carve the climbing ramp whenever a journey is loaded. */
+function refreshSinai(){
+  if (!ter.length || !N) return;
+  let touched = false;
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    if (Math.hypot(x+.5-SINAI.x, z+.5-SINAI.z) > SINAI.mr*1.25) continue;
+    const L = sinaiLevel(x, z);
+    if (ter[x][z] !== L){ ter[x][z] = L; touched = true; }
+  }
+  carveSinaiRamp();
+  if (touched) refreshHeights(0, 0, N-1, N-1);
+}
+
 function applySaveData(data){
   state.mode = 'playing';
   state.worldSeed = data.worldSeed || DEFAULT_WORLD_SEED;
@@ -6580,6 +6683,7 @@ function applySaveData(data){
     flattenAt(CAMP.x, CAMP.y, 5.6);
     rebuildGround();
   }
+  refreshSinai();
   buildDecor();
   // Reveal ground the journey had already opened up, then repaint the canvas.
   if (state.worldN > N){
@@ -6591,6 +6695,7 @@ function applySaveData(data){
   else if (savedVersion === 2) state.day = ((data.day || 1) - 1) * DAYS_PER_MONTH + 1;
   else state.day = ((data.day || 1) - 1) * MONTHS_PER_YEAR * DAYS_PER_MONTH + 1;
   state.day = clamp(state.day, 1, TOTAL_DAYS);
+  state.dayTracking = { manna:0, water:0, wood:0, stone:0, ...(data.dayTracking || {}) };
   state.hour = data.hour ?? 6;
   state.tribeStats = data.tribeStats && typeof data.tribeStats === 'object' ? data.tribeStats : seedTribeStats();
   for (const t of TRIBES){
@@ -6652,7 +6757,7 @@ function applySaveData(data){
     : [];
   felled = new Set(Array.isArray(data.felled) ? data.felled.filter(k => typeof k === 'string') : []);
   raiders = [];
-  state.buildMode = null; state.layoutEdit = null; state.layoutUndo = [];
+  state.buildMode = null; state.clickMode = 'walk'; state.layoutEdit = null; state.layoutUndo = [];
   state.raidSpawned = false;
   state.score = data.score ?? 0;
   state.speed = data.speed ?? 1;
@@ -6914,78 +7019,158 @@ function box(geo, w, h, dd, c, x, y, z, ry=0, rx=0, rz=0, m){
 }
 
 /* ---- one blended ground mesh with cliffs and a sand skirt (Guide §5.9) -- */
+/* ---- the fine ground field (Desert Outpost §4) ------------------------
+   One blended vertex-coloured heightfield at 6 samples a tile. Cliff and
+   massif tiles (ter >= 2, incl. the Sinai massif) pass through a blurred
+   mask and a steep smoothstep, so cliffs have rounded corners and the
+   mountains rise as real multi-tile landforms. Vertex colour blends the
+   tile palette with sandstone on steep slopes, ambient shade in concave
+   feet and lighter convex lips; a fragment pass adds sand ripples on flat
+   ground and eroded strata on the rock faces. */
+const MS_S6 = 6, M_PHI = t => 1/(1 + Math.exp(-1.702*t)), MS_SIG = .42;
+const smstep = (a,b,x) => { const u = Math.max(0, Math.min(1, (x-a)/(b-a))); return u*u*(3-2*u); };
+const _hx = h => [(h>>16&255)/255, (h>>8&255)/255, (h&255)/255];
+const RK_SAND = [0xd2b27a,0xc2975e,0xb88e58,0xa87a4c,0xc9a76e].map(_hx);
+const RK_GRAN = [0xa293a6,0x94849a,0x837389,0x77697d,0x8d7f93].map(_hx);
 function rebuildGround(){
   while (GR3.children.length) GR3.remove(GR3.children[0]);
   const tones = [0xe6c590,0xdfbb84,0xe9ca98], greens = [0x8fbf5f,0x84b455], blues = [0x4a9ab8,0x5aa6c2];
-  const ROCKC = new THREE.Color(0xc4a470), TCo = [];
+  const ROCKC = new THREE.Color(0xc4a470), GRANC = new THREE.Color(0x8d7f93), TCo = [];
+  mesaG = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
+  sinaiG = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
   for (let x=0;x<N;x++){
-    TCo[x] = [];
+    TCo[x] = []; TH0V[x] = [];
     for (let z=0;z<N;z++){
       const gt = gtype[x][z], hh = whash(x+3,z+9), k = kind[x][z];
-      TH[x][z] = gt === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][z]*LV;
+      const isS = sinaiLevel(x, z) > 0;
+      TH[x][z] = gt === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][z]*(isS ? SINAI.lvh : LV);
+      TH0V[x][z] = TH[x][z];
+      if (ter[x][z] >= 2 && !isS) mesaG[x][z] = 1;
+      if (isS) sinaiG[x][z] = 1;
       TCo[x][z] = new THREE.Color(
         k === K_TAB ? 0xf0dcae : k === K_PEN ? 0xd8c08a :
         gt === 2 ? blues[hh < .5 ? 0 : 1] : gt === 1 ? greens[hh < .5 ? 0 : 1] : tones[Math.floor(hh*3)]);
-      if (ter[x][z] && gt !== 2) TCo[x][z].lerp(ROCKC, .14*ter[x][z]);
-    }
-  }
-  // Corner colour = average of the 4 tiles; corner height = average of the
-  // tiles not separated from this tile by a cliff.
-  const ccol = (i,j) => {
-    const c = new THREE.Color(0,0,0); let n = 0;
-    for (const [a,b] of [[i-1,j-1],[i,j-1],[i-1,j],[i,j]])
-      if (a>=0 && b>=0 && a<N && b<N){ c.add(TCo[a][b]); n++; }
-    return c.multiplyScalar(1/n);
-  };
-  const chh = (tx,tz,i,j) => {
-    let h = 0, n = 0;
-    for (const [a,b] of [[i-1,j-1],[i,j-1],[i-1,j],[i,j]])
-      if (a>=0 && b>=0 && a<N && b<N && Math.abs(ter[a][b] - ter[tx][tz]) < 2){ h += TH[a][b]; n++; }
-    return h/n;
-  };
-  const pos = [], cols = [];
-  const push = (x,y,z,c) => { pos.push(x,y,z); cols.push(c.r,c.g,c.b); };
-  const cliffC = [new THREE.Color(0xc8a874), new THREE.Color(0x8f6f4a)];
-  if (!FD.length || FD.length < N_MAX) FD = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
-  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
-    const x0 = x-N/2, z0 = z-N/2, m = TCo[x][z], my = TH[x][z];
-    const cs = [[x,z],[x+1,z],[x+1,z+1],[x,z+1]];
-    const q = cs.map(([i,j]) => [i-N/2, chh(x,z,i,j), j-N/2, ccol(i,j)]);
-    FD[x][z] = Math.max(0, ...q.map(a => my - a[1]));
-    for (let k=0;k<4;k++){
-      const p = q[k], n = q[(k+1)%4];
-      push(p[0],p[1],p[2],p[3]); push(x0+.5,my,z0+.5,m); push(n[0],n[1],n[2],n[3]);
-    }
-    for (const [dx,dz,ia,ib] of [[1,0,1,2],[0,1,2,3],[-1,0,3,0],[0,-1,0,1]]){
-      const nx = x+dx, nz = z+dz;
-      if (nx>=0 && nz>=0 && nx<N && nz<N && ter[x][z] - ter[nx][nz] >= 2){
-        const A = q[ia], B = q[ib];
-        const ha = chh(nx,nz,cs[ia][0],cs[ia][1]), hb = chh(nx,nz,cs[ib][0],cs[ib][1]);
-        push(A[0],A[1],A[2],cliffC[0]); push(A[0],ha,A[2],cliffC[1]); push(B[0],B[1],B[2],cliffC[0]);
-        push(B[0],B[1],B[2],cliffC[0]); push(A[0],ha,A[2],cliffC[1]); push(B[0],hb,B[2],cliffC[1]);
+      if (gt !== 2){
+        if (sinaiG[x][z]){
+          // Sandstone flanks with a worn trail on the ramp; granite purple
+          // only on the top third (levels 3-4).
+          if (ter[x][z] >= 3) TCo[x][z].copy(GRANC);
+          else TCo[x][z].lerp(new THREE.Color(0xc9a76e), .6);
+          if (rampG[x][z]) TCo[x][z].lerp(new THREE.Color(0xe8d5a8), .3);
+        }
+        else if (ter[x][z]) TCo[x][z].lerp(ROCKC, .14*ter[x][z]);
       }
     }
   }
-  const sc = new THREE.Color(0xb89a62);
-  const sk = (h1,px,pz,h2,qx,qz) => {
-    push(px,h1,pz,sc); push(px,-.05,pz,sc); push(qx,h2,qz,sc);
-    push(qx,h2,qz,sc); push(px,-.05,pz,sc); push(qx,-.05,qz,sc);
+  // blurred masks: a tile's indicator smeared by a sigmoid box, giving
+  // rounded convex/concave corners instead of squares (Desert Outpost §4).
+  const ci = a => Math.max(0, Math.min(N-1, a));
+  const field = grid => (x, z) => {
+    const a = Math.floor(x+N/2), b = Math.floor(z+N/2);
+    let m = 0;
+    for (let i=a-2;i<=a+2;i++) for (let j=b-2;j<=b+2;j++){
+      if (!inMap(i,j) || !grid[i][j]) continue;
+      const x0 = i-N/2, z0 = j-N/2;
+      m += (M_PHI((x0+1-x)/MS_SIG) - M_PHI((x0-x)/MS_SIG)) * (M_PHI((z0+1-z)/MS_SIG) - M_PHI((z0-z)/MS_SIG));
+    }
+    return m;
   };
-  for (let t=0;t<N;t++){
-    const a = t-N/2, b = a+1;
-    sk(TH[t][0], a, -N/2, TH[t][0], b, -N/2);
-    sk(TH[t][N-1], a, N/2, TH[t][N-1], b, N/2);
-    sk(TH[0][t], -N/2, a, TH[0][t], -N/2, b);
-    sk(TH[N-1][t], N/2, a, TH[N-1][t], N/2, b);
+  const mesaField = field(mesaG), sinaiField = field(sinaiG);
+  // heights: smooth tile interpolation plus the massif jumps
+  const S6 = MS_S6, NS6 = N*S6, NV = N*S6+1, hS = 1/S6;
+  const cosi = u => u*u*(3-2*u);
+  const tileV = (x, z) => {
+    const u = x+N/2-.5, v = z+N/2-.5, i = Math.floor(u), j = Math.floor(v), fu = cosi(u-i), fv = cosi(v-j);
+    const h = (a,b) => TH0V[ci(a)][ci(b)];
+    return (h(i,j)*(1-fu) + h(i+1,j)*fu)*(1-fv) + (h(i,j+1)*(1-fu) + h(i+1,j+1)*fu)*fv;
+  };
+  const HG = new Float32Array(NV*NV);
+  for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
+    const x = ix*hS-N/2, z = iz*hS-N/2;
+    HG[iz*NV+ix] = tileV(x, z) + 2*LV*smstep(.36,.64, mesaField(x, z));
+  }
+  // gameplay heights: mesh height of each tile centre, so gyAt, ghosts and
+  // props all sit exactly on the rendered surface.
+  THV = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++) THV[x][z] = HG[(z*S6+S6/2)*NV + x*S6 + S6/2];
+  if (!FD.length || FD.length < N_MAX) FD = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
+  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
+    let mn = 1e9;
+    for (const [a,b] of [[1,1],[5,1],[1,5],[5,5],[3,1],[1,3],[5,3],[3,5]]) mn = Math.min(mn, HG[(z*S6+b)*NV + x*S6 + a]);
+    FD[x][z] = Math.max(0, THV[x][z] - mn);
+  }
+  // vertex colours: tile palette blended per sample, sandstone on slopes,
+  // granite on the Sinai massif, shade in concavities and light on lips.
+  const hAt = (ix,iz) => HG[Math.max(0,Math.min(NV-1,iz))*NV + Math.max(0,Math.min(NV-1,ix))];
+  const pos = new Float32Array(NV*NV*3), cols = new Float32Array(NV*NV*3);
+  for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
+    const kk = iz*NV+ix, x = ix*hS-N/2, z = iz*hS-N/2, h = HG[kk];
+    pos[kk*3] = x; pos[kk*3+1] = h; pos[kk*3+2] = z;
+    const u = x+N/2-.5, v = z+N/2-.5, i = Math.floor(u), j = Math.floor(v), fu = cosi(u-i), fv = cosi(v-j);
+    let r2 = 0, g2 = 0, b2 = 0;
+    for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]]){
+      const q = TCo[ci(a)][ci(c)]; r2 += q.r*w; g2 += q.g*w; b2 += q.b*w;
+    }
+    // granite tint follows the top-third levels, blended smoothly across
+    // the four surrounding tiles.
+    let pf = 0;
+    for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]])
+      if (sinaiG[ci(a)][ci(c)] && ter[ci(a)][ci(c)] >= 3) pf += w;
+    const pal = pf > .45 ? RK_GRAN : RK_SAND;
+    const gx = (hAt(ix+1,iz)-hAt(ix-1,iz))/(2*hS), gz = (hAt(ix,iz+1)-hAt(ix,iz-1))/(2*hS);
+    const slope = 1-1/Math.sqrt(1+gx*gx+gz*gz);
+    const rm = smstep(.1,.4,slope), rc = pal[Math.floor(whash(ix>>1,iz>>1)*4.99)];
+    const ao = (hAt(ix+1,iz)+hAt(ix-1,iz)+hAt(ix,iz+1)+hAt(ix,iz-1))/4 - h;
+    const sh = 1 - Math.max(0, Math.min(.3, ao*16)) + Math.max(0, Math.min(.07, -ao*10));
+    const mr = Math.max(rm, .2*Math.max(0, Math.min(1, ao*12)), pf > .2 ? .4 : 0);
+    cols[kk*3]   = Math.min(1, (r2 + (rc[0]-r2)*mr) * sh);
+    cols[kk*3+1] = Math.min(1, (g2 + (rc[1]-g2)*mr) * sh);
+    cols[kk*3+2] = Math.min(1, (b2 + (rc[2]-b2)*mr) * sh);
+  }
+  const idx = new Uint32Array(NS6*NS6*6); let ii = 0;
+  for (let iz=0;iz<NS6;iz++) for (let ix=0;ix<NS6;ix++){
+    const a = iz*NV+ix, b = a+1, c = a+NV, d = c+1;
+    idx[ii++] = a; idx[ii++] = c; idx[ii++] = b; idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
   }
   const gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  gg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  gg.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  gg.setIndex(new THREE.BufferAttribute(idx, 1));
   gg.computeVertexNormals();
-  const gm = new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.95, flatShading:true, side:THREE.DoubleSide }));
-  groundMesh = gm;
-  gm.receiveShadow = true;
+  const gmat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.95, flatShading:false });
+  // fragment detail: sand ripples and grain on flat ground, eroded strata
+  // and streaks on the rock faces (all procedural, world space).
+  gmat.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP;varying vec3 vWN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP=(modelMatrix*vec4(position,1.0)).xyz;vWN=normalize(mat3(modelMatrix)*normal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP;varying vec3 vWN;\nfloat h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\nfloat vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1.0,0.0)),f.x),mix(h21(i+vec2(0.0,1.0)),h21(i+vec2(1.0,1.0)),f.x),f.y);}')
+      .replace('#include <color_fragment>', '#include <color_fragment>\nfloat slp=1.0-clamp(normalize(vWN).y,0.0,1.0);float flatW=1.0-smoothstep(0.10,0.38,slp);\nfloat rp=sin((vWP.x*0.85+vWP.z*0.53)*15.0+vn(vWP.xz*1.6)*5.5)*0.5+0.5;\nfloat rip=mix(0.925,1.035,rp*rp)*mix(0.95,1.04,vn(vWP.xz*0.3));\nfloat grain=0.955+0.09*h21(floor(vWP.xz*70.0));\nfloat st=sin(vWP.y*30.0+vn(vec2((vWP.x+vWP.z)*2.5,vWP.y*5.0))*3.0)*0.5+0.5;\nfloat streak=vn(vec2((vWP.x+vWP.z)*6.0,vWP.y*1.5));\nfloat rock=mix(0.80,1.07,st)*mix(0.86,1.04,streak);\ndiffuseColor.rgb*=mix(rock,rip*grain,flatW);');
+  };
+  const gm = new THREE.Mesh(gg, gmat);
+  gm.receiveShadow = true; gm.castShadow = true;
   GR3.add(gm);
+  // sand skirt round the map edge
+  {
+    const sp = [], sc2 = [], c0 = _hx(0xb89a62);
+    const seg = (h1,px,pz,h2,qx,qz) => {
+      for (const [a,b,c] of [[px,h1,pz],[px,-.05,pz],[qx,h2,qz],[qx,h2,qz],[px,-.05,pz],[qx,-.05,qz]]){ sp.push(a,b,c); sc2.push(c0[0],c0[1],c0[2]); }
+    };
+    for (let t=0;t<NS6;t++){
+      const a = t*hS-N/2, b = a+hS;
+      seg(hAt(t,0), a, -N/2, hAt(t+1,0), b, -N/2);
+      seg(hAt(t,NS6), a, N/2, hAt(t+1,NS6), b, N/2);
+      seg(hAt(0,t), -N/2, a, hAt(0,t+1), -N/2, b);
+      seg(hAt(NS6,t), N/2, a, hAt(NS6,t+1), N/2, b);
+    }
+    const sgg = new THREE.BufferGeometry();
+    sgg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sp), 3));
+    sgg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(sc2), 3));
+    sgg.computeVertexNormals();
+    GR3.add(new THREE.Mesh(sgg, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:1, side:THREE.DoubleSide })));
+  }
+  groundMesh = gm;
 }
 
 /* ---- grid sync: gameplay piece lists -> tent grid ---- */
@@ -7260,8 +7445,11 @@ function build(){
     const topY = v === 4 ? GROUND_Y+.8*Hs : v === 5 ? GROUND_Y+.58*Hs : v === 6 ? GROUND_Y-.02+Wd*.9*.707+.03 : v === 2 ? y0+.32 : y0+.08,
       ph = .5 + (ch ? .28 : 0) + (sz >= 3 ? .1 : 0), k2 = ch ? 1.35 : 1;
     box(gB,.025,ph,.025,WOOD,cx,topY+ph/2,cz);
+    // the flag group sits at the pole TOP (pole spans topY..topY+ph, and
+    // box() adds the terrain offset yo internally), so the cloth is fixed
+    // to the top of the pole instead of floating halfway down it.
     const fg = new THREE.Group();
-    fg.position.set(cx, topY + yo(cx,cz), cz);
+    fg.position.set(cx, topY + yo(cx,cz) + ph, cz);
     fg.rotation.y = d*PI/2;
     T3.add(fg);
     const fm = (w,h,c,lx,yy) => {
@@ -7269,21 +7457,17 @@ function build(){
       mm.scale.set(w,h,.02); mm.position.set(lx,yy,0); mm.castShadow = true;
       fg.add(mm);
     };
-    fm(.3*k2,.18*k2,col,.16*k2,-.1*k2);
-    fm(.12*k2,.1*k2,0xf5e9c8,.1*k2,-.1*k2);
+    fm(.3*k2,.18*k2,col,.16*k2,-.09*k2);
+    fm(.12*k2,.1*k2,0xf5e9c8,.1*k2,-.09*k2);
     fm(.1*k2,.09*k2,col,.34*k2,-.1*k2);
     flags.push({ g:fg, r0:d*PI/2, ph:whash(t.x,t.z)*6 });
   }
-  // ---- fires, hearth stones, sheep folds
+  // ---- fires, hearth stones, sheep folds — example campfire at each hearth
   for (const f of nodes.filter(q => q.t === 'fire')){
-    const cx = WT(f.x), cz = WT(f.z);
-    box(gB,.34,.06,.07,0x3a2616,cx,GROUND_Y+.04,cz,.5);
-    box(gB,.34,.06,.07,0x3a2616,cx,GROUND_Y+.04,cz,-.5);
-    box(gP,.3,.5,.3,0,cx,GROUND_Y+.3,cz,PI/4,0,0,MG(0xff7a1a));
-    if (f.role === 'ring') for (let i=0;i<9;i++){
-      const a = i*PI*2/9;
-      box(gB,.14,.1,.12,0x9a8a78,cx+Math.cos(a)*.34,GROUND_Y+.05,cz+Math.sin(a)*.34,-a);
-    }
+    const parts = buildExampleFire(.26, f.role === 'ring');
+    parts.gp.position.set(WT(f.x), gyAt(f.x,f.z), WT(f.z));
+    T3.add(parts.gp);
+    campFires.push(parts);
   }
   for (const f of nodes.filter(q => q.t === 'fold')){
     const cx = WT(f.x), cz = WT(f.z);
@@ -7433,7 +7617,10 @@ function build(){
     for (let k=0;k<n*3;k++) box(gB,la?.04:.28,.04,lb2?.04:.28,WOOD,cx+la*(.46*fpT+.04),GROUND_Y+.2+k*.23,cz+lb2*(.46*fpT+.04));
     if (nd.role === 'beacon'){
       box(gC,.2,.14,.2,0x333333,cx,y+.12,cz);
-      box(gP,.3,.5,.3,0,cx,y+.42,cz,PI/4,0,0,MG(0xff7a1a));
+      const bfire = buildExampleFire(.16);
+      bfire.gp.position.set(cx, GROUND_Y + n*TL + .19 + yo(cx,cz), cz);
+      T3.add(bfire.gp);
+      campFires.push(bfire);
     } else {
       for (const sx of [-1,1]) for (const sz of [-1,1]) box(gB,.05,.5,.05,WOOD,cx+sx*tw*.42,y+.33,cz+sz*tw*.42);
       if (rd2) box(gCone,tw*.62,.7,tw*.62,0xa9894f,cx,y+.95,cz);
@@ -7804,12 +7991,8 @@ function stationGroup(s){
   altarTop.scale.set(.3,.04,.18); altarTop.position.y = .16;
   gp.add(altar, altarTop);
   if (s.id === 'sinai'){
-    const mount = new THREE.Mesh(gP, M(0x6a5a7f));
-    mount.scale.set(3,1.9,3); mount.position.set(-.8,1,-.8);
-    mount.castShadow = true;
-    const mount2 = new THREE.Mesh(gP, M(0x7f6e96));
-    mount2.scale.set(3.4,2.2,3.4); mount2.position.set(1.2,1.1,.9);
-    gp.add(mount, mount2);
+    // The massif itself rises from the terrain west of here (rebuildGround);
+    // the camp only sees the sanctuary stones at its foot.
   } else if (s.id === 'rephidim'){
     const rock = new THREE.Mesh(gB, M(0x8a7a68));
     rock.scale.set(.9,.5,.6); rock.position.set(-.6,.25,-.3);
@@ -7833,47 +8016,178 @@ function updateStationVisuals(t){
   }
   sweepPool(STN3);
 }
-/* The Pillar of Cloud & Fire: a shaft of light with rising rings, a ground
-   halo and a real light — cloud by day, fire by night. */
+/* The Pillar of Cloud & Fire — rebuilt from examples/Pillar of Fire.html:
+   a lathe of shader flame shells (fbm noise, rim glow) over a glow sprite,
+   with rising fire and swirling sparks by night, and a billowing column of
+   cloud puffs by day. */
 const pillarG = new THREE.Group();
-const pillarShaft = new THREE.Mesh(new THREE.CylinderGeometry(.45,.7,9,10,1,true), new THREE.MeshBasicMaterial({ color:0xfff8e0, transparent:true, opacity:.3, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
-pillarShaft.position.y = 4.5;
-pillarG.add(pillarShaft);
-const pillarRings = [];
-for (let i=0;i<6;i++){
-  const ring = new THREE.Mesh(gS, new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:.2, blending:THREE.AdditiveBlending, depthWrite:false }));
-  ring.scale.set(.7,.1,.7);
-  pillarG.add(ring);
-  pillarRings.push(ring);
+pillarG.scale.setScalar(.62);   // the example's 14-unit pillar -> ~8.7 world units
+S3.add(pillarG);
+const PILLAR_H = 14;
+const pillarTime = { value:0 };
+const pillarVS = `uniform float uTime,uH;varying vec3 vPos;varying vec3 vN;varying float vH;
+void main(){vec3 p=position;float h=p.y/uH;
+ p.x+=(sin(p.y*.5+uTime*1.3)*.28+sin(p.y*1.3-uTime*2.1)*.1)*h;p.z+=cos(p.y*.45+uTime*1.1)*.28*h;
+ vPos=p;vH=h;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`;
+const pillarFS = `uniform float uTime,uInt,uRim,uSeed;varying vec3 vPos;varying vec3 vN;varying float vH;
+float hash(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float noise(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(hash(i),hash(i+vec3(1.,0.,0.)),f.x),mix(hash(i+vec3(0.,1.,0.)),hash(i+vec3(1.,1.,0.)),f.x),f.y),
+            mix(mix(hash(i+vec3(0.,0.,1.)),hash(i+vec3(1.,0.,1.)),f.x),mix(hash(i+vec3(0.,1.,1.)),hash(i+vec3(1.,1.,1.)),f.x),f.y),f.z);}
+float fbm(vec3 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=.5;}return v;}
+void main(){float h=vH;float tw=h*5.+uTime*.6+uSeed;float c=cos(tw),s=sin(tw);
+ vec2 q=mat2(c,-s,s,c)*vPos.xz;
+ float n=fbm(vec3(q*1.3,vPos.y*.3-uTime*1.9+uSeed*3.));
+ float rim=pow(abs(vN.z),uRim);
+ float top=1.-smoothstep(.5,1.,h+(n-.5)*.5);float bot=smoothstep(0.,.04,h);
+ float a=(n*1.5-.1)*rim*top*bot*uInt;
+ vec3 col=mix(vec3(.6,.05,0.),vec3(1.,.4,.05),smoothstep(.1,.5,a));
+ col=mix(col,vec3(1.,.85,.35),smoothstep(.45,.85,a));col=mix(col,vec3(1.,1.,.85),smoothstep(.85,1.3,a));
+ gl_FragColor=vec4(col,clamp(smoothstep(.04,.55,a),0.,1.));}`;
+const pillarFlame = new THREE.Group();
+pillarFlame.position.y = .7;
+pillarG.add(pillarFlame);
+const pillarShells = [];
+[[1.9,.55,1.6,0],[1.0,1.15,1.2,3.1],[.55,1.5,1.0,6.3]].forEach(([Rr,inty,rim,sd])=>{
+  const pts = [];
+  for (let i=0;i<=30;i++){
+    const h = i/30;
+    pts.push(new THREE.Vector2(Rr*(.5 + 1.0*Math.pow(1-h,3.5) + .12*Math.sin(h*7))*(h>.9 ? 1-(h-.9)*4 : 1), h*PILLAR_H));
+  }
+  const m = new THREE.ShaderMaterial({ uniforms:{ uTime:pillarTime, uH:{value:PILLAR_H}, uInt:{value:inty}, uRim:{value:rim}, uSeed:{value:sd} }, vertexShader:pillarVS, fragmentShader:pillarFS, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
+  m.userData = { base:inty };
+  pillarFlame.add(new THREE.Mesh(new THREE.LatheGeometry(pts,28), m));
+  pillarShells.push(m);
+});
+/* Soft radial blob textures for the glow sprite and particles. */
+function blobTex(stops, noisey){
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32,32,0,32,32,32);
+  stops.forEach(s => gr.addColorStop(s[0], s[1]));
+  x.fillStyle = gr; x.fillRect(0,0,64,64);
+  if (noisey) for (let i=0;i<5;i++){
+    const px = 14+Math.random()*36, py = 14+Math.random()*36;
+    const gg = x.createRadialGradient(px,py,0,px,py,14);
+    gg.addColorStop(0,'rgba(255,255,255,.35)'); gg.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle = gg; x.fillRect(0,0,64,64);
+  }
+  const t = new THREE.CanvasTexture(c); return t;
 }
-const pillarHalo = new THREE.Mesh(new THREE.CircleGeometry(2.2,24), new THREE.MeshBasicMaterial({ color:0xffd9a0, transparent:true, opacity:.2, blending:THREE.AdditiveBlending, depthWrite:false }));
-pillarHalo.rotation.x = -PI/2; pillarHalo.position.y = .03;
-pillarG.add(pillarHalo);
-const pillarLight = new THREE.PointLight(0xffd9a0, 0, 14);
+const pillarGlowTex = blobTex([[0,'rgba(255,255,255,1)'],[.35,'rgba(255,255,255,.55)'],[1,'rgba(255,255,255,0)']]);
+const pillarDotTex = blobTex([[0,'rgba(255,255,255,1)'],[.55,'rgba(255,255,255,.9)'],[.7,'rgba(255,255,255,.2)'],[1,'rgba(255,255,255,0)']]);
+const pillarGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map:pillarGlowTex, color:0xff7a20, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:.55 }));
+pillarGlow.scale.set(14,14,1); pillarGlow.position.y = 2.5;
+pillarFlame.add(pillarGlow);
+/* Rising fire and swirling sparks around the base (example §particles). */
+const pillarP = [];
+function pillarMk(type, n){
+  for (let i=0;i<n;i++){
+    const m = new THREE.SpriteMaterial({ map:type==='spark' ? pillarDotTex : pillarGlowTex, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:0 });
+    const s = new THREE.Sprite(m); s.visible = false;
+    pillarFlame.add(s);
+    pillarP.push({ s, type, age:1e9, life:1, v:new THREE.Vector3(), seed:Math.random()*100, size:1, ang:0, rad:0, w:0 });
+  }
+}
+pillarMk('base', 36); pillarMk('spark', 64);
+function pillarSpawn(p){
+  const a = Math.random()*6.28;
+  if (p.type === 'base'){
+    const r = .5 + Math.random()*1.1;
+    p.s.position.set(Math.cos(a)*r, .9, Math.sin(a)*r);
+    p.v.set(Math.cos(a)*(.4+Math.random()*.8), 1.6+Math.random()*1.2, Math.sin(a)*(.4+Math.random()*.8));
+    p.life = .9 + Math.random()*.9; p.size = 2.2 + Math.random()*1.4;
+  } else {
+    p.ang = a; p.rad = .4 + Math.random()*1.1;
+    p.s.position.set(Math.cos(a)*p.rad, .9, Math.sin(a)*p.rad);
+    p.v.set(0, 2 + Math.random()*2.5, 0);
+    p.w = (Math.random() < .5 ? 1 : -1)*(.4 + Math.random()*1.2);
+    p.life = 2 + Math.random()*2.5; p.size = .22 + Math.random()*.3;
+  }
+  p.age = 0;
+}
+/* The daytime cloud: a column of soft billowing puffs. */
+const pillarCloud = new THREE.Group();
+pillarG.add(pillarCloud);
+const cloudPuffs = [];
+{
+  const cm = new THREE.MeshStandardMaterial({ color:0xdfe8f6, roughness:1, flatShading:true, transparent:true, opacity:.68, emissive:0x8496b8, emissiveIntensity:.3 });
+  [[0,1.2,1.15],[0,2.9,1.05],[.25,4.5,.92],[-.2,6,0.82],[.15,7.4,.72],[-.15,8.8,.62],[0,10.2,.52],[0,11.6,.42]].forEach(([x,y,r],i)=>{
+    const p = new THREE.Mesh(gS, cm);
+    p.position.set(x, y, r*.7);
+    p.scale.set(r, r*.82, r);
+    p.userData = { ph:i*1.7, r };
+    pillarCloud.add(p);
+    cloudPuffs.push(p);
+  });
+}
+/* Ground glow + the real lights. */
+const pillarGround = new THREE.Mesh(new THREE.CircleGeometry(2.6,24), new THREE.MeshBasicMaterial({ color:0xffd9a0, transparent:true, opacity:.18, blending:THREE.AdditiveBlending, depthWrite:false }));
+pillarGround.rotation.x = -PI/2; pillarGround.position.y = .03;
+pillarG.add(pillarGround);
+const pillarLight = new THREE.PointLight(0xffd9a0, 0, 16);
 pillarLight.position.y = 1.2;
 pillarG.add(pillarLight);
-S3.add(pillarG);
+const pillarHi = new THREE.PointLight(0xffb060, 0, 20);
+pillarHi.position.y = 5.5;
+pillarG.add(pillarHi);
+let pillarLast = 0;
+const pA = new THREE.Color(1,.92,.55), pB = new THREE.Color(1,.5,.1), pC = new THREE.Color(.55,.06,0), pT = new THREE.Color();
 function updatePillar(t){
   const s = currentStation();
   if (!s){ pillarG.visible = false; return; }
   pillarG.visible = true;
   const night = state.hour >= 19 || state.hour < 5.5;
   pillarG.position.set(WT(s.x), gyAt(s.x,s.y), WT(s.y));
-  pillarShaft.material.color.set(night ? 0xff9a40 : 0xfff8e0);
-  pillarShaft.material.opacity = night ? .38 : .26;
-  pillarHalo.material.color.set(night ? 0xff8c28 : 0xfff2cc);
-  pillarHalo.material.opacity = .16 + Math.sin(t*1.4)*.05;
-  for (let i=0;i<pillarRings.length;i++){
-    const u = ((t*.35 + i/6) % 1);
-    const ring = pillarRings[i];
-    ring.position.y = .3 + u*8;
-    const rr = (night ? .5 : .65) + i*.12 + Math.sin(t*2+i)*.1;
-    ring.scale.set(rr,.09,rr);
-    ring.material.color.set(night ? 0xffb060 : 0xffffff);
-    ring.material.opacity = (night ? .3 : .22) * (1-u);
+  pillarTime.value = t;
+  pillarFlame.visible = night;
+  pillarCloud.visible = !night;
+  const dt = Math.min(.05, Math.max(0, t - pillarLast));
+  pillarLast = t;
+  if (night){
+    const f = .85 + Math.sin(t*11)*.1 + Math.sin(t*23.3)*.07 + Math.random()*.06;
+    pillarGlow.material.opacity = .3*f;
+    pillarGlow.scale.setScalar(8 + f*1.6);
+    pillarLight.color.set(0xff9a40); pillarLight.intensity = 1.05*f;
+    pillarHi.intensity = .5*f;
+    pillarGround.material.color.set(0xff8c28);
+    pillarGround.material.opacity = .09*f;
+    for (const p of pillarP){
+      const rate = p.type === 'base' ? 3.2 : 1.4;
+      if (p.age > p.life){
+        if (Math.random() < dt*rate) pillarSpawn(p);
+        else { p.s.visible = false; continue; }
+      }
+      p.age += dt;
+      const q = p.age/p.life, m = p.s.material;
+      p.s.visible = true;
+      if (p.type === 'spark'){
+        p.ang += p.w*dt; p.rad += dt*(.1 + q*.7);
+        p.s.position.set(Math.cos(p.ang)*p.rad, p.s.position.y + p.v.y*dt, Math.sin(p.ang)*p.rad);
+        m.color.setRGB(1, .65 - .3*q, .2);
+        m.opacity = (1-q)*(.6 + .4*Math.sin(t*15 + p.seed));
+        p.s.scale.set(p.size, p.size, 1);
+      } else {
+        p.s.position.addScaledVector(p.v, dt);
+        pT.copy(q < .3 ? pA.clone().lerp(pB, q/.3) : pB.clone().lerp(pC, (q-.3)/.7));
+        m.color.copy(pT);
+        m.opacity = Math.min(1,(1-q)*1.5)*.55;
+        const sc = p.size*(1 + q*.4);
+        p.s.scale.set(sc, sc*1.3, 1);
+      }
+    }
+  } else {
+    pillarLight.color.set(0xfff4d8); pillarLight.intensity = .5;
+    pillarHi.intensity = 0;
+    pillarGround.material.color.set(0xfff2cc);
+    pillarGround.material.opacity = .1 + Math.sin(t*1.4)*.04;
+    for (const p of pillarP) p.s.visible = false;
+    pillarCloud.rotation.y = t*.1;
+    for (const p of cloudPuffs){
+      const u = p.userData;
+      p.scale.setScalar(u.r*(1 + .07*Math.sin(t*1.3 + u.ph)));
+    }
   }
-  pillarLight.color.set(night ? 0xff9a40 : 0xfff4d8);
-  pillarLight.intensity = (night ? 1.4 : .5) * (0.9 + Math.sin(t*7)*.1);
 }
 /* Manna flakes: small glowing diamonds that bob. */
 function updateMannaVisuals(t){
@@ -7989,6 +8303,84 @@ function updateNodeState(gp, n, wx, wz){
   }
   gp.position.set(wx, gyAt(n.x,n.y), wz);
 }
+/* Low-poly flame tongue with a vertex-colour gradient, straight from
+   examples/Isometric Campfire.html. */
+const FLAME_LAY = [[[1,.42,.06],[.7,.08,.03]],[[1,.62,.1],[1,.3,.05]],[[1,.95,.62],[1,.7,.15]]];
+function fireTongue(h, r, L){
+  let g = new THREE.ConeGeometry(r, h, 5, 5, true);
+  g.translate(0, h/2, 0);
+  const p = g.attributes.position;
+  for (let i=0;i<p.count;i++){
+    const t = p.getY(i)/h, b = 1 + .55*Math.sin(PI*Math.min(1, t*1.15)), sk = t*t*.25;
+    p.setX(i, p.getX(i)*b + sk*h*.3);
+  }
+  g = g.toNonIndexed();
+  const pos = g.attributes.position, col = new Float32Array(pos.count*3);
+  for (let f=0;f<pos.count;f+=3){
+    const t = (pos.getY(f) + pos.getY(f+1) + pos.getY(f+2))/3/h, j = .85 + rnd()*.3;
+    const a = FLAME_LAY[L][0], b = FLAME_LAY[L][1];
+    for (let v=0;v<3;v++){
+      const tt = Math.min(1, t);
+      for (let c=0;c<3;c++) col[(f+v)*3+c] = Math.min(1, (a[c] + (b[c]-a[c])*tt)*j);
+    }
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.93, side:THREE.DoubleSide }));
+}
+/* A whole campfire straight from examples/Isometric Campfire.html: dirt pit,
+   three-log tripod, live coals, layered flame tongues and (optionally) a
+   ring of hearth stones. The dynamic parts are registered in campFires. */
+const campFires = [];
+function buildExampleFire(SC, withRing){
+  const gp = new THREE.Group();
+  const pit = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.4,.04,12), M(0x140c08));
+  pit.scale.setScalar(SC); pit.position.y = .02;
+  gp.add(pit);
+  const side = new THREE.MeshStandardMaterial({ color:0x3d2618, roughness:.9, flatShading:true, emissive:0x3a0d00, emissiveIntensity:.7 });
+  const cap = new THREE.MeshStandardMaterial({ color:0xb5743a, roughness:.9, flatShading:true, emissive:0x3a1500, emissiveIntensity:.4 });
+  for (let k=0;k<3;k++){
+    const lg = new THREE.Group();
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,2.2,8), [side,cap,cap]);
+    log.scale.setScalar(SC);
+    log.rotation.z = PI/2 + .12;
+    log.position.set(.75*SC, .32*SC, .32*SC);
+    log.castShadow = true;
+    lg.add(log);
+    lg.rotation.y = k*PI*2/3 + .3;
+    gp.add(lg);
+  }
+  const coals = [];
+  for (let i=0;i<8;i++){
+    const c = new THREE.Mesh(new THREE.IcosahedronGeometry(.17 + rnd()*.08, 0), new THREE.MeshBasicMaterial({ color:0xff3a10 }));
+    const a = i/8*PI*2, r = .35 + rnd()*.45;
+    c.scale.setScalar(SC);
+    c.position.set(Math.cos(a)*r*SC, .12*SC, Math.sin(a)*r*SC);
+    c.rotation.set(rnd()*3, rnd()*3, 0);
+    gp.add(c);
+    coals.push(c);
+  }
+  const flames = [];
+  [[8,.55,2.3,.55,0],[5,.45,1.7,.3,1],[3,.3,1.1,.15,2]].forEach(([n,r,h,rad,L])=>{
+    for (let i=0;i<n;i++){
+      const tg = fireTongue(h*SC*(.7 + rnd()*.6), r*SC*(.8 + rnd()*.4), L);
+      const a = i/n*PI*2 + rnd()*.5, dd = rad*(.6 + rnd()*.7);
+      tg.position.set(Math.cos(a)*dd*SC, .05, Math.sin(a)*dd*SC);
+      tg.userData = { s:rnd()*100, f:2 + rnd()*3 };
+      tg.rotation.y = rnd()*6;
+      gp.add(tg);
+      flames.push(tg);
+    }
+  });
+  if (withRing) for (let i=0;i<9;i++){
+    const a = i*PI*2/9;
+    const st = new THREE.Mesh(gB, M(0x9a8a78));
+    st.scale.set(.14,.1,.12);
+    st.position.set(Math.cos(a)*.52, .05, Math.sin(a)*.52);
+    st.rotation.y = -a;
+    gp.add(st);
+  }
+  return { gp, flames, coals, logMat: side };
+}
 /* Camp props: market stall, campfire, crates (from decor). */
 function propGroup(d){
   const gp = new THREE.Group();
@@ -8014,22 +8406,15 @@ function propGroup(d){
       gp.add(ware);
     }
   } else if (d.kind === 'fire'){
-    for (const [a,b] of [[.5,-.5],[-.5,.5]]){
-      const log = new THREE.Mesh(gB, M(0x5a3a1d));
-      log.scale.set(.3,.03,.04); log.position.y = .03; log.rotation.y = a;
-      gp.add(log);
-    }
-    const flame = new THREE.Mesh(gP, MG(0xff7a1a));
-    flame.scale.set(.16,.3,.16); flame.position.y = .2;
-    const flame2 = new THREE.Mesh(gP, MG(0xffc34a));
-    flame2.scale.set(.09,.2,.09); flame2.position.y = .24;
-    gp.userData.flames = [flame, flame2];
-    gp.add(flame, flame2);
+    // Rebuilt from examples/Isometric Campfire.html at ~30% scale.
+    const parts = buildExampleFire(.3);
+    gp.userData = parts;
+    campFires.push(parts);
     for (let i=0;i<4;i++){
       const m = new THREE.Mesh(gS, new THREE.MeshBasicMaterial({ color:0xcfc4b8, transparent:true, opacity:.4 }));
-      m.position.y = .3;
+      m.position.y = .35;
       gp.add(m);
-      smoke.push({ m, y:.3, ph:i/4, gp });
+      smoke.push({ m, y:.35, ph:i/4, gp });
     }
   } else {   // crate
     const crate = new THREE.Mesh(gB, M(0x7a4a24));
@@ -8044,19 +8429,33 @@ function propGroup(d){
 }
 const fireLight = new THREE.PointLight(0xff9a40, 0, 8);
 S3.add(fireLight);
-function updateDecorProps(t){
+function updateDecorProps(t, dt){
   for (const d of decor){
     if (d.kind !== 'market' && d.kind !== 'fire' && d.kind !== 'crate') continue;
     const gp = keyedPool(NODE3, d, () => propGroup(d));
     gp.position.set(WT(d.x), gyAt(d.x,d.y), WT(d.y));
-    if (d.kind === 'fire' && gp.userData.flames){
+    if (d.kind === 'fire'){
       const night = state.hour >= 19 || state.hour < 5.5;
-      const flick = 1 + Math.sin(t*12)*.12 + Math.sin(t*19)*.06;
-      gp.userData.flames[0].scale.set(.16,.3*flick,.16);
-      gp.userData.flames[1].scale.set(.09,.22*flick,.09);
-      fireLight.position.set(WT(CAMP.x+.9), gyAt(CAMP.x+.9,CAMP.y+.9)+.5, WT(CAMP.y+.9));
-      fireLight.intensity = night ? .9 + Math.sin(t*9)*.15 : .25;
+      fireLight.position.set(WT(FIREP.x), gyAt(FIREP.x,FIREP.y)+.5, WT(FIREP.y));
+      fireLight.color.set(0xff7a22);
+      fireLight.intensity = (night ? 1.1 : .3) * (.85 + Math.sin(t*13)*.1 + Math.sin(t*27.3)*.07 + Math.random()*.08);
     }
+  }
+  /* Every campfire (decor, hearths, beacons) flickers from one registry. */
+  for (let i = campFires.length-1; i >= 0; i--){
+    const p = campFires[i];
+    if (!p.gp.parent){ campFires.splice(i,1); continue; }
+    const f = .85 + Math.sin(t*13)*.1 + Math.sin(t*27.3)*.07 + Math.random()*.08;
+    for (const tg of p.flames){
+      const u = tg.userData, n = Math.sin(t*u.f + u.s)*.5 + Math.sin(t*u.f*2.1 + u.s)*.25;
+      tg.scale.y = .85 + .3*n + .15;
+      tg.scale.x = tg.scale.z = .9 + .15*Math.cos(t*u.f*1.3 + u.s);
+      tg.rotation.x = Math.sin(t*u.f*.8 + u.s)*.12;
+      tg.rotation.z = Math.cos(t*u.f*.7 + u.s)*.12 - .08;
+      tg.rotation.y += dt*.8;
+    }
+    p.coals.forEach((c,i2)=>c.material.color.setRGB(1, .12 + .18*Math.sin(t*3 + i2*1.7)**2, .04));
+    p.logMat.emissiveIntensity = .7 + f*.6;
   }
 }
 /* Burning tents after a raid: emissive flames licking from the roof. */
@@ -8153,7 +8552,7 @@ function updateGhost(){
 const SKY = [
   [5.0,  0xf4c49a, 0xffd9b8, 0x8a6a50, 0xffb070, .5, .5],
   [6.5,  0xf3dcae, 0xfff0d6, 0xb08a5a, 0xffe2b0, .9, .75],
-  [12.5, 0xf2e6c0, 0xfff6e0, 0xb89a6a, 0xfff4d8, 1, .85],
+  [12.5, 0xecd9a8, 0xfff0d6, 0xb08a5a, 0xffe0a8, .82, .55],
   [17.0, 0xf0d7a4, 0xfff0d6, 0xb08a5a, 0xffd9a0, .9, .75],
   [18.75,0xe8a070, 0xffb890, 0x6a5060, 0xff9a55, .6, .5],
   [20.5, 0x1a2342, 0x3a4a7a, 0x1a1a2a, 0x8fa8ff, 0, .3],
@@ -8320,7 +8719,7 @@ function moveFlocks(dt, t){
     a.head.position.set(a.hx + .03*a.hd, .24 - .13*a.hd + (gaze?.03:0), 0);
     a.head.rotation.z = -.55*a.hd;
     a.head.rotation.y = gaze ? Math.sin(t*1.6+a.ph)*.6 : 0;
-    p.y = gyAt(p.x,p.z) + (!still && d > .08 ? Math.abs(Math.sin(t*8+a.ph))*.02 : 0);
+    p.y = gyAtW(p.x,p.z) + (!still && d > .08 ? Math.abs(Math.sin(t*8+a.ph))*.02 : 0);
   }
 }
 /* Ambient animation: flags sway, smoke rises. */
@@ -8347,7 +8746,7 @@ function updateEntities(dt){
   updatePillar(t);
   updateMannaVisuals(t);
   updateNodeVisuals();
-  updateDecorProps(t);
+  updateDecorProps(t, dt);
   updateTentFires(t);
   updateGhost();
   moveFlocks(dt, t);
@@ -8541,8 +8940,6 @@ function updateHud(force){
   cw.style.color = state.campWater < 18 ? '#e0584a' : '';
   cw.style.fontWeight = state.campWater < 18 ? '700' : '';
 
-  $('yearNum').textContent = yearOfMonth();
-  $('monthLabel').textContent = `OF 40 · MONTH ${monthOfYear()}/12 · DAY ${dayOfMonth()}/7`;
   const s = currentStation();
   if (s){
     $('stationName').textContent = s.name;
@@ -8591,6 +8988,18 @@ function updateHud(force){
     if (val) val.textContent = Math.round(v.value);
   }
   $('vitals').hidden = !anyVital;
+  const dt2 = state.dayTracking || { manna:0, water:0, wood:0, stone:0 };
+  $('dhManna').textContent = dt2.manna;
+  $('dhWater').textContent = dt2.water;
+  $('dhWood').textContent = dt2.wood;
+  $('dhStone').textContent = dt2.stone;
+  const daily = $('dailyHud');
+  if (daily){
+    if (anyVital){
+      const v = $('vitals');
+      daily.style.top = (v.offsetTop + v.offsetHeight + 6) + 'px';
+    } else daily.style.top = '';
+  }
 
   $('rSkin').textContent = state.waterskin;
   $('rQuota').textContent = state.day % 7 === 0 ? 'Sabbath' : quota;
@@ -8925,8 +9334,8 @@ function endPointer(e){
     say('Click one of your structures to pick it up.');
     return;
   }
-  if (state.buildMode){
-    placeStructure(w.x, w.y);
+  if (state.clickMode === 'build'){
+    if (state.buildMode) placeStructure(w.x, w.y);
     return;
   }
   if (!blocked(x,y)){
@@ -9228,21 +9637,31 @@ function boot(){
   setSpeed(1);
   updateHud(true);
 
-  const cont = $('menuContinue');
+  const cont = $('menuContinue'), begin = $('menuBegin');
   const found = readSave();
+  /* With a saved journey, Continue is the primary action and Begin is the
+     explicit fresh-start choice. */
   if (found){
     cont.hidden = false;
+    cont.classList.add('primary'); cont.classList.remove('ghost');
+    begin.classList.remove('primary'); begin.classList.add('ghost');
+    begin.title = 'Start a new journey from Year 1, Day 1.';
     const saved = found.data;
     cont.textContent = `Continue Year ${yearOfMonth(clamp(saved.day || 1, 1, TOTAL_DAYS))}`;
     setSaveStatus(found.source === 'backup' ? 'Recovered the previous save slot.' : 'A previous journey is saved in this browser.', found.source === 'backup' ? 'good' : '');
   } else {
     cont.hidden = true;
+    cont.classList.remove('primary'); cont.classList.add('ghost');
+    begin.classList.add('primary'); begin.classList.remove('ghost');
+    begin.title = '';
     if (hasSave()) setSaveStatus('A save exists but could not be read. Try Import save or a backup file.', 'bad');
   }
   const shared = consumeShareLink();
   if (shared){
     state.sharedJourney = shared;
-    $('menuBegin').textContent = 'Begin shared wilderness';
+    begin.classList.add('primary'); begin.classList.remove('ghost');
+    cont.classList.remove('primary'); cont.classList.add('ghost');
+    begin.textContent = 'Begin shared wilderness';
     setSaveStatus('A shared wilderness is ready. Begin to load its seed and camp layout.', 'good');
   }
   document.body.classList.add('menu-open');

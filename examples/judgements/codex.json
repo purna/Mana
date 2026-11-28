@@ -1,0 +1,429 @@
+[
+ {
+  "id": "codex-murder",
+  "offence": "Premeditated Murder (Ratsach)",
+  "category": "Crimes Against Life",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Execution by the sword; strictly no ransom; dragged even from God's altar.",
+  "citations": [
+   "Gen 9:5–6",
+   "Exod 21:12, 14",
+   "Lev 24:17",
+   "Num 35:30–31"
+  ],
+  "rationale": "Grounded in Imago Dei—human life bears God's image and cannot be monetised. Unpunished murder defiles the land."
+ },
+ {
+  "id": "codex-manslaughter",
+  "offence": "Accidental Homicide (Manslaughter)",
+  "category": "Crimes Against Life",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Exile to one of six Levitical Cities of Refuge (Arei Miklat) until the High Priest's death; no ransom.",
+  "citations": [
+   "Exod 21:13",
+   "Num 35:25, 32",
+   "Deut 19:3–5"
+  ],
+  "rationale": "Shields the unintentional killer from the avenger of blood (Go'el HaDam), halting blood feuds whilst honouring the gravity of life lost."
+ },
+ {
+  "id": "codex-unsolved-murder",
+  "offence": "Unsolved Homicide on the Open Road",
+  "category": "Crimes Against Life",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Elders break a heifer's neck in a rough, unploughed valley by a stream; valley never sown.",
+  "citations": [
+   "Deut 21:1–9"
+  ],
+  "rationale": "Expiates communal bloodguilt when the perpetrator remains undiscovered."
+ },
+ {
+  "id": "codex-ox-negligence",
+  "offence": "Owner Negligence with a Known Dangerous Ox",
+  "category": "Property & Negligence",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Ox stoned (flesh uneaten); negligent owner faces death or court-imposed ransom.",
+  "citations": [
+   "Exod 21:28–29"
+  ],
+  "rationale": "Holds property owners criminally accountable when warned of a lethal hazard."
+ },
+ {
+  "id": "codex-ox-slaughtered",
+  "offence": "Theft of an Ox (Slaughtered or Sold)",
+  "category": "Theft & Restitution",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Fivefold restitution (five oxen for one stolen ox).",
+  "citations": [
+   "Exod 22:1"
+  ],
+  "rationale": "Higher multiplier reflects both premeditated disposal of evidence and the ox's crucial agricultural labour value."
+ },
+ {
+  "id": "codex-sheep-slaughtered",
+  "offence": "Theft of a Sheep (Slaughtered or Sold)",
+  "category": "Theft & Restitution",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Fourfold restitution (four sheep for one stolen sheep).",
+  "citations": [
+   "Exod 22:1"
+  ],
+  "rationale": "Deters livestock rustling whilst keeping property offences non-capital."
+ },
+ {
+  "id": "codex-live-theft",
+  "offence": "Theft Recovered Alive & Insolvent Thief",
+  "category": "Theft & Restitution",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Double restitution (200%); if unable to pay, temporary bonded servitude until debt is cleared.",
+  "citations": [
+   "Exod 22:3–4"
+  ],
+  "rationale": "Restores the victim twofold without resorting to execution for property crimes."
+ },
+ {
+  "id": "codex-grazing-fire",
+  "offence": "Straying Livestock or Spreading Fire",
+  "category": "Property & Negligence",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Full restitution from the best of the offender's field/vineyard, or full fire damages.",
+  "citations": [
+   "Exod 22:5–6"
+  ],
+  "rationale": "Enforces civil stewardship and strict accountability for agricultural negligence."
+ },
+ {
+  "id": "codex-nonfatal-assault",
+  "offence": "Non-Fatal Assault (Bedridden Victim)",
+  "category": "Lex Talionis",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Monetary compensation for lost wages/time and full medical care until healed.",
+  "citations": [
+   "Exod 21:18–19"
+  ],
+  "rationale": "Translates proportional justice into practical economic restoration."
+ },
+ {
+  "id": "codex-lex-talionis",
+  "offence": "Permanent Bodily Injury & Fetal Harm",
+  "category": "Lex Talionis",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Proportional court-assessed damages (or husband's court-approved fine if mother unharmed in premature birth).",
+  "citations": [
+   "Exod 21:22–25",
+   "Lev 24:19–20",
+   "Deut 19:21"
+  ],
+  "rationale": "Establishes an equitable ceiling on retaliation—interpreted in judicial practice as financial compensation rather than personal vendetta."
+ },
+ {
+  "id": "codex-slave-maiming",
+  "offence": "Master Maiming a Servant's Eye or Tooth",
+  "category": "Lex Talionis",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Immediate, unconditional emancipation (freedom) of the servant.",
+  "citations": [
+   "Exod 21:26–27"
+  ],
+  "rationale": "Protects the bodily dignity of servants and checks abusive authority."
+ },
+ {
+  "id": "codex-stripes",
+  "offence": "Statutory Corporal Punishment (Stripes)",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Infliction of stripes strictly capped at 40 (39 in practice).",
+  "citations": [
+   "Deut 25:2–3"
+  ],
+  "rationale": "Prevents judicial cruelty so an offender is not degraded in the sight of the community."
+ },
+ {
+  "id": "codex-kidnapping",
+  "offence": "Kidnapping & Human Trafficking",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Death by execution whether sold or held in possession.",
+  "citations": [
+   "Exod 21:16",
+   "Deut 24:7"
+  ],
+  "rationale": "Treats theft of human liberty as an unpardonable capital crime rather than a mere economic tort."
+ },
+ {
+  "id": "codex-parents",
+  "offence": "Violently Striking or Cursing Parents",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Death by execution (or stoning for the persistently rebellious son).",
+  "citations": [
+   "Exod 21:15, 17",
+   "Lev 20:9",
+   "Deut 21:18–21"
+  ],
+  "rationale": "Safeguards the fifth commandment and the foundational authority of the family unit."
+ },
+ {
+  "id": "codex-witness-rule",
+  "offence": "Evidentiary Standard & Capital Perjury",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Minimum two eyewitnesses required; false witnesses suffer the exact penalty they plotted against the accused.",
+  "citations": [
+   "Num 35:30",
+   "Deut 17:6",
+   "Deut 19:15–19"
+  ],
+  "rationale": "Prevents hasty verdicts and deters malicious abuse of capital courts."
+ },
+ {
+  "id": "codex-duress",
+  "offence": "Offence Committed Under Duress",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "No punishment; full exoneration of the coerced victim.",
+  "citations": [
+   "Deut 22:25–26"
+  ],
+  "rationale": "Distinguishes moral culpability from forced compliance when no aid was available."
+ },
+ {
+  "id": "codex-karet-sacral",
+  "offence": "Hidden Sacral Breaches (Blood, Chametz, Circumcision, Impurity)",
+  "category": "Sacral & Karet",
+  "jurisdiction": "Karet (Divine Excision)",
+  "penalty": "Karet ('cut off from one's people'): punitive expulsion or divine premature death / spiritual excision.",
+  "citations": [
+   "Gen 17:14",
+   "Exod 12:15, 19",
+   "Lev 7:20–27",
+   "Num 15:30–31"
+  ],
+  "rationale": "Governs private or sacral covenant violations beyond eyewitness court jurisdiction."
+ },
+ {
+  "id": "codex-sabbath-molech",
+  "offence": "Public Sabbath Defiance, Blasphemy, or Molech Worship",
+  "category": "Sacral & Karet",
+  "jurisdiction": "Dual (Court + Karet)",
+  "penalty": "Judicial stoning (Sekilah) by the community; divine Karet if human justice fails.",
+  "citations": [
+   "Exod 31:14–15",
+   "Num 15:32–36",
+   "Lev 20:2–5",
+   "Lev 24:14–16"
+  ],
+  "rationale": "Dual sanction protects both public covenant loyalty and communal holiness."
+ },
+ {
+  "id": "codex-seduction",
+  "offence": "Seduction of an Unbetrothed Virgin",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Pay 50-shekel bride price (mohar) and marry her (or pay mohar if father refuses).",
+  "citations": [
+   "Exod 22:16–17",
+   "Deut 22:28–29"
+  ],
+  "rationale": "Secures the woman's economic and social standing."
+ },
+ {
+  "id": "codex-weights-ger",
+  "offence": "Deceitful Weights & Harm to Resident Aliens",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Equal statutory restitution and prohibition on inaccurate weights; identical law for alien and native.",
+  "citations": [
+   "Lev 19:35–36",
+   "Lev 24:22",
+   "Deut 25:13–15"
+  ],
+  "rationale": "Eliminates commercial fraud and enforces impartial justice regardless of birth status."
+ },
+ {
+  "id": "codex-night-defense",
+  "offence": "Householder Kills a Burglar",
+  "category": "Crimes Against Life",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "No bloodguilt if a thief breaking in at night is struck dead; bloodguilt if the sun had already risen.",
+  "citations": [
+   "Exod 22:2–3"
+  ],
+  "rationale": "At night the householder cannot judge the intruder's intent or identity; in daylight the intruder can be seen, stopped or caught, so killing him is bloodshed."
+ },
+ {
+  "id": "codex-refuge-limits",
+  "offence": "Avenger vs. the Manslayer in Refuge",
+  "category": "Crimes Against Life",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "The avenger who kills a manslayer found outside the refuge city before the High Priest's death has no bloodguilt; inside the city, or after the High Priest's death, he is a murderer.",
+  "citations": [
+   "Num 35:25–28"
+  ],
+  "rationale": "The city of refuge is a real boundary: it protects the manslayer inside it and limits the avenger's right outside it."
+ },
+ {
+  "id": "codex-entrusted-goods",
+  "offence": "Stolen or Disputed Entrusted Goods",
+  "category": "Theft & Restitution",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Thief caught: pays double. Thief not found: the keeper swears before the judges. Rival claims: the party the judges condemn pays double.",
+  "citations": [
+   "Exod 22:7–9"
+  ],
+  "rationale": "Places the burden on the guilty party and uses an oath before God and the judges where proof is missing, not automatic liability for the keeper."
+ },
+ {
+  "id": "codex-borrowed-hired",
+  "offence": "Borrowed, Hired and Kept Animals",
+  "category": "Property & Negligence",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Borrower pays if the animal dies while the owner is away; no payment if the owner was present or the animal was hired; keeper pays for theft but not if a beast tore it and he brings the remains.",
+  "citations": [
+   "Exod 22:10–15"
+  ],
+  "rationale": "Liability follows control and risk: the one who had the animal and benefited bears the loss, unless the owner was there or the loss was beyond the keeper's control."
+ },
+ {
+  "id": "codex-lost-property",
+  "offence": "Lost Property and Fallen Animals",
+  "category": "Property & Negligence",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Return a neighbour's strayed ox or donkey; if the owner is far or unknown, keep it until he seeks it; help lift a fallen animal even if it belongs to an enemy.",
+  "citations": [
+   "Exod 23:4–5",
+   "Deut 22:1–4"
+  ],
+  "rationale": "Neighbourly duty applies even to rivals; finders do not acquire what they find."
+ },
+ {
+  "id": "codex-ox-other",
+  "offence": "Ox Kills a Servant or Another Ox",
+  "category": "Property & Negligence",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Servant killed: 30 shekels to the master and the ox is stoned. Ox kills ox: sell the living ox and divide the price (unwarned owner) or pay ox for ox (warned owner).",
+  "citations": [
+   "Exod 21:32, 35–36"
+  ],
+  "rationale": "Compensation scales with warning and the victim's status, and the ox's owner is liable only if he knew the beast was dangerous."
+ },
+ {
+  "id": "codex-animal-life",
+  "offence": "Killing Another's Animal",
+  "category": "Lex Talionis",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Whoever kills an animal makes it good: life for life, a living animal of equal value.",
+  "citations": [
+   "Lev 24:18, 21"
+  ],
+  "rationale": "Lex talionis here means exact replacement, not a human life for an animal's."
+ },
+ {
+  "id": "codex-impartial",
+  "offence": "Bribery and Partiality",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "No bribes; no siding with the poor out of pity or with the great out of awe; judge your neighbour fairly.",
+  "citations": [
+   "Exod 23:3, 6–8",
+   "Lev 19:15",
+   "Deut 16:19"
+  ],
+  "rationale": "A bribe blinds the wise; partiality in either direction perverts justice."
+ },
+ {
+  "id": "codex-wages",
+  "offence": "Delayed Wages",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Pay a poor labourer his wage the same day, before sunset; never hold it overnight, whether he is a countryman or a resident alien.",
+  "citations": [
+   "Lev 19:13",
+   "Deut 24:14–15"
+  ],
+  "rationale": "A poor labourer's wage is his food for the day; withholding it is oppression."
+ },
+ {
+  "id": "codex-interest",
+  "offence": "Interest on Loans",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "No interest on loans to a poor Israelite or resident alien; interest may be charged to a foreigner (nokhri) passing through for trade.",
+  "citations": [
+   "Exod 22:25",
+   "Lev 25:35–37",
+   "Deut 23:19–20"
+  ],
+  "rationale": "Loans to the needy are an act of covenant kindness, not a market; commercial loans to foreign traders are treated differently."
+ },
+ {
+  "id": "codex-pledge",
+  "offence": "Pledges and Collateral",
+  "category": "Judicial Integrity",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "A cloak taken in pledge goes back before sunset; no millstone or widow's garment as a pledge; the creditor waits outside while the debtor brings the pledge out.",
+  "citations": [
+   "Exod 22:26–27",
+   "Deut 24:6, 10–13, 17"
+  ],
+  "rationale": "A pledge may never strip the debtor of his livelihood, his night's warmth or the dignity of his home."
+ },
+ {
+  "id": "codex-hebrew-servant",
+  "offence": "Hebrew Debt-Servant",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mishpatim (Civil Restitution)",
+  "penalty": "Goes free in the seventh year without payment, with the wife he brought; a wife given by the master and her children stay with the master; a servant who loves his master may have his ear pierced and serve permanently.",
+  "citations": [
+   "Exod 21:2–6",
+   "Deut 15:12–18"
+  ],
+  "rationale": "A time limit on servitude, in contrast to ANE chattel slavery, with a voluntary route to permanent service."
+ },
+ {
+  "id": "codex-runaway",
+  "offence": "Runaway Servant",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Do not return a runaway servant to his master; let him dwell where he chooses and do not oppress him.",
+  "citations": [
+   "Deut 23:15–16"
+  ],
+  "rationale": "Directly reverses ANE codes that punished anyone sheltering a runaway."
+ },
+ {
+  "id": "codex-inheritance",
+  "offence": "Inheritance",
+  "category": "Familial & Liberty",
+  "jurisdiction": "Mitot Bet Din (Human Court)",
+  "penalty": "Sons inherit; daughters if there are no sons; then brothers. The firstborn takes a double portion even if his mother is the unloved wife.",
+  "citations": [
+   "Num 27:8–11",
+   "Deut 21:15–17"
+  ],
+  "rationale": "Inheritance follows the law, not the father's favouritism."
+ },
+ {
+  "id": "codex-second-passover",
+  "offence": "Second Passover",
+  "category": "Sacral & Karet",
+  "jurisdiction": "Karet (Divine Excision)",
+  "penalty": "Those unclean through a corpse or on a distant journey keep the Passover a month later; one who is clean and at home but neglects it is cut off.",
+  "citations": [
+   "Num 9:6–13"
+  ],
+  "rationale": "Mercy for genuine inability; Karet for deliberate neglect."
+ },
+ {
+  "id": "codex-inadvertent",
+  "offence": "Unwitting vs. High-Handed Sacral Sin",
+  "category": "Sacral & Karet",
+  "jurisdiction": "Dual (Court + Karet)",
+  "penalty": "Unwitting sin: a year-old female goat as a sin offering. High-handed sin: the offender is cut off (Karet).",
+  "citations": [
+   "Lev 4:2",
+   "Num 15:27–31"
+  ],
+  "rationale": "Intent decides between atonement by offering and excision."
+ }
+]

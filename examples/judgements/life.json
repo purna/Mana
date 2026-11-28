@@ -1,0 +1,234 @@
+[
+  {
+    "id": "life-premeditated",
+    "category": "Crimes Against Life",
+    "tier": 1,
+    "titles": ["Ambush at {place:t}", "Blood on the Road to {town}", "The Reckoning of {k}", "A Killing Near {town}"],
+    "slots": { "v": "man", "k": "man", "place": "fieldPlace", "town": "town", "refuge": "refugeCity", "amt": { "num": [200, 500, 50] } },
+    "frames": [
+      "{k} and {v} had quarrelled over a field boundary near {place}. {@deed}. {@wit} Meanwhile {@plea}.",
+      "At the gate of {town} the elders are told that {@deed}. {@wit} {@plea}.",
+      "Bloodguilt hangs over the village of {town}: {@deed}. {@plea}. {@wit}"
+    ],
+    "evidence": "{@deed.ev}; {@wit.ev}; {@plea.ev}.",
+    "witness": "{@wit.w}",
+    "axes": [
+      { "id": "deed", "options": [
+        { "id": "ambush", "text": "{k} lay in wait behind a stone wall with an iron mattock and struck {v} dead", "ev": "Premeditation shown by lying in wait" },
+        { "id": "tracked", "text": "{k} followed {v} along the road for two days and hurled a boulder from a ridge, killing {v:him} instantly", "ev": "Premeditation shown by stalking" },
+        { "id": "threat", "text": "{k}, after weeks of publicly vowing to kill {v}, struck {v:him} down with an iron rod", "ev": "Premeditation shown by repeated threats" }
+      ]},
+      { "id": "plea", "options": [
+        { "id": "ransom", "text": "{k}'s wealthy clan offers {amt} shekels of silver to ransom {k:his} life", "ev": "silver ransom tendered by the offender's family" },
+        { "id": "altar", "text": "{k} has fled to the Tabernacle and clings to the horns of the altar", "ev": "offender claims altar sanctuary" },
+        { "id": "both", "text": "{k} clings to the horns of the altar while {k:his} clan offers {amt} shekels for {k:his} life", "ev": "sanctuary claimed and ransom tendered" }
+      ]},
+      { "id": "wit", "options": [
+        { "id": "two", "weight": 3, "text": "Two independent eyewitnesses confirm it.", "ev": "two eyewitnesses agree", "w": "Two Independent Eyewitnesses" },
+        { "id": "one", "weight": 1.5, "text": "Only one man swears he saw it; nobody else saw the act.", "ev": "a single eyewitness only", "w": "One Eyewitness Only" }
+      ]}
+    ],
+    "hint": "Two questions decide this case: is there enough testimony to convict at all, and was the killing planned or unintended?",
+    "codex": ["codex-murder", "codex-witness-rule"],
+    "rulings": {
+      "execute": { "label": "Execute by the Sword, Even from the Altar", "summary": "Deny sanctuary, refuse every ransom, and impose the death penalty on {k}.", "harm": 3,
+        "penalty": { "title": "Innocent Blood Spilled", "effect": "Executing on defective proof makes the court itself guilty of shedding innocent blood and leaves every neighbour afraid of the gate." } },
+      "ransom": { "label": "Accept the Silver Ransom", "summary": "Spare {k}'s life and award the silver to {v}'s family as blood-money.", "harm": 3, "trap": "ane",
+        "penalty": { "title": "Bloodguilt Defiles the Land", "effect": "Selling a life for silver profanes the image of God (Gen 9:6) and teaches the rich that they can buy their way out of murder." } },
+      "altar": { "label": "Honour the Altar's Sanctuary", "summary": "Grant {k} permanent religious asylum and banish {k:him} from the tribe.", "harm": 3,
+        "penalty": { "title": "False Asylum Shields a Killer", "effect": "The altar becomes a hiding place for murderers, and the victim's kin turn to private vengeance." } },
+      "refuge": { "label": "Exile to a City of Refuge", "summary": "Send {k} to {refuge} until the High Priest dies, as for an accidental killer.", "harm": 2,
+        "penalty": { "title": "Refuge Abused", "effect": "Treating a calculated killing as manslaughter turns the cities of refuge into a hiding place for murderers." } },
+      "acquit": { "label": "Bar Conviction for Want of Witnesses", "summary": "Rule that one eyewitness cannot support a capital sentence and release {k}.", "harm": 3,
+        "penalty": { "title": "A Murderer Walks Free", "effect": "Two witnesses had proved the killing, yet the court let it go; the victim's family loses all faith in the gate." } }
+    },
+    "rules": [
+      { "when": { "wit": "one" }, "ruling": "acquit",
+        "rationale": "A capital charge cannot stand on a single witness (Num 35:30; Deut 17:6; 19:15). However sure the lone accuser seems, the court may not convict; neither silver nor the altar changes the evidence rule.",
+        "citations": ["Num 35:30", "Deut 17:6", "Deut 19:15"],
+        "blessing": { "title": "Evidence Rule Upheld", "effect": "The court refuses to shed blood on one man's word; citizens trust that no life is taken on rumour." } },
+      { "ruling": "execute", "exclude": [],
+        "rationale": "Mosaic Law forbids a monetary ransom for premeditated murder (Num 35:31) because humanity bears the image of God (Gen 9:6). Altar asylum (Exod 21:14) protects only the unintended killer; a scheming murderer may be taken even from the altar.",
+        "citations": ["Gen 9:5–6", "Exod 21:12, 14", "Num 35:31, 33"],
+        "blessing": { "title": "Land Kept Unpolluted", "effect": "Innocent blood is purged from Israel; reverence for the sanctity of human life strengthens throughout the tribes." } }
+    ]
+  },
+
+  {
+    "id": "life-accidental",
+    "category": "Crimes Against Life",
+    "tier": 1,
+    "titles": ["The Slipped Axe-Head near {town}", "Death in the {scene:t}", "An Avenger at the Gate of {town}", "The Fallen Stone"],
+    "slots": { "a": "man", "b": "man", "k": "man", "town": "town", "refuge": "refugeCity" },
+    "frames": [
+      "While {a} and {b} {@scene}, {@event}. The dead man's kinsman, {k}, the avenger of blood, waits at the gate.",
+      "At the gate of {town}, {k} the avenger of blood demands justice: {a} and {b} had been working together, {@scene}, when {@event}.",
+      "{k}, avenger of blood for {b}, brings {a} before the elders. The two men had been working, {@scene}. {@event}"
+    ],
+    "evidence": "{@event.ev}; avenger of blood pursuing at the gate.",
+    "witness": "{@event.w}",
+    "axes": [
+      { "id": "scene", "options": [
+        { "id": "forest", "text": "felled timber in the forest above {town}" },
+        { "id": "terrace", "text": "cleared loose stones from a hillside terrace" },
+        { "id": "quarry", "text": "cut stone together in the quarry" }
+      ]},
+      { "id": "event", "options": [
+        { "id": "axe", "weight": 2, "text": "the iron head of {a}'s tool flew from its handle and killed {b} instantly. Eyewitnesses confirm there was no prior hatred or ambush", "ev": "unintentional fatality; no prior hatred", "w": "Two Eyewitnesses (No Prior Malice)" },
+        { "id": "slip", "weight": 2, "text": "{a} stumbled on loose ground and a heavy stone slipped from {a:his} hands onto {b}. Two eyewitnesses confirm the men were friends and it was pure misfortune", "ev": "accidental fall of a stone; friendship confirmed", "w": "Two Eyewitnesses (Friends)" },
+        { "id": "push", "weight": 1.2, "text": "two eyewitnesses swear that {a}, who had hated {b} for years, shoved {b} from behind into the path of a falling stone", "ev": "deliberate shove proven; long-standing hatred", "w": "Two Eyewitnesses (Prior Hatred)" }
+      ]}
+    ],
+    "hint": "Look closely at what the eyewitnesses actually say about the killer's intent and history with the victim.",
+    "codex": ["codex-manslaughter", "codex-murder"],
+    "rulings": {
+      "refuge": { "label": "Exile to a City of Refuge (Arei Miklat)", "summary": "Grant {a} safe passage to {refuge} until the High Priest's death; bar any ransom.", "harm": 2 },
+      "avenger": { "label": "Surrender to the Avenger of Blood", "summary": "Permit the victim's nearest kinsman to execute {a} under the custom of blood for blood.", "harm": 3, "trap": "feud",
+        "penalty": { "title": "Vengeful Strife Erupts", "effect": "Failing to uphold the Cities of Refuge sparks tribal blood feuds across the district." } },
+      "silver": { "label": "Order a Silver Settlement & Release", "summary": "Allow {a} to pay a compensation fee and return directly to {a:his} farm.", "harm": 2, "trap": "ane" },
+      "stripes": { "label": "Administer 39 Stripes & Confiscate Tools", "summary": "Punish {a}'s carelessness corporally and dismiss the avenger's claim.", "harm": 2 },
+      "execute": { "label": "Execute {a} as a Murderer", "summary": "Treat the deed as deliberate killing and impose the death penalty by the sword.", "harm": 3,
+        "penalty": { "title": "Innocent Blood Spilled", "effect": "Putting an unintentional killer to death turns the court into an instrument of the blood feud." } }
+    },
+    "rules": [
+      { "when": { "event": "push" }, "ruling": "execute", "exclude": [],
+        "rationale": "Where hatred and a deliberate push are proven by two witnesses, the killer is a murderer; the city of refuge is for the one who 'did not hate him in time past' (Deut 19:4–6; Num 35:20–21), and such a man may not be sheltered.",
+        "citations": ["Num 35:20–21", "Deut 19:11–13", "Exod 21:14"],
+        "blessing": { "title": "Refuge Not Abused", "effect": "The cities of refuge keep their honour; premeditated killers cannot hide behind them." } },
+      { "ruling": "refuge", "exclude": ["execute"],
+        "rationale": "Without precedent in neighbouring ANE codes, the Torah instituted six Levitical Cities of Refuge for accidental manslayers (Exod 21:13; Deut 19:3–5). No ransom may buy out the exile (Num 35:32), preserving both safety and solemn respect for life.",
+        "citations": ["Exod 21:13", "Num 35:25, 32", "Deut 19:3–5"],
+        "blessing": { "title": "Blood-Feud Prevented", "effect": "The Levitical sanctuary cools clan passions and preserves an innocent life from vengeful escalation." } }
+    ]
+  },
+
+  {
+    "id": "life-unsolved",
+    "category": "Crimes Against Life",
+    "tier": 2,
+    "titles": ["The Body in the Wadi", "A Traveller Found Slain", "Hands That Did Not Shed This Blood", "The Unploughed Valley"],
+    "slots": { "t1": "town", "t2": "town", "k": "man", "amt": { "num": [100, 300, 50] } },
+    "frames": [
+      "{@body}. {@who} {@dispute}",
+      "The elders of {t1} and {t2} are called out: {@body}. {@who} {@dispute}"
+    ],
+    "evidence": "{@who.ev}.",
+    "witness": "{@who.w}",
+    "axes": [
+      { "id": "body", "options": [
+        { "id": "wadi", "text": "A traveller's body is found in a dry wadi beyond the fields" },
+        { "id": "road", "text": "A slain shepherd is found beside the open road, far from any house" },
+        { "id": "field", "text": "A murdered man is found lying in an unworked field between two towns" }
+      ]},
+      { "id": "who", "options": [
+        { "id": "unknown", "weight": 2, "text": "No one saw the killing, no tracks lead anywhere, and no witness has come forward.", "ev": "killer unknown; no witnesses", "w": "Killer Unknown" },
+        { "id": "known", "weight": 1.3, "text": "Then two herdsmen come forward and swear they saw {k} strike the blow.", "ev": "two eyewitnesses name the killer", "w": "Two Eyewitnesses Name {k}" }
+      ]},
+      { "id": "dispute", "options": [
+        { "id": "near", "text": "Each town insists the other lies nearer to the body." },
+        { "id": "clan", "text": "Local clans are already demanding that someone be made to pay." },
+        { "id": "quiet", "text": "The elders ask what the law requires." }
+      ]}
+    ],
+    "hint": "Does anyone know who did it? What the law does depends on whether the killer can be named.",
+    "codex": ["codex-unsolved-murder", "codex-witness-rule"],
+    "rulings": {
+      "heifer": { "label": "Heifer Rite in an Unploughed Valley", "summary": "The nearest town's elders break a heifer's neck by a flowing stream and declare their hands clean.", "harm": 1 },
+      "execute": { "label": "Convict the Named Man and Execute Him", "summary": "Try the accused named by two eyewitnesses and put the killer to death.", "harm": 3 },
+      "blame": { "label": "Fine the Nearest Town as Blood-Money", "summary": "Order the nearest town's households to pay {amt} shekels to the victim's family.", "harm": 2, "trap": "ane" },
+      "close": { "label": "Close the Matter as Unsolved", "summary": "Record the death and take no further action of any kind.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "who": "known" }, "ruling": "execute",
+        "rationale": "When two eyewitnesses can name the killer, ordinary murder law applies (Num 35:30); the heifer rite is reserved for a death that cannot be solved (Deut 21:1–9).",
+        "citations": ["Num 35:30", "Deut 19:15", "Deut 21:1"],
+        "blessing": { "title": "Justice Done Without Shortcuts", "effect": "The killer is tried on proper witness; the heifer rite is not used to dodge a solvable case." } },
+      { "ruling": "heifer",
+        "rationale": "When a slain man's killer is unknown, the elders of the nearest city break a heifer's neck in a rough, unsown valley and declare 'our hands did not shed this blood' (Deut 21:1–9). The rite expiates communal bloodguilt without making an innocent town pay blood-money.",
+        "citations": ["Deut 21:1–9"],
+        "blessing": { "title": "Communal Bloodguilt Removed", "effect": "The land is cleansed and neighbouring towns avoid blame and reprisals." } }
+    ]
+  },
+
+  {
+    "id": "life-night-defense",
+    "category": "Crimes Against Life",
+    "tier": 3,
+    "titles": ["The Burglar and the Householder", "A Death at {town}'s Wall", "Break-In at {owner}'s House", "Blood in the Doorway"],
+    "slots": { "owner": "man", "thief": "man", "town": "town", "amt": { "num": [100, 300, 50] } },
+    "frames": [
+      "{@hour}, {thief} was caught {@entry} of {owner}'s property. {owner} struck {thief} and the thief died of the blow. {thief}'s kin demand that {owner} answer for it as a killer.",
+      "{owner} comes before the elders of {town}. {@hour}, {owner} found {thief} {@entry} and struck {thief:him}; {thief} died of it. {thief}'s family demands justice."
+    ],
+    "evidence": "{@hour.ev}.",
+    "witness": "{@hour.w}",
+    "axes": [
+      { "id": "hour", "options": [
+        { "id": "night", "text": "In the dead of night", "ev": "break-in occurred at night", "w": "Break-In at Night" },
+        { "id": "day", "text": "Just after sunrise, with the sun already up", "ev": "break-in occurred in daylight", "w": "Break-In by Daylight" }
+      ]},
+      { "id": "entry", "options": [
+        { "id": "wall", "text": "tunnelling through the wall" },
+        { "id": "pen", "text": "forcing the gate of the sheep-pen" },
+        { "id": "store", "text": "breaking into the grain store" }
+      ]}
+    ],
+    "hint": "The Torah treats a break-in at night differently from one in daylight. Ask what the householder could see and do.",
+    "codex": ["codex-night-defense"],
+    "rulings": {
+      "free": { "label": "No Bloodguilt on the Householder", "summary": "Rule that {owner} bears no bloodguilt for the thief's death.", "harm": 3 },
+      "guilty": { "label": "Charge the Householder with Bloodguilt", "summary": "Hold {owner} answerable for the thief's death as for a killing.", "harm": 3 },
+      "money": { "label": "Order Blood-Money to the Thief's Kin", "summary": "Award {amt} shekels to {thief}'s family and clear {owner} of anything further.", "harm": 2, "trap": "ane" },
+      "kin": { "label": "Let the Thief's Kin Take Vengeance", "summary": "Allow {thief}'s nearest relative to take a life for the life lost.", "harm": 3, "trap": "feud" }
+    },
+    "rules": [
+      { "when": { "hour": "night" }, "ruling": "free", "exclude": [],
+        "rationale": "If a thief is found breaking in at night and is struck so that he dies, there is no bloodguilt (Exod 22:2). In the dark the householder cannot tell the intruder's aims or restrain him safely.",
+        "citations": ["Exod 22:2"],
+        "blessing": { "title": "The Home Defended Lawfully", "effect": "Householders know the law will not punish them for defending their families in the dark." } },
+      { "ruling": "guilty", "exclude": ["free"],
+        "rationale": "'If the sun has risen on him, there is bloodguilt for him' (Exod 22:3). By day the intruder can be seen, identified and caught, so killing him is no longer defence of the household but bloodshed.",
+        "citations": ["Exod 22:2–3"],
+        "blessing": { "title": "A Life Not Cheapened", "effect": "Even a thief's life is protected once the danger has passed; vigilantism is discouraged." } }
+    ]
+  },
+
+  {
+    "id": "life-refuge-breach",
+    "category": "Crimes Against Life",
+    "tier": 3,
+    "titles": ["The Avenger and the Boundary", "A Death at the Edge of {refuge}", "The High Priest's Passing", "Blood Beyond the Walls"],
+    "slots": { "m": "man", "g": "man", "refuge": "refugeCity", "town": "town" },
+    "frames": [
+      "{m} was ruled an accidental manslayer years ago. {@where} {g}'s kin say it was lawful vengeance; {m}'s kin demand that {g} be tried as a murderer.",
+      "The elders of {town} must decide a killing connected with {refuge}: {@where} Both families have come to the gate."
+    ],
+    "evidence": "{@where.ev}.",
+    "witness": "{@where.w}",
+    "axes": [
+      { "id": "where", "options": [
+        { "id": "outside", "text": "{m} left {refuge} to visit a sick mother in a village beyond the city boundary, before the High Priest's death. There {g}, the avenger of blood, found and killed {m:him}.", "ev": "manslayer was outside the refuge boundary; High Priest still alive", "w": "Killed Outside the Boundary" },
+        { "id": "inside", "text": "{m} was living inside {refuge}. {g}, the avenger of blood, entered the city and killed {m:him} there.", "ev": "killing took place inside the city of refuge", "w": "Killed Inside the City of Refuge" },
+        { "id": "after", "text": "The High Priest has died and {m} has gone home to {m:his} own house, as the law allows. Some days later {g}, the avenger of blood, caught and killed {m:him} there.", "ev": "High Priest already dead; manslayer was back home", "w": "Killed After the High Priest's Death" }
+      ]}
+    ],
+    "hint": "Cities of refuge have a boundary and a time limit. Where was the manslayer standing, and was the High Priest still alive?",
+    "codex": ["codex-refuge-limits", "codex-manslaughter"],
+    "rulings": {
+      "free": { "label": "Avenger Free of Bloodguilt", "summary": "Rule that {g} bears no bloodguilt for killing the manslayer.", "harm": 3 },
+      "murder": { "label": "Try the Avenger as a Murderer", "summary": "Treat {g}'s act as a premeditated killing under the murder statute.", "harm": 3 },
+      "money": { "label": "Order the Avenger to Pay Blood-Money", "summary": "Require {g} to pay {m}'s kin silver and go unpunished otherwise.", "harm": 2, "trap": "ane" },
+      "exile": { "label": "Exile the Avenger to a City of Refuge", "summary": "Treat {g}'s killing as accidental manslaughter and send {g:him} to {refuge}.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "where": "outside" }, "ruling": "free", "exclude": [],
+        "rationale": "The manslayer must stay inside the city of refuge until the High Priest dies. If he leaves its boundary and the avenger finds and kills him there, the avenger is not guilty of bloodshed (Num 35:26–27).",
+        "citations": ["Num 35:26–27"],
+        "blessing": { "title": "Boundary Honoured", "effect": "Both the refuge city and the avenger's limited right are respected; the feud ends under the law." } },
+      { "ruling": "murder", "exclude": ["free"],
+        "rationale": "Inside the city of refuge the congregation must protect the manslayer from the avenger (Num 35:25), and after the High Priest's death he may return home safely (Num 35:28). In either case the avenger who kills him is a murderer.",
+        "citations": ["Num 35:25", "Num 35:28", "Deut 19:11–13"],
+        "blessing": { "title": "Refuge Protected", "effect": "The cities of refuge keep their authority; avengers learn their limits." } }
+    ]
+  }
+]

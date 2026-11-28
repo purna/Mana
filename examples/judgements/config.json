@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "storageKey": "citygate.v1",
+  "templateFiles": [
+    "templates/life.json",
+    "templates/theft.json",
+    "templates/property.json",
+    "templates/talionis.json",
+    "templates/judicial.json",
+    "templates/familial.json",
+    "templates/sacral.json"
+  ],
+
+  "session": {
+    "casesPerSession": 2,
+    "maxCasesPerSession": 5
+  },
+
+  "calendar": { "roundsPerYear": 12, "years": 40 },
+
+  "categories": [
+    { "id": "Crimes Against Life",   "label": "Crimes Against Life & Asylum",   "short": "Life" },
+    { "id": "Theft & Restitution",   "label": "Theft & Restitution",            "short": "Theft" },
+    { "id": "Property & Negligence", "label": "Property & Negligence",          "short": "Property" },
+    { "id": "Lex Talionis",          "label": "Lex Talionis & Bodily Injury",   "short": "Injury" },
+    { "id": "Judicial Integrity",    "label": "Judicial Integrity & Fair Dealing", "short": "Integrity" },
+    { "id": "Familial & Liberty",    "label": "Familial Order & Liberty",       "short": "Family" },
+    { "id": "Sacral & Karet",        "label": "Sacral Offences & Karet",        "short": "Sacral" }
+  ],
+
+  "tierWeights": [
+    { "fromRound": 1,   "weights": { "1": 0.85, "2": 0.15, "3": 0.00 } },
+    { "fromRound": 13,  "weights": { "1": 0.50, "2": 0.40, "3": 0.10 } },
+    { "fromRound": 61,  "weights": { "1": 0.30, "2": 0.45, "3": 0.25 } },
+    { "fromRound": 181, "weights": { "1": 0.20, "2": 0.40, "3": 0.40 } }
+  ],
+
+  "selection": {
+    "recentTemplateMemory": 6,
+    "recentTemplatePenalty": 0.05,
+    "weakDomainAccuracy": 0.7,
+    "weakDomainBoost": 1.4,
+    "reviewChance": 0.6,
+    "reviewDelayRounds": [6, 14]
+  },
+
+  "scoring": {
+    "standingStart": 65,
+    "tiers": {
+      "1": { "blessing": 6,  "renown": 10 },
+      "2": { "blessing": 8,  "renown": 15 },
+      "3": { "blessing": 10, "renown": 22 }
+    },
+    "penaltyByHarm": { "0": 4, "1": 6, "2": 10, "3": 15 },
+    "streakBonus": [
+      { "at": 3,  "bonus": 0.10 },
+      { "at": 5,  "bonus": 0.25 },
+      { "at": 8,  "bonus": 0.50 },
+      { "at": 12, "bonus": 0.75 }
+    ],
+    "wagers": {
+      "cautious":  { "label": "Cautious",  "win": 1.0,  "lose": 0.75, "note": "Safe: normal reward, smaller penalty." },
+      "confident": { "label": "Confident", "win": 1.25, "lose": 1.25, "note": "+25% reward, +25% penalty." },
+      "certain":   { "label": "Certain",   "win": 1.6,  "lose": 2.0,  "note": "+60% reward, double penalty." }
+    },
+    "hints": {
+      "principle": { "cost": 2, "winMult": 0.85, "label": "Consult Torah Principle" },
+      "elders":    { "cost": 4, "winMult": 0.65, "label": "Ask the Elders for the Verses" }
+    },
+    "appealWinMult": 0.5,
+    "damping": { "from": 75, "max": 0.6 },
+    "timeoutPenalty": 8,
+    "pressure": { "resistBonus": 2, "extraLoss": 4, "amounts": [30, 50, 80, 100, 150] },
+    "drift": { "target": 60, "rate": 0.05 }
+  },
+
+  "difficulties": {
+    "scholar": {
+      "label": "Scholar",
+      "blurb": "No timer. Codex open during hearings.",
+      "timer": { "1": null, "2": null, "3": null },
+      "hintCostMult": 1, "maxHintStage": 2, "codexLockedWhenTimed": false, "renownMult": 1.0
+    },
+    "elder": {
+      "label": "Elder of the Gate",
+      "blurb": "Timed on harder petitions; Codex closed while the clock runs. +25% renown.",
+      "timer": { "1": null, "2": 75, "3": 60 },
+      "hintCostMult": 1, "maxHintStage": 2, "codexLockedWhenTimed": true, "renownMult": 1.25
+    },
+    "shofet": {
+      "label": "Judge at the Gate",
+      "blurb": "Every petition is timed, hints cost double and reveal less. +50% renown.",
+      "timer": { "1": 60, "2": 45, "3": 40 },
+      "hintCostMult": 2, "maxHintStage": 1, "codexLockedWhenTimed": true, "renownMult": 1.5
+    }
+  },
+
+  "powerups": {
+    "scroll":  { "label": "Scroll of the Elders", "icon": "📜", "max": 3, "everyStreak": 3,
+                 "blurb": "Reveals the principle and the verses for free (no score penalty)." },
+    "witness": { "label": "Second Witness",       "icon": "👁", "max": 2, "everyStreak": 5,
+                 "blurb": "Rules out one wrong ruling before you decide." },
+    "appeal":  { "label": "Appeal to the Elders", "icon": "⚖", "max": 1, "everyStreak": 10, "onBadge": "master",
+                 "blurb": "After a wrong ruling, re-judge at half credit; the penalty becomes the smaller of the two." }
+  },
+  "flawlessSessionScrollBonus": true,
+
+  "bands": [
+    { "min": 85, "id": "rain",       "label": "Rain in Due Season",    "tone": "positive",
+      "pressureChance": 0.0,  "scrollChance": 0.25,
+      "modifiers": { "harvest": 0.10, "unrest": -0.10, "treasury": 0.05 },
+      "narrative": "Rain falls in its season and the gates are quiet. Righteous judgement has the land at peace." },
+    { "min": 60, "id": "peace",      "label": "Peace Within the Gates", "tone": "positive",
+      "pressureChance": 0.05, "scrollChance": 0.0,
+      "modifiers": { "harvest": 0.0, "unrest": 0.0, "treasury": 0.0 },
+      "narrative": "The gate stands open. Righteous judgements foster agricultural blessing and civic peace." },
+    { "min": 40, "id": "strained",   "label": "Covenant Strained",      "tone": "warning",
+      "pressureChance": 0.25, "scrollChance": 0.0,
+      "modifiers": { "harvest": -0.05, "unrest": 0.10, "treasury": -0.03 },
+      "narrative": "Whispers of favouritism circulate. Wealthy clans now try to buy the bench." },
+    { "min": 0,  "id": "imperilled", "label": "Land Imperilled",        "tone": "error",
+      "pressureChance": 0.45, "scrollChance": 0.0,
+      "modifiers": { "harvest": -0.15, "unrest": 0.25, "treasury": -0.10 },
+      "narrative": "Bloodguilt and discord stalk the land. Bribers crowd your door." }
+  ],
+
+  "rolling": { "window": 30, "minForDemotion": 12, "compromisedBelow": 0.45 },
+
+  "ranks": [
+    { "id": "novice",      "title": "Novice Elder",        "minRenown": 0 },
+    { "id": "elder",       "title": "Elder of the Gate",   "minRenown": 150,   "minAccuracy": 0.55 },
+    { "id": "steward",     "title": "Steward of Equity",   "minRenown": 700,   "minAccuracy": 0.65, "minStanding": 45 },
+    { "id": "magistrate",  "title": "Magistrate of the Tribe", "minRenown": 2000, "minAccuracy": 0.72, "minStanding": 50 },
+    { "id": "shofet",      "title": "Righteous Shofet",    "minRenown": 5000,  "minAccuracy": 0.85, "minStanding": 70 },
+    { "id": "judge",       "title": "Judge of All Israel", "minRenown": 10000, "minAccuracy": 0.90, "minStanding": 80 }
+  ],
+  "compromisedRank": { "id": "compromised", "title": "Compromised Judge" },
+
+  "domainBadges": [
+    { "id": "adept",  "label": "Adept",  "minJudged": 6,  "minAccuracy": 0.80 },
+    { "id": "master", "label": "Master", "minJudged": 15, "minAccuracy": 0.90 },
+    { "id": "sage",   "label": "Sage",   "minJudged": 30, "minAccuracy": 0.92 }
+  ],
+
+  "epilogues": [
+    { "id": "new",     "maxRounds": 11,
+      "title": "A Tenure Just Begun",
+      "text": "You have sat at the gate for only {rounds} rounds. The elders are still watching to see what kind of judge you will be." },
+    { "id": "judge",   "minStanding": 80, "minAccuracy": 0.90,
+      "title": "Judge of All Israel",
+      "text": "After {years} years at the gate, with {accuracy}% fidelity across {judged} rulings, your name is spoken beside the great judges. Elders from distant tribes bring their hardest cases to you, and the land has known rain in due season." },
+    { "id": "shofet",  "minStanding": 65, "minAccuracy": 0.80,
+      "title": "A Righteous Shofet",
+      "text": "Over {rounds} rounds you applied the law with a steady, honest hand ({accuracy}% fidelity). Not every ruling was perfect, but the people trusted the gate, and the land prospered." },
+    { "id": "steady",  "minStanding": 50, "minAccuracy": 0.65,
+      "title": "A Steady Hand at the Gate",
+      "text": "Your tenure was neither glorious nor shameful: {accuracy}% fidelity across {judged} rulings. The gate held, though the elders remember a handful of rulings they wish had gone differently." },
+    { "id": "strained","minStanding": 30,
+      "title": "A Strained Covenant",
+      "text": "With {accuracy}% fidelity and a Standing of {standing}, your tenure left the covenant frayed. Clans learned that the gate could be pressured, and the next judge inherits a hard task." },
+    { "id": "ruin",
+      "title": "The Land Imperilled",
+      "text": "Bloodguilt and favouritism marked your years at the gate ({accuracy}% fidelity, Standing {standing}). The prophets will not remember your name kindly." }
+  ],
+
+  "defaults": {
+    "blessing": { "title": "Righteous Ruling", "effect": "The people see the law applied faithfully, and trust in the gate grows." },
+    "penaltyByHarm": {
+      "3": { "title": "Grave Miscarriage of Justice", "effect": "A ruling this serious shakes the people's trust in the gate and invites bloodguilt, vengeance or oppression across the tribes." },
+      "2": { "title": "Justice Bent",                 "effect": "The injured party leaves unsatisfied and the guilty learn that the court can be moved; discontent spreads through the town." },
+      "1": { "title": "Rough Justice",                "effect": "The ruling is lenient or clumsy; the dispute festers and neighbours quarrel over what the law really requires." },
+      "0": { "title": "Minor Slip",                   "effect": "A small error, quickly forgotten." }
+    },
+    "trapNotes": {
+      "ane": "This is the Ancient Near Eastern answer (Hammurabi-style). The Torah deliberately breaks with it; see the comparison table in the Codex.",
+      "harsh": "A harsher penalty than the Torah allows for this situation.",
+      "lenient": "Too lenient: the Torah does not let this offender off so lightly.",
+      "feud": "Blood-feud justice: the Torah replaces private vengeance with the court and the cities of refuge."
+    }
+  }
+}

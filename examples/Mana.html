@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="artifact-type" content="tool">
+  <meta name="design-style" content="terracotta">
+  <title>Judges at the City Gate — Mosaic Law Adjudication</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+
+      /* 1. Terracotta style tokens */
+      --background: #f9f3eb;
+      --surface-container-low: #f3e9dc;
+      --surface-container: #ede0d0;
+      --surface-container-high: #e4d4c0;
+
+      --on-surface: #261b15;
+      --on-surface-variant: #57483f;
+
+      --outline: #9e8a78;
+      --outline-variant: #dfd0be;
+
+      --primary: #b84a24;
+      --on-primary: #ffffff;
+      --primary-container: #f7ebe0;
+      --on-primary-container: #7d2e12;
+      --primary-border-warm: #c98a6b;
+
+      --secondary: #8f6524;
+      --tertiary: #1d6356;
+      --tertiary-container: #e1efe9;
+      --on-tertiary-container: #13473d;
+      --tertiary-border: #b5d6c9;
+
+      --error: #b82929;
+      --on-error: #ffffff;
+      --error-container: #fbe8e8;
+      --on-error-container: #7a1b1b;
+      --error-border: #e0b0b0;
+
+      --warning-container: #f5ebd8;
+      --on-warning-container: #6b4914;
+      --button-outline: #c4b29e;
+      --brass-light: #d8c3b0;
+      --brass-mid: #b5893e;
+
+      --data-1: #b84a24;
+      --data-2: #1d6356;
+      --data-3: #b5893e;
+      --data-4: #8c3838;
+      --data-context: #a39384;
+
+      --font-headline: 'Cormorant Garamond', serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-label: 'Plus Jakarta Sans', sans-serif;
+
+      --rounded: 0.375rem;
+      --rounded-lg: 0.75rem;
+      --rounded-arch: 28px 28px 6px 6px;
+      --rounded-full: 9999px;
+
+      --soft-shadow: 0 4px 18px rgb(38 27 21 / 0.04);
+      --soft-shadow-raised: 0 8px 28px rgb(38 27 21 / 0.07);
+      --warm-hairline: 1px solid var(--outline-variant);
+      --brass-gradient: linear-gradient(90deg, var(--brass-light), var(--brass-mid), var(--brass-light));
+
+      /* 2. Shared semantic & scale tokens (Focused Tool) */
+      --positive: #1d6356;
+      --warning: #8f6524;
+      --focus: var(--primary);
+
+      --display-size: clamp(2.1rem, 1.45rem + 2.2vw, 3.15rem);
+      --headline-size: clamp(1.375rem, 1.15rem + 0.65vw, 1.75rem);
+      --subhead-size: clamp(1.125rem, 1.02rem + 0.35vw, 1.32rem);
+      --body-size: clamp(0.9375rem, 0.91rem + 0.15vw, 1rem);
+      --label-size: 0.75rem;
+
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --space-2xl: 4rem;
+      --space-3xl: 6rem;
+
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --dur-micro: 120ms;
+      --dur-short: 220ms;
+      --dur-long: 420ms;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: clip; margin: 0; padding: 0; }
+    header { position: static !important; }
+
+    body {
+      background-color: var(--background);
+      color: var(--on-surface);
+      font-family: var(--font-body);
+      font-size: var(--body-size);
+      line-height: 1.62;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .page-grid {
+      display: grid;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      max-width: 1200px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+    .page-grid * { min-width: 0; }
+
+    /* Hero Header */
+    .courtyard-header {
+      padding-top: var(--space-sm);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .header-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--space-md);
+    }
+
+    .kicker {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--on-primary-container);
+      margin: 0 0 var(--space-xs) 0;
+    }
+
+    .title {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--display-size);
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: var(--on-surface);
+      margin: 0;
+    }
+
+    .title em {
+      font-style: italic;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      margin: var(--space-sm) 0 0 0;
+      max-width: 65ch;
+      color: var(--on-surface-variant);
+      font-size: var(--body-size);
+    }
+
+    /* Navigation Pills */
+    .nav-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    .nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--rounded-full);
+      border: 1px solid var(--button-outline);
+      background: transparent;
+      color: var(--on-surface);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color var(--dur-short) var(--ease-out),
+                  color var(--dur-short) var(--ease-out),
+                  box-shadow var(--dur-short) var(--ease-out),
+                  transform var(--dur-micro) var(--ease-out);
+    }
+
+    .nav-pill:hover {
+      background-color: var(--surface-container);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .nav-pill[aria-selected="true"] {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .nav-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: var(--rounded-full);
+      background: var(--surface-container-high);
+      color: var(--on-surface);
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nav-pill[aria-selected="true"] .nav-count {
+      background: var(--on-primary-container);
+      color: var(--on-primary);
+    }
+
+    /* Ornamental Brass Diamond Divider */
+    .ornament-rule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-block: var(--space-xs);
+      color: var(--secondary);
+      font-family: var(--font-label);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .ornament-rule::before,
+    .ornament-rule::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--brass-gradient);
+    }
+
+    /* Riad Arch Metric Row */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+      gap: var(--space-md);
+    }
+
+    .arch-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--rounded-arch);
+      padding: 20px 18px 16px;
+      text-align: center;
+      box-shadow: var(--soft-shadow);
+      transition: transform var(--dur-short) var(--ease-out),
+                  box-shadow var(--dur-short) var(--ease-out);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
+    .arch-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--soft-shadow-raised);
+    }
+
+    .arch-card.is-featured {
+      background: var(--primary-container);
+      border-color: var(--primary-border-warm);
+    }
+
+    .arch-label {
+      font-family: var(--font-label);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+    }
+
+    .arch-value {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: clamp(1.85rem, 1.5rem + 1vw, 2.5rem);
+      line-height: 1.05;
+      font-variant-numeric: lining-nums tabular-nums;
+      color: var(--on-surface);
+    }
+
+    .arch-caption {
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--tertiary);
+    }
+
+    .arch-caption.is-warning { color: var(--on-warning-container); }
+    .arch-caption.is-error { color: var(--on-error-container); }
+
+    /* Main Asymmetric Courtroom Layout */
+    .courtroom-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: var(--space-lg);
+      align-items: start;
+    }
+
+    .panel-card {
+      background: var(--surface-container-low);
+      border: var(--warm-hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .panel-band {
+      background: var(--surface-container);
+      border: var(--warm-hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+    }
+
+    .card-wrapper {
+      container-type: inline-size;
+    }
+
+    /* Case Header & Badges */
+    .case-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .badge-emerald {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--tertiary-container);
+      color: var(--on-tertiary-container);
+      border: 1px solid var(--tertiary-border);
+      padding: 4px 12px;
+      border-radius: var(--rounded-full);
+      font-family: var(--font-label);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .badge-brass {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--warning-container);
+      color: var(--on-warning-container);
+      border: 1px solid var(--outline-variant);
+      padding: 4px 12px;
+      border-radius: var(--rounded-full);
+      font-family: var(--font-label);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .badge-crimson {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--error-container);
+      color: var(--on-error-container);
+      border: 1px solid var(--error-border);
+      padding: 4px 12px;
+      border-radius: var(--rounded-full);
+      font-family: var(--font-label);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .case-title {
+      font-family: var(--font-headline);
+      font-size: var(--headline-size);
+      font-weight: 600;
+      line-height: 1.15;
+      color: var(--on-surface);
+      margin: 0 0 var(--space-sm) 0;
+    }
+
+    .petition-box {
+      background: var(--background);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 var(--rounded) var(--rounded) 0;
+      padding: var(--space-md) var(--space-lg);
+      margin-bottom: var(--space-lg);
+    }
+
+    .petition-text {
+      margin: 0;
+      max-width: 65ch;
+      color: var(--on-surface);
+      line-height: 1.65;
+    }
+
+    .witness-line {
+      margin: var(--space-sm) 0 0 0;
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Hint Disclosure */
+    .hint-toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .section-subhead {
+      font-family: var(--font-headline);
+      font-size: var(--subhead-size);
+      font-weight: 600;
+      margin: 0;
+      color: var(--on-surface);
+    }
+
+    .hint-panel {
+      background: var(--warning-container);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      margin-bottom: var(--space-md);
+      font-size: 0.875rem;
+      color: var(--on-warning-container);
+    }
+
+    /* Options List */
+    .options-list {
+      display: grid;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+
+    .option-btn {
+      width: 100%;
+      text-align: left;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-md);
+      align-items: start;
+      min-height: 54px;
+      padding: var(--space-md);
+      border-radius: var(--rounded);
+      border: 1px solid var(--outline-variant);
+      background: var(--background);
+      cursor: pointer;
+      transition: background-color var(--dur-short) var(--ease-out),
+                  box-shadow var(--dur-short) var(--ease-out),
+                  transform var(--dur-micro) var(--ease-out);
+    }
+
+    .option-btn:hover:not(:disabled) {
+      background: var(--surface-container);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .option-btn.is-selected {
+      background: var(--primary-container);
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+
+    .option-btn.is-correct {
+      background: var(--tertiary-container);
+      box-shadow: 0 0 0 2px var(--tertiary);
+    }
+
+    .option-btn.is-wrong {
+      background: var(--error-container);
+      box-shadow: 0 0 0 2px var(--error);
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+    }
+
+    .option-letter {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--rounded-full);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-container-high);
+      color: var(--on-surface);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .option-btn.is-selected .option-letter {
+      background: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .option-btn.is-correct .option-letter {
+      background: var(--tertiary);
+      color: var(--on-primary);
+    }
+
+    .option-btn.is-wrong .option-letter {
+      background: var(--error);
+      color: var(--on-error);
+    }
+
+    .option-title {
+      display: block;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 2px;
+    }
+
+    .option-desc {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      line-height: 1.45;
+    }
+
+    /* Action Buttons */
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      min-height: 44px;
+      padding: 0 var(--space-lg);
+      border-radius: var(--rounded-full);
+      border: none;
+      background: var(--primary);
+      color: var(--on-primary);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--soft-shadow);
+      transition: background-color var(--dur-short) var(--ease-out),
+                  transform var(--dur-micro) var(--ease-out),
+                  box-shadow var(--dur-short) var(--ease-out);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--on-primary-container);
+      box-shadow: var(--soft-shadow-raised);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      min-height: 44px;
+      padding: 0 var(--space-md);
+      border-radius: var(--rounded-full);
+      border: 1px solid var(--button-outline);
+      background: transparent;
+      color: var(--on-surface);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color var(--dur-short) var(--ease-out);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--surface-container);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-danger-armed {
+      background: var(--error-container);
+      color: var(--on-error-container);
+      border-color: var(--error);
+    }
+
+    /* Feedback Panel */
+    .feedback-panel {
+      margin-top: var(--space-lg);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      border: 1px solid var(--outline-variant);
+      animation: fadeDrift var(--dur-long) var(--ease-out);
+    }
+
+    .feedback-panel.is-blessing {
+      background: var(--tertiary-container);
+      border-color: var(--tertiary-border);
+    }
+
+    .feedback-panel.is-penalty {
+      background: var(--error-container);
+      border-color: var(--error-border);
+    }
+
+    .feedback-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+    }
+
+    .feedback-heading {
+      font-family: var(--font-headline);
+      font-size: var(--headline-size);
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .feedback-panel.is-blessing .feedback-heading { color: var(--on-tertiary-container); }
+    .feedback-panel.is-penalty .feedback-heading { color: var(--on-error-container); }
+
+    .communal-outcome {
+      background: var(--background);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      margin-bottom: var(--space-md);
+      border: var(--warm-hairline);
+    }
+
+    .outcome-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--secondary);
+      margin: 0 0 4px 0;
+    }
+
+    .rationale-text {
+      margin: 0 0 var(--space-md) 0;
+      color: var(--on-surface);
+      max-width: 65ch;
+    }
+
+    .citation-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+      margin-bottom: var(--space-md);
+    }
+
+    .citation-chip {
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--rounded-full);
+      background: var(--background);
+      border: 1px solid var(--outline-variant);
+      color: var(--on-surface);
+    }
+
+    /* Right Column: Standing Gauge & Chronicle */
+    .sidebar-stack {
+      display: grid;
+      gap: var(--space-lg);
+    }
+
+    .meter-track {
+      height: 14px;
+      background: var(--surface-container-high);
+      border-radius: var(--rounded-full);
+      overflow: hidden;
+      margin: var(--space-sm) 0;
+      border: 1px solid var(--outline-variant);
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: var(--tertiary);
+      border-radius: var(--rounded-full);
+      transition: width var(--dur-long) var(--ease-out),
+                  background-color var(--dur-short) var(--ease-out);
+    }
+
+    .meter-fill.is-strained { background: var(--secondary); }
+    .meter-fill.is-imperilled { background: var(--error); }
+
+    .chronicle-list {
+      list-style: none;
+      padding: 0;
+      margin: var(--space-sm) 0 0 0;
+      display: grid;
+      gap: var(--space-sm);
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .chronicle-item {
+      padding: var(--space-sm) var(--space-md);
+      background: var(--background);
+      border-radius: var(--rounded);
+      border-left: 3px solid var(--tertiary);
+      font-size: 0.875rem;
+    }
+
+    .chronicle-item.is-penalty {
+      border-left-color: var(--error);
+    }
+
+    .chronicle-title {
+      font-weight: 600;
+      color: var(--on-surface);
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .chronicle-desc {
+      color: var(--on-surface-variant);
+      font-size: 0.8125rem;
+      margin-top: 2px;
+    }
+
+    /* Docket Navigator Pills */
+    .docket-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: var(--space-sm);
+    }
+
+    @container (max-width: 340px) {
+      .docket-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    .docket-dot {
+      min-height: 36px;
+      border-radius: var(--rounded);
+      border: 1px solid var(--outline-variant);
+      background: var(--background);
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color var(--dur-micro) var(--ease-out),
+                  box-shadow var(--dur-micro) var(--ease-out);
+    }
+
+    .docket-dot:hover { background: var(--surface-container-high); }
+    .docket-dot.is-current { box-shadow: 0 0 0 2px var(--primary); font-weight: 700; }
+    .docket-dot.is-blessed { background: var(--tertiary-container); color: var(--on-tertiary-container); border-color: var(--tertiary-border); }
+    .docket-dot.is-penalised { background: var(--error-container); color: var(--on-error-container); border-color: var(--error-border); }
+
+    /* Controls & Inputs */
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      align-items: flex-end;
+      margin-bottom: var(--space-lg);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 220px;
+    }
+
+    .input-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+    }
+
+    .text-input, .select-input {
+      min-height: 44px;
+      padding: 0 var(--space-md);
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--rounded);
+      color: var(--on-surface);
+      width: 100%;
+    }
+
+    .select-input {
+      padding-right: 2.25rem;
+    }
+
+    .text-input:focus, .select-input:focus {
+      border-color: var(--primary);
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    /* Codex Cards & Comparison Table */
+    .codex-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
+      gap: var(--space-md);
+    }
+
+    .codex-card {
+      background: var(--surface-container-low);
+      border: var(--warm-hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-md) var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .codex-card-title {
+      font-family: var(--font-headline);
+      font-size: var(--subhead-size);
+      font-weight: 600;
+      margin: 0;
+      color: var(--on-surface);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--rounded-lg);
+      border: var(--warm-hairline);
+      background: var(--surface-container-low);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    thead th {
+      background: var(--surface-container);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+      padding: var(--space-md);
+      border-bottom: var(--warm-hairline);
+    }
+
+    tbody td {
+      padding: var(--space-md);
+      border-bottom: var(--warm-hairline);
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .num-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    /* Summary Stats View */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: var(--space-lg);
+      align-items: start;
+    }
+
+    .chart-container {
+      width: 100%;
+      min-height: 260px;
+      margin-top: var(--space-sm);
+    }
+
+    .is-hidden { display: none !important; }
+
+    .inline-status {
+      font-size: 0.875rem;
+      color: var(--on-tertiary-container);
+      font-weight: 600;
+      min-height: 1.25rem;
+    }
+
+    .sources-footer {
+      border-top: var(--warm-hairline);
+      padding-top: var(--space-md);
+      margin-top: var(--space-md);
+      color: var(--on-surface-variant);
+      font-size: 0.85rem;
+    }
+
+    @keyframes fadeDrift {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 820px) {
+      .courtroom-grid,
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page-grid {
+        padding: var(--space-md);
+        gap: var(--space-md);
+      }
+      .panel-card, .panel-band {
+        padding: var(--space-md);
+      }
+      .arch-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-grid">
+    <!-- Header -->
+    <header class="courtyard-header">
+      <div class="header-top-row">
+        <div>
+          <p class="kicker">Magistrate's Bench · Ancient Israelite Jurisprudence</p>
+          <h1 class="title">Judges at the City <em>Gate</em></h1>
+          <p class="subtitle">
+            Sit in counsel among the elders of Israel. Weigh witness testimony, intent, restitution ratios, and sacral jurisdiction under the Mosaic Law—knowing that righteous rulings bring covenant blessing, whilst flawed judgements imperil the land.
+          </p>
+        </div>
+        <nav class="nav-strip" aria-label="Primary sections">
+          <button type="button" class="nav-pill" id="tab-bench" aria-selected="true" onclick="switchView('bench')">
+            <i data-lucide="scale" aria-hidden="true" width="16" height="16"></i>
+            Courtroom Bench
+            <span class="nav-count" id="nav-progress-badge">0/16</span>
+          </button>
+          <button type="button" class="nav-pill" id="tab-codex" aria-selected="false" onclick="switchView('codex')">
+            <i data-lucide="scroll-text" aria-hidden="true" width="16" height="16"></i>
+            Mosaic Codex
+            <span class="nav-count" id="nav-codex-badge">20</span>
+          </button>
+          <button type="button" class="nav-pill" id="tab-record" aria-selected="false" onclick="switchView('record')">
+            <i data-lucide="landmark" aria-hidden="true" width="16" height="16"></i>
+            Judicial Record
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="ornament-rule" aria-hidden="true">&#9670; Mishpat &amp; Tzedek &#9670;</div>
+
+    <!-- Top Riad Arch Metrics -->
+    <section class="arch-grid" aria-label="Judicial standing metrics">
+      <div class="arch-card">
+        <span class="arch-label">Docket Progress</span>
+        <span class="arch-value" id="metric-progress">1 / 16</span>
+        <span class="arch-caption" id="metric-completed">0 rulings delivered</span>
+      </div>
+      <div class="arch-card is-featured">
+        <span class="arch-label">Covenant Standing</span>
+        <span class="arch-value" id="metric-standing">65</span>
+        <span class="arch-caption" id="metric-standing-status">Peace Within the Gates</span>
+      </div>
+      <div class="arch-card">
+        <span class="arch-label">Judicial Accuracy</span>
+        <span class="arch-value" id="metric-accuracy">—</span>
+        <span class="arch-caption" id="metric-streak">Current streak: 0</span>
+      </div>
+      <div class="arch-card">
+        <span class="arch-label">Magistrate Rank</span>
+        <span class="arch-value" id="metric-rank">Novice Elder</span>
+        <span class="arch-caption" id="metric-balance">0 blessings · 0 penalties</span>
+      </div>
+    </section>
+
+    <!-- VIEW 1: COURTROOM BENCH -->
+    <main id="view-bench" class="courtroom-grid">
+      <section class="panel-card card-wrapper" aria-live="polite">
+        <div id="case-stage">
+          <div class="case-meta-row">
+            <span class="badge-emerald" id="case-category-badge">Crimes Against Life</span>
+            <span class="badge-brass" id="case-witness-badge">Two Independent Eyewitnesses</span>
+          </div>
+
+          <h2 class="case-title" id="case-title">Loading petition…</h2>
+
+          <div class="petition-box">
+            <p class="petition-text" id="case-petition"></p>
+            <p class="witness-line" id="case-evidence-note"></p>
+          </div>
+
+          <div class="hint-toggle-row">
+            <h3 class="section-subhead">Select the Ruling Under Mosaic Law</h3>
+            <button type="button" class="btn-secondary" id="hint-toggle-btn" onclick="toggleHint()">
+              <i data-lucide="book-open" aria-hidden="true" width="16" height="16"></i>
+              <span id="hint-toggle-label">Consult Torah Principle</span>
+            </button>
+          </div>
+
+          <div class="hint-panel is-hidden" id="case-hint-panel"></div>
+
+          <div class="options-list" id="case-options" role="radiogroup" aria-label="Possible judicial rulings"></div>
+
+          <div class="action-row">
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+              <button type="button" class="btn-secondary" id="prev-case-btn" onclick="navigateCase(-1)">
+                &larr; Previous
+              </button>
+              <button type="button" class="btn-secondary" id="next-nav-btn" onclick="navigateCase(1)">
+                Skip / Next &rarr;
+              </button>
+            </div>
+            <button type="button" class="btn-primary" id="submit-verdict-btn" onclick="submitVerdict()" disabled>
+              <i data-lucide="gavel" aria-hidden="true" width="16" height="16"></i>
+              Deliver Judgement
+            </button>
+          </div>
+
+          <!-- Post-verdict feedback -->
+          <div class="feedback-panel is-hidden" id="case-feedback">
+            <div class="feedback-header">
+              <h3 class="feedback-heading" id="feedback-heading"></h3>
+              <span class="badge-emerald" id="feedback-delta"></span>
+            </div>
+
+            <div class="communal-outcome">
+              <p class="outcome-label" id="feedback-outcome-label">National Effect</p>
+              <p style="margin: 0; font-weight: 500;" id="feedback-outcome-text"></p>
+            </div>
+
+            <p class="outcome-label">Biblical Legal Rationale</p>
+            <p class="rationale-text" id="feedback-rationale"></p>
+
+            <div class="citation-row" id="feedback-citations"></div>
+
+            <div class="action-row">
+              <button type="button" class="btn-secondary" onclick="switchView('codex')">
+                Inspect Related Law in Codex
+              </button>
+              <button type="button" class="btn-primary" id="feedback-next-btn" onclick="advanceAfterVerdict()">
+                Hear Next Petition &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Covenant Chronicle & Docket Navigator -->
+      <aside class="sidebar-stack" aria-label="Covenant chronicle and docket">
+        <div class="panel-card card-wrapper">
+          <div class="input-group" style="margin-bottom: var(--space-md);">
+            <label class="input-label" for="docket-category-filter">Filter Petition Circuit</label>
+            <select id="docket-category-filter" class="select-input" onchange="filterDocketCategory(this.value)">
+              <option value="all">All 16 Petitions (Full Circuit)</option>
+              <option value="Crimes Against Life">Crimes Against Life &amp; Asylum</option>
+              <option value="Theft &amp; Restitution">Theft &amp; Restitution Multipliers</option>
+              <option value="Property &amp; Negligence">Property Damage &amp; Negligence</option>
+              <option value="Lex Talionis">Lex Talionis &amp; Bodily Injury</option>
+              <option value="Sacral &amp; Karet">Sacral Offences &amp; Karet</option>
+              <option value="Judicial Integrity">Judicial Integrity &amp; Witnesses</option>
+              <option value="Familial &amp; Liberty">Familial Order &amp; Liberty</option>
+            </select>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span class="input-label">Case Docket</span>
+            <span style="font-size: 0.78rem; color: var(--on-surface-variant);" id="docket-filter-summary">Showing 16 petitions</span>
+          </div>
+          <div class="docket-grid" id="docket-grid"></div>
+        </div>
+
+        <div class="panel-band">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h3 class="section-subhead">Standing of Israel</h3>
+            <span class="num-cell" id="sidebar-standing-num">65 / 100</span>
+          </div>
+          <div class="meter-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="65" id="standing-meter">
+            <div class="meter-fill" id="standing-meter-fill" style="width: 65%;"></div>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--on-surface-variant); margin: 0 0 var(--space-md) 0;" id="standing-narrative">
+            The gate stands open. Righteous judgements foster agricultural blessing and civic peace; unjust rulings invite bloodguilt and social discord.
+          </p>
+
+          <span class="input-label">Chronicle of Blessings &amp; Penalties</span>
+          <ul class="chronicle-list" id="chronicle-list">
+            <li class="chronicle-item" style="border-left-color: var(--outline);">
+              <div class="chronicle-title"><span>Session Opened</span></div>
+              <div class="chronicle-desc">Awaiting your first ruling at the city gate.</div>
+            </li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <!-- VIEW 2: MOSAIC CODEX & DATABASE EXPLORER -->
+    <section id="view-codex" class="is-hidden" aria-label="Mosaic Law Codex Explorer">
+      <div class="panel-card" style="margin-bottom: var(--space-lg);">
+        <h2 class="case-title" style="margin-bottom: var(--space-xs);">The Mosaic Law Codex &amp; Jurisprudential Reference</h2>
+        <p style="margin: 0 0 var(--space-lg) 0; color: var(--on-surface-variant); max-width: 72ch;">
+          Explore the embedded statutory database powering the courtroom: human capital tribunals (<em>Mitot Bet Din</em>), civil restitution formulas (<em>Mishpatim</em>), and divine excision (<em>Karet</em>).
+        </p>
+
+        <div class="filter-row">
+          <div class="input-group">
+            <label class="input-label" for="codex-search">Search Offence, Penalty, or Scripture</label>
+            <input type="text" id="codex-search" class="text-input" placeholder="e.g. oxen, Karet, Exod 21, refuge…" oninput="renderCodex()">
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="codex-category">Filter by Legal Domain</label>
+            <select id="codex-category" class="select-input" onchange="renderCodex()">
+              <option value="all">All Domains</option>
+              <option value="Crimes Against Life">Crimes Against Life &amp; Asylum</option>
+              <option value="Theft &amp; Restitution">Theft &amp; Restitution</option>
+              <option value="Property &amp; Negligence">Property &amp; Negligence</option>
+              <option value="Lex Talionis">Lex Talionis &amp; Injury</option>
+              <option value="Sacral &amp; Karet">Sacral &amp; Karet</option>
+              <option value="Judicial Integrity">Judicial Integrity</option>
+              <option value="Familial &amp; Liberty">Familial &amp; Liberty</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="codex-jurisdiction">Filter by Jurisdiction</label>
+            <select id="codex-jurisdiction" class="select-input" onchange="renderCodex()">
+              <option value="all">All Jurisdictions</option>
+              <option value="Mitot Bet Din (Human Court)">Mitot Bet Din (Human Court)</option>
+              <option value="Mishpatim (Civil Restitution)">Mishpatim (Civil Restitution)</option>
+              <option value="Karet (Divine Excision)">Karet (Divine Excision)</option>
+              <option value="Dual (Court + Karet)">Dual (Court + Karet)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="codex-grid" id="codex-grid"></div>
+      </div>
+
+      <!-- ANE Comparison & Karet Scholarship -->
+      <div class="courtroom-grid">
+        <div class="panel-card">
+          <h3 class="case-title" style="font-size: var(--headline-size);">Mosaic Jurisprudence vs Ancient Near Eastern Codes</h3>
+          <p style="color: var(--on-surface-variant); margin-top: 0;">
+            Unlike the Code of Hammurabi and contemporary Bronze/Iron Age legal traditions, the Torah inverted the relative value of human life and property.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Legal Dimension</th>
+                  <th>Code of Hammurabi / ANE</th>
+                  <th>Mosaic Law (Torah)</th>
+                </tr>
+              </thead>
+              <tbody id="ane-comparison-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel-band">
+          <h3 class="case-title" style="font-size: var(--headline-size);">Understanding <em>Karet</em> (“Cut Off”)</h3>
+          <p style="margin-top: 0;">
+            Appearing over thirty times across the Pentateuch, the sanction <em>karet</em> (“cutting off” or “excision”) applies to sacral or hidden covenantal breaches such as consuming blood, eating <em>chametz</em> at Passover, neglecting circumcision, or defiling holy offerings.
+          </p>
+          <ul style="padding-left: 1.2rem; display: grid; gap: var(--space-sm); margin-bottom: 0;">
+            <li><strong>Punitive Expulsion (G. Thomas Hobson, 2010):</strong> Traces <em>karet</em> from fifth-century BCE Jewish practice to Josephus and Qumran as community expulsion—a merciful alternative to execution that removes ritual contamination, paralleling Hittite <em>hurkel</em> and Mesopotamian <em>uzug</em> expulsion.</li>
+            <li><strong>Divine Sanction (Milgrom &amp; Rabbinic Tradition):</strong> Views <em>karet</em> as an act executed directly by God—premature death before age 50 or 60 (<em>Moed Katan</em> 28a), loss of descendants (Rashi), or exclusion of the soul from the World to Come (Maimonides, Nachmanides)—especially where human courts lack eyewitnesses.</li>
+            <li><strong>Dual Enforcement:</strong> For overt acts like public Sabbath breach or Molech worship, human courts impose stoning (<em>Sekilah</em>) whilst divine <em>karet</em> stands if the community fails to prosecute (Lev 20:2–3; Exod 31:14).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: JUDICIAL RECORD & SUMMARY STATS -->
+    <section id="view-record" class="is-hidden" aria-label="Judicial Record and Summary Statistics">
+      <div class="summary-grid">
+        <div class="panel-card">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md);">
+            <div>
+              <span class="kicker" style="margin-bottom: 2px;">Magistrate's Appraisal</span>
+              <h2 class="case-title" style="margin: 0;" id="summary-rank-title">Judicial Term in Progress</h2>
+            </div>
+            <span class="badge-emerald" id="summary-completion-pill">0 of 16 Adjudicated</span>
+          </div>
+
+          <p id="summary-verdict-narrative" style="max-width: 65ch; color: var(--on-surface-variant); margin-top: 0;">
+            Deliver rulings on the Courtroom Bench to compile your judicial dossier across Israel's civil, criminal, and sacral courts.
+          </p>
+
+          <h3 class="section-subhead" style="margin-top: var(--space-lg);">Accuracy by Legal Domain</h3>
+          <div class="chart-container" id="domain-chart-wrap" aria-label="Accuracy bar chart by legal domain"></div>
+
+          <div class="action-row" style="margin-top: var(--space-lg);">
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+              <button type="button" class="btn-primary" onclick="exportJudicialRecord()">
+                <i data-lucide="download" aria-hidden="true" width="16" height="16"></i>
+                Export Docket (CSV)
+              </button>
+              <button type="button" class="btn-secondary" id="reset-term-btn" data-armed="false" onclick="handleResetTerm(this)">
+                <i data-lucide="rotate-ccw" aria-hidden="true" width="16" height="16"></i>
+                <span id="reset-term-label">Reset Judicial Term</span>
+              </button>
+            </div>
+            <span class="inline-status" id="record-status-msg" role="status"></span>
+          </div>
+        </div>
+
+        <div class="panel-band">
+          <h3 class="case-title" style="font-size: var(--headline-size);">Completed Rulings Log</h3>
+          <div class="table-wrap" style="margin-top: var(--space-sm);">
+            <table>
+              <thead>
+                <tr>
+                  <th>Petition</th>
+                  <th>Verdict</th>
+                  <th>Outcome</th>
+                </tr>
+              </thead>
+              <tbody id="summary-log-body">
+                <tr>
+                  <td colspan="3" style="color: var(--on-surface-variant); text-align: center;">
+                    No cases judged yet. Return to the Courtroom Bench to hear your first petition.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="sources-footer">
+      <strong>Grounded Sources:</strong> Grounded in the Pentateuch (Exodus 20–22, 30–31; Leviticus 7, 17–24; Numbers 9, 15, 19, 35; Deuteronomy 13, 17–25; Genesis 9, 17), G. Thomas Hobson (<em>“Cut Off From (One's) People”: Punitive Expulsion in the Torah</em>, Concordia Seminary, 2010), classical rabbinic tractates (<em>Keritot</em>, <em>Sanhedrin</em>, <em>Moed Katan</em>), and comparative Ancient Near Eastern jurisprudence.
+    </footer>
+  </div>
+
+  <!-- Embedded JSON Database of Mosaic Law & Petitions -->
+  <script type="application/json" id="mosaic-law-db">
+  {
+    "aneComparison": [
+      {
+        "dimension": "Class Distinction",
+        "ane": "Imposed scaled penalties by social rank (amēlu noble vs muškēnu commoner vs wardu slave).",
+        "mosaic": "Mandated equal legal protection for native citizens and resident aliens (gerim) alike (Lev 24:22)."
+      },
+      {
+        "dimension": "Property Crimes",
+        "ane": "Prescribed capital execution for temple/palace theft or housebreaking.",
+        "mosaic": "Barred capital punishment for property theft; mandated 2×, 4×, or 5× financial restitution (Exod 22:1–6)."
+      },
+      {
+        "dimension": "Homicide Remedies",
+        "ane": "Allowed wealthy murderers to pay wergild (monetary ransom) to avoid execution.",
+        "mosaic": "Strictly prohibited ransom for deliberate murder based on Imago Dei (Num 35:31; Gen 9:6), whilst protecting accidental killers in Cities of Refuge."
+      },
+      {
+        "dimension": "Servant Protections",
+        "ane": "Treated slaves as pure chattel; mandated death for harbouring runaway slaves.",
+        "mosaic": "Granted immediate freedom if a master destroyed an eye or tooth (Exod 21:26–27) and forbade returning runaway slaves (Deut 23:15–16)."
+      }
+    ],
+    "codex": [
+      {
+        "id": "codex-murder",
+        "offence": "Premeditated Murder (Ratsach)",
+        "category": "Crimes Against Life",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Execution by the sword; strictly no ransom; dragged even from God's altar.",
+        "citations": ["Gen 9:5–6", "Exod 21:12, 14", "Lev 24:17", "Num 35:30–31"],
+        "rationale": "Grounded in Imago Dei—human life bears God's image and cannot be monetised. Unpunished murder defiles the land."
+      },
+      {
+        "id": "codex-manslaughter",
+        "offence": "Accidental Homicide (Manslaughter)",
+        "category": "Crimes Against Life",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Exile to one of six Levitical Cities of Refuge (Arei Miklat) until the High Priest's death; no ransom.",
+        "citations": ["Exod 21:13", "Num 35:25, 32", "Deut 19:3–5"],
+        "rationale": "Shields the unintentional killer from the avenger of blood (Go'el HaDam), halting blood feuds whilst honouring the gravity of life lost."
+      },
+      {
+        "id": "codex-unsolved-murder",
+        "offence": "Unsolved Homicide on the Open Road",
+        "category": "Crimes Against Life",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Elders break a heifer's neck in a rough, unploughed valley by a stream; valley never sown.",
+        "citations": ["Deut 21:1–9"],
+        "rationale": "Expiates communal bloodguilt when the perpetrator remains undiscovered."
+      },
+      {
+        "id": "codex-ox-negligence",
+        "offence": "Owner Negligence with a Known Dangerous Ox",
+        "category": "Property & Negligence",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Ox stoned (flesh uneaten); negligent owner faces death or court-imposed ransom.",
+        "citations": ["Exod 21:28–29"],
+        "rationale": "Holds property owners criminally accountable when warned of a lethal hazard."
+      },
+      {
+        "id": "codex-ox-slaughtered",
+        "offence": "Theft of an Ox (Slaughtered or Sold)",
+        "category": "Theft & Restitution",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Fivefold restitution (five oxen for one stolen ox).",
+        "citations": ["Exod 22:1"],
+        "rationale": "Higher multiplier reflects both premeditated disposal of evidence and the ox's crucial agricultural labour value."
+      },
+      {
+        "id": "codex-sheep-slaughtered",
+        "offence": "Theft of a Sheep (Slaughtered or Sold)",
+        "category": "Theft & Restitution",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Fourfold restitution (four sheep for one stolen sheep).",
+        "citations": ["Exod 22:1"],
+        "rationale": "Deters livestock rustling whilst keeping property offences non-capital."
+      },
+      {
+        "id": "codex-live-theft",
+        "offence": "Theft Recovered Alive & Insolvent Thief",
+        "category": "Theft & Restitution",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Double restitution (200%); if unable to pay, temporary bonded servitude until debt is cleared.",
+        "citations": ["Exod 22:3–4"],
+        "rationale": "Restores the victim twofold without resorting to execution for property crimes."
+      },
+      {
+        "id": "codex-grazing-fire",
+        "offence": "Straying Livestock or Spreading Fire",
+        "category": "Property & Negligence",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Full restitution from the best of the offender's field/vineyard, or full fire damages.",
+        "citations": ["Exod 22:5–6"],
+        "rationale": "Enforces civil stewardship and strict accountability for agricultural negligence."
+      },
+      {
+        "id": "codex-nonfatal-assault",
+        "offence": "Non-Fatal Assault (Bedridden Victim)",
+        "category": "Lex Talionis",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Monetary compensation for lost wages/time and full medical care until healed.",
+        "citations": ["Exod 21:18–19"],
+        "rationale": "Translates proportional justice into practical economic restoration."
+      },
+      {
+        "id": "codex-lex-talionis",
+        "offence": "Permanent Bodily Injury & Fetal Harm",
+        "category": "Lex Talionis",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Proportional court-assessed damages (or husband's court-approved fine if mother unharmed in premature birth).",
+        "citations": ["Exod 21:22–25", "Lev 24:19–20", "Deut 19:21"],
+        "rationale": "Establishes an equitable ceiling on retaliation—interpreted in judicial practice as financial compensation rather than personal vendetta."
+      },
+      {
+        "id": "codex-slave-maiming",
+        "offence": "Master Maiming a Servant's Eye or Tooth",
+        "category": "Lex Talionis",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Immediate, unconditional emancipation (freedom) of the servant.",
+        "citations": ["Exod 21:26–27"],
+        "rationale": "Protects the bodily dignity of servants and checks abusive authority."
+      },
+      {
+        "id": "codex-stripes",
+        "offence": "Statutory Corporal Punishment (Stripes)",
+        "category": "Judicial Integrity",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Infliction of stripes strictly capped at 40 (39 in practice).",
+        "citations": ["Deut 25:2–3"],
+        "rationale": "Prevents judicial cruelty so an offender is not degraded in the sight of the community."
+      },
+      {
+        "id": "codex-kidnapping",
+        "offence": "Kidnapping & Human Trafficking",
+        "category": "Familial & Liberty",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Death by execution whether sold or held in possession.",
+        "citations": ["Exod 21:16", "Deut 24:7"],
+        "rationale": "Treats theft of human liberty as an unpardonable capital crime rather than a mere economic tort."
+      },
+      {
+        "id": "codex-parents",
+        "offence": "Violently Striking or Cursing Parents",
+        "category": "Familial & Liberty",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Death by execution (or stoning for the persistently rebellious son).",
+        "citations": ["Exod 21:15, 17", "Lev 20:9", "Deut 21:18–21"],
+        "rationale": "Safeguards the fifth commandment and the foundational authority of the family unit."
+      },
+      {
+        "id": "codex-witness-rule",
+        "offence": "Evidentiary Standard & Capital Perjury",
+        "category": "Judicial Integrity",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "Minimum two eyewitnesses required; false witnesses suffer the exact penalty they plotted against the accused.",
+        "citations": ["Num 35:30", "Deut 17:6", "Deut 19:15–19"],
+        "rationale": "Prevents hasty verdicts and deters malicious abuse of capital courts."
+      },
+      {
+        "id": "codex-duress",
+        "offence": "Offence Committed Under Duress",
+        "category": "Judicial Integrity",
+        "jurisdiction": "Mitot Bet Din (Human Court)",
+        "penalty": "No punishment; full exoneration of the coerced victim.",
+        "citations": ["Deut 22:25–26"],
+        "rationale": "Distinguishes moral culpability from forced compliance when no aid was available."
+      },
+      {
+        "id": "codex-karet-sacral",
+        "offence": "Hidden Sacral Breaches (Blood, Chametz, Circumcision, Impurity)",
+        "category": "Sacral & Karet",
+        "jurisdiction": "Karet (Divine Excision)",
+        "penalty": "Karet ('cut off from one's people'): punitive expulsion or divine premature death / spiritual excision.",
+        "citations": ["Gen 17:14", "Exod 12:15, 19", "Lev 7:20–27", "Num 15:30–31"],
+        "rationale": "Governs private or sacral covenant violations beyond eyewitness court jurisdiction."
+      },
+      {
+        "id": "codex-sabbath-molech",
+        "offence": "Public Sabbath Defiance, Blasphemy, or Molech Worship",
+        "category": "Sacral & Karet",
+        "jurisdiction": "Dual (Court + Karet)",
+        "penalty": "Judicial stoning (Sekilah) by the community; divine Karet if human justice fails.",
+        "citations": ["Exod 31:14–15", "Num 15:32–36", "Lev 20:2–5", "Lev 24:14–16"],
+        "rationale": "Dual sanction protects both public covenant loyalty and communal holiness."
+      },
+      {
+        "id": "codex-seduction",
+        "offence": "Seduction of an Unbetrothed Virgin",
+        "category": "Familial & Liberty",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Pay 50-shekel bride price (mohar) and marry her (or pay mohar if father refuses).",
+        "citations": ["Exod 22:16–17", "Deut 22:28–29"],
+        "rationale": "Secures the woman's economic and social standing."
+      },
+      {
+        "id": "codex-weights-ger",
+        "offence": "Deceitful Weights & Harm to Resident Aliens",
+        "category": "Judicial Integrity",
+        "jurisdiction": "Mishpatim (Civil Restitution)",
+        "penalty": "Equal statutory restitution and prohibition on inaccurate weights; identical law for alien and native.",
+        "citations": ["Lev 19:35–36", "Lev 24:22", "Deut 25:13–15"],
+        "rationale": "Eliminates commercial fraud and enforces impartial justice regardless of birth status."
+      }
+    ],
+    "cases": [
+      {
+        "id": "case-01",
+        "number": 1,
+        "title": "Ambush at the Threshing Floor",
+        "category": "Crimes Against Life",
+        "witnessStatus": "Two Independent Eyewitnesses",
+        "petition": "Simeon and Asher disputed a field boundary. Two eyewitnesses confirm Simeon lay in wait behind a stone wall with an iron mattock and struck Asher dead. Simeon has fled to the Tabernacle and clings to the horns of the altar, whilst his wealthy clan offers 300 shekels of silver to ransom his life.",
+        "evidenceNote": "Premeditation proven by two witnesses; silver ransom tendered by offender's family.",
+        "codexHint": "Consider Exodus 21:14 on altar sanctuary for premeditated killers, and Numbers 35:31 on blood ransom.",
+        "options": [
+          { "id": "a", "label": "Accept the 300-Shekel Ransom", "summary": "Spare Simeon's life and award the silver to Asher's widow as wergild." },
+          { "id": "b", "label": "Drag from the Altar & Execute by Sword", "summary": "Deny sanctuary, refuse all ransom, and impose capital execution." },
+          { "id": "c", "label": "Exile to a City of Refuge", "summary": "Send Simeon to Hebron until the High Priest dies." },
+          { "id": "d", "label": "Respect Sanctuary at the Horns of the Altar", "summary": "Honour religious asylum permanently and banish Simeon from the tribe." }
+        ],
+        "correctOptionId": "b",
+        "citations": ["Gen 9:5–6", "Exod 21:12, 14", "Num 35:31, 33"],
+        "blessing": { "title": "Land Kept Unpolluted", "effect": "Innocent blood is purged from Israel; reverence for the sanctity of human life strengthens throughout the tribes.", "delta": 8 },
+        "penalty": { "title": "Bloodguilt Defiles the Land", "effect": "Compromising Imago Dei for silver or false asylum pollutes the land and invites severe divine displeasure.", "delta": -12 },
+        "rationale": "Mosaic Law forbids monetary ransom for premeditated murder (Num 35:31) because humanity bears the image of God (Gen 9:6). Altar asylum (Exod 21:14) protects only until trial—a scheming murderer must be taken even from the altar to face execution."
+      },
+      {
+        "id": "case-02",
+        "number": 2,
+        "title": "The Slipped Axe-Head in Gilead",
+        "category": "Crimes Against Life",
+        "witnessStatus": "Two Eyewitnesses (No Prior Malice)",
+        "petition": "While Jonathan and his neighbour felled timber in the forest, Jonathan's iron axe-head flew from its wooden haft and killed his companion instantly. Eyewitnesses confirm there was no prior hatred or ambush. The victim's kinsman (Go'el HaDam) demands immediate blood vengeance at the gate.",
+        "evidenceNote": "Unintentional fatality verified; avenger of blood pursuing outside the gate.",
+        "codexHint": "Distinguish accidental homicide from premeditation under Exodus 21:13, Numbers 35:25, 32, and Deuteronomy 19:4–5.",
+        "options": [
+          { "id": "a", "label": "Exile to a City of Refuge (Arei Miklat)", "summary": "Grant Jonathan safe passage to a Levitical refuge city until the High Priest's death; bar ransom." },
+          { "id": "b", "label": "Surrender to the Avenger of Blood", "summary": "Permit the victim's brother to execute Jonathan under blood-for-blood custom." },
+          { "id": "c", "label": "Order a Silver Settlement & Immediate Release", "summary": "Allow Jonathan to pay a compensation fee and return directly to his farm." },
+          { "id": "d", "label": "Administer 39 Stripes & Confiscate Tools", "summary": "Punish negligence corporally and dismiss the avenger." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:13", "Num 35:25, 32", "Deut 19:3–5"],
+        "blessing": { "title": "Blood-Feud Prevented", "effect": "Levitical sanctuary cools clan passions and preserves an innocent life from vengeful escalation.", "delta": 8 },
+        "penalty": { "title": "Vengeful Strife Erupts", "effect": "Failing to uphold the Cities of Refuge—or allowing ransom—sparks tribal blood feuds across Gilead.", "delta": -10 },
+        "rationale": "Without precedent in neighbouring Ancient Near Eastern codes, the Torah instituted six Levitical Cities of Refuge for accidental manslayers (Exod 21:13; Deut 19:3). No ransom may buy out the exile (Num 35:32), preserving both safety and solemn respect for life."
+      },
+      {
+        "id": "case-03",
+        "number": 3,
+        "title": "The Lone Accuser at the Gate",
+        "category": "Judicial Integrity",
+        "witnessStatus": "One Witness Only (Circumstantial Rumour)",
+        "petition": "Malachi brings a capital charge of blasphemy against his business rival Nadab. Malachi swears earnestly that he heard the curse in an empty alley, yet no second witness can be produced—only hearsay from market gossips.",
+        "evidenceNote": "Single eyewitness testimony; zero corroboration.",
+        "codexHint": "Check the evidentiary threshold required for capital verdicts in Numbers 35:30 and Deuteronomy 17:6; 19:15.",
+        "options": [
+          { "id": "a", "label": "Sentence to Stoning on Sworn Oath", "summary": "Accept Malachi's solemn oath as sufficient proof for execution." },
+          { "id": "b", "label": "Bar Conviction & Acquit Nadab", "summary": "Refuse capital or corporal punishment because one witness is legally insufficient." },
+          { "id": "c", "label": "Inflict Half-Penalty (20 Stripes)", "summary": "Impose moderate stripes on suspicion to deter future impiety." },
+          { "id": "d", "label": "Imprison Nadab Indefinitely", "summary": "Hold the accused in dungeon confinement until a second witness appears." }
+        ],
+        "correctOptionId": "b",
+        "citations": ["Num 35:30", "Deut 17:6", "Deut 19:15"],
+        "blessing": { "title": "Evidentiary Integrity Upheld", "effect": "Citizens trust the impartiality of the elders' court; malicious accusations fail at the threshold.", "delta": 7 },
+        "penalty": { "title": "Judicial Terror Among Citizens", "effect": "Convicting or punishing on a lone witness leaves every neighbour vulnerable to private grudges.", "delta": -11 },
+        "rationale": "Mosaic jurisprudence strictly requires at least two independent direct eyewitnesses for conviction (Num 35:30; Deut 17:6; 19:15). Circumstantial rumour or a single accuser can never justify execution or punitive detention."
+      },
+      {
+        "id": "case-04",
+        "number": 4,
+        "title": "The Perjured Conspiracy for a Vineyard",
+        "category": "Judicial Integrity",
+        "witnessStatus": "Cross-Examination Exposes Perjury",
+        "petition": "During a capital trial for treason, thorough questioning by the judges exposes that two witnesses conspired to fabricate testimony in order to have an innocent landholder executed and seize his ancestral vineyard.",
+        "evidenceNote": "Malicious perjury proven in a capital proceeding.",
+        "codexHint": "Apply Deuteronomy 19:16–19 regarding false witnesses in capital cases.",
+        "options": [
+          { "id": "a", "label": "Inflict the Plotted Death Penalty on the False Witnesses", "summary": "Apply Lex Talionis: do unto the false witnesses as they purposed against the accused." },
+          { "id": "b", "label": "Fine Double the Vineyard's Value", "summary": "Assess a civil property penalty and release the conspirators." },
+          { "id": "c", "label": "Administer 39 Stripes Only", "summary": "Flog both witnesses and bar them from future courtrooms." },
+          { "id": "d", "label": "Exhort Them to Repentance", "summary": "Dismiss the case with a stern priestly rebuke since no execution occurred." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Deut 19:16–19"],
+        "blessing": { "title": "Fear of Perjury Purged", "effect": "Potential conspirators see that weaponising the courts rebounds upon themselves; the innocent rest secure.", "delta": 8 },
+        "penalty": { "title": "Courts Corrupted by Intrigue", "effect": "Lenience towards capital perjury emboldens predatory factions to frame the vulnerable.", "delta": -10 },
+        "rationale": "Under Deuteronomy 19:19, false witnesses must receive the exact punishment they plotted against the defendant—in a capital trial, death. This strict symmetry deters judicial murder."
+      },
+      {
+        "id": "case-05",
+        "number": 5,
+        "title": "The Slaughtered Plough-Ox of Beth-Horon",
+        "category": "Theft & Restitution",
+        "witnessStatus": "Two Witnesses Verify Market Sale",
+        "petition": "Caleb stole his neighbour's prized plough-ox by night, drove it beyond the hills, and sold it to a butcher before the owner could track it down. Two witnesses testify to the clandestine sale.",
+        "evidenceNote": "Stolen ox already sold/slaughtered; thief is solvent.",
+        "codexHint": "Consult Exodus 22:1 on the graduated restitution ratio when an ox is slaughtered or sold.",
+        "options": [
+          { "id": "a", "label": "Double Restitution (Two Oxen)", "summary": "Require Caleb to repay 200% of the ox's value." },
+          { "id": "b", "label": "Fourfold Restitution (Four Oxen)", "summary": "Impose the standard four-for-one livestock multiplier." },
+          { "id": "c", "label": "Fivefold Restitution (Five Oxen)", "summary": "Order Caleb to pay five oxen for the one stolen ox." },
+          { "id": "d", "label": "Capital Execution for Livestock Theft", "summary": "Sentence Caleb to death as under neighbouring royal codes." }
+        ],
+        "correctOptionId": "c",
+        "citations": ["Exod 22:1"],
+        "blessing": { "title": "Agricultural Livelihoods Protected", "effect": "Farmers invest boldly in herds and ploughing, knowing premeditated theft carries decisive restitution.", "delta": 7 },
+        "penalty": { "title": "Misaligned Deterrence", "effect": "Under-penalising or over-punishing property theft distorts Israel's balance between life and livestock.", "delta": -8 },
+        "rationale": "Exodus 22:1 distinguishes a stolen ox that has been sold or slaughtered (fivefold restitution) from a sheep (fourfold). The heavier penalty reflects both the thief's hardened intent in disposing of the animal and the ox's irreplaceable role in ploughing."
+      },
+      {
+        "id": "case-06",
+        "number": 6,
+        "title": "The Live Lamb & The Insolvent Thief",
+        "category": "Theft & Restitution",
+        "witnessStatus": "Stolen Property Found in Possession",
+        "petition": "Elders searching Micah's pen find his neighbour's stolen sheep and donkey alive and unharmed. Micah confesses, yet he owns neither silver nor land to pay any financial judgement.",
+        "evidenceNote": "Animals recovered alive; perpetrator completely insolvent.",
+        "codexHint": "Review Exodus 22:3–4 on live stolen animals and insolvency.",
+        "options": [
+          { "id": "a", "label": "Double Restitution; Temporary Servitude for Debt", "summary": "Assess 200% value and sell Micah into temporary bonded service until labour repays the debt." },
+          { "id": "b", "label": "Execute the Insolvent Thief", "summary": "Impose the death penalty because Micah cannot pay the court's fine." },
+          { "id": "c", "label": "Fourfold Restitution Only", "summary": "Levy a four-animal fine and imprison Micah indefinitely until kin pay." },
+          { "id": "d", "label": "Waive Restitution Due to Poverty", "summary": "Return the live animals alone and excuse Micah from further obligation." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 22:3–4"],
+        "blessing": { "title": "Debt Restored Without Bloodshed", "effect": "The victim receives full double restitution through regulated labour, whilst human life is spared.", "delta": 7 },
+        "penalty": { "title": "Equity & Order Compromised", "effect": "Either harsh bloodshed over property or uncompensated theft undermines commercial trust.", "delta": -8 },
+        "rationale": "When stolen livestock is recovered alive, Exodus 22:4 prescribes double restitution (200%). If the thief cannot pay, Exodus 22:3 provides for temporary bonded servitude—never execution or perpetual debtors' prison—until the debt is discharged."
+      },
+      {
+        "id": "case-07",
+        "number": 7,
+        "title": "Straying Goats & The Harvest Fire",
+        "category": "Property & Negligence",
+        "witnessStatus": "Physical Damage & Negligence Verified",
+        "petition": "Through careless fencing, Elihu's goats strayed into his neighbour's vineyard and stripped the vines. Days later, a brush-fire Elihu lit spread through dry thorns and consumed his neighbour's stacked sheaves of grain.",
+        "evidenceNote": "Unintentional property damage resulting from negligence.",
+        "codexHint": "Examine Exodus 22:5–6 on grazing torts and fire damage.",
+        "options": [
+          { "id": "a", "label": "Best of Elihu's Field + Full Fire Compensation", "summary": "Compel restitution from the best of Elihu's own field/vineyard plus full grain damages." },
+          { "id": "b", "label": "Administer 39 Stripes Only", "summary": "Punish Elihu corporally for carelessness without financial payment." },
+          { "id": "c", "label": "Split Losses 50/50", "summary": "Divide the crop damage equally since the fire spread naturally by wind." },
+          { "id": "d", "label": "Fivefold Multiplier on Grain", "summary": "Apply the stolen-ox penalty to negligent agricultural fire." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 22:5–6"],
+        "blessing": { "title": "Stewardship & Harmony Restored", "effect": "Neighbours tend boundaries and fires diligently, knowing full restoration protects the harvest.", "delta": 7 },
+        "penalty": { "title": "Unrepaired Harvest Losses", "effect": "Negligent damage left uncompensated breeds bitter resentment between adjoining estates.", "delta": -8 },
+        "rationale": "Exodus 22:5–6 requires anyone whose straying livestock grazes another's land to repay from the best of their own field or vineyard, and whoever starts an uncontrolled fire to make full restitution for the burned grain."
+      },
+      {
+        "id": "case-08",
+        "number": 8,
+        "title": "The Unconfined Goring Ox",
+        "category": "Property & Negligence",
+        "witnessStatus": "Prior Formal Warning Proven",
+        "petition": "Reuben's ox had twice gored neighbours in the past, and the elders formally warned Reuben to keep it penned. Reuben left his gate unlatched; the beast broke out and killed a free townsman.",
+        "evidenceNote": "Owner negligence after formal statutory warning; fatal result.",
+        "codexHint": "Check Exodus 21:28–29 regarding a known dangerous ox whose owner failed to confine it.",
+        "options": [
+          { "id": "a", "label": "Stone Ox (Flesh Uneaten); Owner Liable to Death or Court Ransom", "summary": "Execute the ox without eating its meat; hold Reuben capitally liable unless a court-approved ransom is set." },
+          { "id": "b", "label": "Stone Ox & Allow Reuben to Sell Its Meat", "summary": "Pay the victim's family from the proceeds of the slaughtered ox's carcass." },
+          { "id": "c", "label": "Exile Reuben to a City of Refuge", "summary": "Treat the fatal goring as accidental manslaughter with no capital liability." },
+          { "id": "d", "label": "Impose a Fixed 10-Shekel Fine", "summary": "Treat the incident as ordinary livestock trespass." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:28–29"],
+        "blessing": { "title": "Public Safety Enforced", "effect": "Owners confine hazardous beasts rigorously; human life is valued above livestock profit.", "delta": 8 },
+        "penalty": { "title": "Reckless Neglect Unchecked", "effect": "Treating lethal negligence lightly endangers every traveller in the street.", "delta": -9 },
+        "rationale": "Under Exodus 21:28–29, a known goring ox must be stoned with its flesh uneaten, and the negligent owner who ignored prior warnings is liable to death—the sole homicide-related instance where a court may optionally assess a ransom on the owner's life."
+      },
+      {
+        "id": "case-09",
+        "number": 9,
+        "title": "The Quarry Brawl & Bedridden Mason",
+        "category": "Lex Talionis",
+        "witnessStatus": "Two Witnesses & Medical Inspection",
+        "petition": "During a quarrel at the stone quarry, Joab struck a fellow mason with a rock. The mason did not die, but remained bedridden for six weeks before walking abroad with a staff. The victim demands that Joab's own leg be broken in literal retaliation.",
+        "evidenceNote": "Non-fatal assault causing temporary incapacity and medical costs.",
+        "codexHint": "Read Exodus 21:18–19 together with Leviticus 19:18 on non-fatal injury compensation.",
+        "options": [
+          { "id": "a", "label": "Compensate Lost Time & Full Medical Care", "summary": "Reject literal maiming; order Joab to pay lost wages and physician costs until healed." },
+          { "id": "b", "label": "Break Joab's Leg in Literal Retaliation", "summary": "Enforce physical 'fracture for fracture' by striking Joab's leg with a stone." },
+          { "id": "c", "label": "Administer 40 Stripes Without Payment", "summary": "Flog Joab publicly and dismiss the financial claim." },
+          { "id": "d", "label": "Dismiss Both Claims", "summary": "Rule that mutual quarrelling voids any right to recovery." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:18–19", "Lev 19:18"],
+        "blessing": { "title": "Proportional Restoration Achieved", "effect": "The injured mason's household is sustained during recovery without vindictive mutilation.", "delta": 7 },
+        "penalty": { "title": "Vindictive Mutilation or Unpaid Loss", "effect": "Either literal maiming or leaving the injured worker destitute fractures community peace.", "delta": -9 },
+        "rationale": "Exodus 21:18–19 explicitly requires the assailant to pay for the victim's lost time and complete healing. Rather than literal mutilation, Mosaic jurisprudence used Lex Talionis to cap vengeance and calculate fair economic damages."
+      },
+      {
+        "id": "case-10",
+        "number": 10,
+        "title": "The Master Who Blinded His Servant",
+        "category": "Lex Talionis",
+        "witnessStatus": "Permanent Loss of Eye Confirmed",
+        "petition": "Enraged over a spilled wineskin, a householder struck his bondservant across the face, permanently destroying one eye. The master argues that since the servant survived and remains his household labourer, no court penalty applies.",
+        "evidenceNote": "Permanent bodily maiming inflicted by master upon servant.",
+        "codexHint": "Consult Exodus 21:26–27 on a master destroying a servant's eye or tooth.",
+        "options": [
+          { "id": "a", "label": "Grant Unconditional Emancipation to the Servant", "summary": "Order the servant set completely free immediately on account of the lost eye." },
+          { "id": "b", "label": "Gouge Out One Eye of the Master", "summary": "Apply literal physical Lex Talionis whilst keeping the servant bound." },
+          { "id": "c", "label": "Dismiss the Claim Under Property Rules", "summary": "Rule that a master is immune unless the servant dies immediately." },
+          { "id": "d", "label": "Order a 15-Shekel Fine Paid to the Elders", "summary": "Leave the servant in bondage and fine the master." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:26–27"],
+        "blessing": { "title": "Dignity of Servants Protected", "effect": "Householders restrain their anger, knowing physical abuse forfeits all claim to a servant's labour.", "delta": 8 },
+        "penalty": { "title": "Abuse of Power Sanctioned", "effect": "Denying emancipation turns Mosaic servitude into brutal chattel cruelty akin to surrounding empires.", "delta": -10 },
+        "rationale": "In stark contrast to the Code of Hammurabi—which treated servants purely as chattel—Exodus 21:26–27 mandates immediate, unconditional freedom if a master destroys a servant's eye or even a single tooth."
+      },
+      {
+        "id": "case-11",
+        "number": 11,
+        "title": "The Marketplace Brawl & Expectant Mother",
+        "category": "Lex Talionis",
+        "witnessStatus": "Two Witnesses & Midwife Report",
+        "petition": "Two men brawling near the spice stalls knocked down a pregnant woman, causing a premature birth. Midwives confirm neither mother nor child suffered lasting injury or death, yet the husband demands harsh physical mutilation against both fighters.",
+        "evidenceNote": "Premature birth without lasting bodily injury.",
+        "codexHint": "Compare Exodus 21:22 with verses 23–25 regarding outcomes with and without lasting harm.",
+        "options": [
+          { "id": "a", "label": "Court-Approved Monetary Fine", "summary": "Require the fighters to pay the fine requested by the husband and approved by the judges." },
+          { "id": "b", "label": "Execute Both Brawlers ('Life for Life')", "summary": "Impose capital punishment automatically regardless of the medical outcome." },
+          { "id": "c", "label": "Exile Both Fighters to a City of Refuge", "summary": "Treat the scuffle as manslaughter." },
+          { "id": "d", "label": "Acquit Completely Since No Harm Lasted", "summary": "Dismiss the case with zero penalty." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:22–25"],
+        "blessing": { "title": "Measured Equity at the Gate", "effect": "Judicial oversight prevents excessive private demands whilst holding reckless fighters financially accountable.", "delta": 7 },
+        "penalty": { "title": "Disproportionate Sentencing", "effect": "Ignoring the statutory threshold between temporary shock and lasting injury distorts proportional justice.", "delta": -9 },
+        "rationale": "Exodus 21:22 prescribes a monetary fine—proposed by the husband and moderated by judges—when premature birth occurs without further harm; 'life for life, eye for eye' (vv. 23–25) applies only when serious injury or death ensues."
+      },
+      {
+        "id": "case-12",
+        "number": 12,
+        "title": "The Kidnapped Pilgrim at Hebron",
+        "category": "Familial & Liberty",
+        "witnessStatus": "Victim Rescued in Accused's Cellar",
+        "petition": "Baruch ambushed a fellow Israelite traveller on the road to Hebron, bound him in chains, and was caught holding him in a cellar while negotiating his sale to foreign caravan traders. Baruch pleads that no sale was completed.",
+        "evidenceNote": "Kidnapped victim found in Baruch's possession prior to sale.",
+        "codexHint": "Read Exodus 21:16 and Deuteronomy 24:7 on possessing or selling a kidnapped person.",
+        "options": [
+          { "id": "a", "label": "Sentence Baruch to Death by Execution", "summary": "Impose the capital penalty: kidnapping for sale or possession is punishable by death." },
+          { "id": "b", "label": "Order Double the Proposed Sale Price", "summary": "Treat the abduction as an incomplete property theft." },
+          { "id": "c", "label": "Sentence Baruch to 39 Stripes", "summary": "Flog Baruch since the caravan sale never closed." },
+          { "id": "d", "label": "Temporary Servitude Equal to Captivity", "summary": "Bind Baruch to the victim for one year." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:16", "Deut 24:7"],
+        "blessing": { "title": "Human Liberty Safeguarded", "effect": "Pilgrims and travellers walk the highways of Israel safely, free from the terror of human trafficking.", "delta": 8 },
+        "penalty": { "title": "Trafficking Emboldened", "effect": "Reducing kidnapping to a monetary fine leaves the poor vulnerable to predatory slave-traders.", "delta": -11 },
+        "rationale": "Whereas neighbouring ancient Near Eastern codes treated abduction as an economic offence, Exodus 21:16 and Deuteronomy 24:7 make kidnapping a capital crime—whether the victim has already been sold or is still found in the kidnapper's possession."
+      },
+      {
+        "id": "case-13",
+        "number": 13,
+        "title": "Assault & Reviling Upon Aged Parents",
+        "category": "Familial & Liberty",
+        "witnessStatus": "Two Witnesses Confirm Attack & Curse",
+        "petition": "Two elders testify that an adult son viciously struck his aged father with intent to injure and publicly cursed both his father and mother before the gate. The son claims family disputes should remain private.",
+        "evidenceNote": "Aggravated physical assault (naka) and public reviling of parents.",
+        "codexHint": "Consult Exodus 21:15, 17 and Leviticus 20:9 on striking or cursing parents.",
+        "options": [
+          { "id": "a", "label": "Pass the Sentence of Death by Execution", "summary": "Enforce the capital statute for viciously striking and cursing parents." },
+          { "id": "b", "label": "Pay Medical Expenses & Offer Apology", "summary": "Treat the attack as an ordinary neighbourly scuffle." },
+          { "id": "c", "label": "Disinherit the Son & Inflict 39 Stripes", "summary": "Remove his inheritance share without capital penalty." },
+          { "id": "d", "label": "Leave Exclusively to Divine Karet", "summary": "Take no human judicial action." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 21:15, 17", "Exod 20:12", "Lev 20:9"],
+        "blessing": { "title": "Honour of Households Preserved", "effect": "The aged and vulnerable within families are sheltered by covenant authority.", "delta": 8 },
+        "penalty": { "title": "Filial Authority Collapses", "effect": "Tolerating violent subversion of the fifth commandment fractures the foundation of Israelite society.", "delta": -10 },
+        "rationale": "The Hebrew verb naka in Exodus 21:15 signifies a vicious, life-threatening assault, coupled with public reviling (v. 17; Lev 20:9). Both carry capital punishment to uphold the fifth commandment ('Honour your father and mother') and protect aged parents."
+      },
+      {
+        "id": "case-14",
+        "number": 14,
+        "title": "Secret Chametz & Consumed Blood",
+        "category": "Sacral & Karet",
+        "witnessStatus": "Private Confession (No Contemporaneous Court Warning)",
+        "petition": "After the Feast of Unleavened Bread, it emerges that a householder deliberately ate leavened bread (chametz) during Passover and consumed animal blood in private—sacral sins committed without prior judicial warning or two eyewitnesses.",
+        "evidenceNote": "Purely sacral covenant violations; no human court eyewitnesses.",
+        "codexHint": "Check Exodus 12:15, 19 and Leviticus 7:27; 17:10–14 on Karet ('cut off from one's people').",
+        "options": [
+          { "id": "a", "label": "Declare Liable to Karet (Divine Excision / Expulsion)", "summary": "Recognise Karet—communal expulsion or divine excision—as these sacral sins stand under Heaven's sanction rather than sword or stoning." },
+          { "id": "b", "label": "Execute Immediately by Burning (Serefah)", "summary": "Sentence the householder to death by fire." },
+          { "id": "c", "label": "Levy a Fivefold Livestock Fine", "summary": "Impose the stolen-ox monetary multiplier payable to the priests." },
+          { "id": "d", "label": "Administer 45 Stripes at the Gate", "summary": "Exceed forty stripes to match the gravity of Passover desecration." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 12:15, 19", "Lev 7:27", "Lev 17:10–14", "Num 15:30–31"],
+        "blessing": { "title": "Boundary of Sacred & Civil Kept", "effect": "The court honours the boundary between human tribunals (Mitot Bet Din) and divine jurisdiction (Karet).", "delta": 8 },
+        "penalty": { "title": "Jurisdiction Overstepped", "effect": "Usurping Heaven's sanction with unlawful burning or excessive stripes violates Torah limits.", "delta": -10 },
+        "rationale": "Consuming blood or leaven during Passover carries Karet ('cut off from one's people'), not judicial execution. Scholars debate whether Karet denotes punitive expulsion from the community (Hobson 2010) or divine premature death and spiritual excision (Milgrom, Talmud, Maimonides), yet both agree human tribunals do not execute for it."
+      },
+      {
+        "id": "case-15",
+        "number": 15,
+        "title": "High-Handed Sabbath Breach & Molech Enticement",
+        "category": "Sacral & Karet",
+        "witnessStatus": "Two Eyewitnesses After Formal Warning",
+        "petition": "Despite formal warning by two eyewitnesses, a man deliberately gathered firewood on the Sabbath in open defiance and publicly enticed neighbours to sacrifice a child to Molech.",
+        "evidenceNote": "Overt, witnessed sovereignty violations requiring community action.",
+        "codexHint": "Examine Exodus 31:14–15, Numbers 15:32–36, and Leviticus 20:2–5 on dual human/divine sanctions.",
+        "options": [
+          { "id": "a", "label": "Judicial Stoning (Sekilah); Eyewitnesses Cast First Stones", "summary": "Impose community stoning under witnesses' accountability, noting divine Karet stands if human justice fails." },
+          { "id": "b", "label": "Defer Exclusively to Divine Karet", "summary": "Refuse all human court action and wait for Heaven to intervene." },
+          { "id": "c", "label": "Accept a 50-Shekel Sanctuary Offering", "summary": "Permit a sin-offering ransom to cover high-handed Molech enticement." },
+          { "id": "d", "label": "Exile to a City of Refuge", "summary": "Treat public idolatry as unintentional error." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Exod 31:14–15", "Num 15:32–36", "Lev 20:2–5", "Deut 17:6–7"],
+        "blessing": { "title": "Idolatry & Defiance Purged", "effect": "Covenant loyalty is upheld; the horror of child sacrifice to Molech is rooted out of Israel.", "delta": 9 },
+        "penalty": { "title": "Sanctuary Profaned", "effect": "Tolerating child sacrifice or high-handed public rebellion brings covenant wrath upon the camp.", "delta": -12 },
+        "rationale": "Where Sabbath desecration or Molech worship is overt and witnessed, the Torah commands judicial stoning (Sekilah) with eyewitnesses casting the first stones (Deut 17:7; Num 15:35)—whilst superimposing Karet if the community fails to act (Lev 20:3)."
+      },
+      {
+        "id": "case-16",
+        "number": 16,
+        "title": "Deceitful Weights Against a Resident Alien",
+        "category": "Judicial Integrity",
+        "witnessStatus": "Two Witnesses & Seized False Weights",
+        "petition": "A merchant is caught using rigged stone weights to defraud a resident alien (ger) of grain, and then struck the alien when confronted, leaving him bruised and out of work for three days. The merchant argues foreigners do not merit full native restitution.",
+        "evidenceNote": "Inaccurate weights seized; injury and commercial fraud against a resident alien.",
+        "codexHint": "Review Leviticus 24:22 on equal law for resident aliens, Leviticus 19:35–36 on weights, and Exodus 21:18–19.",
+        "options": [
+          { "id": "a", "label": "Apply Full Equal Law: Restitution, Lost Wages & Seize Weights", "summary": "Enforce identical statutory justice for the resident alien—full restoration, medical/lost-time pay, and destruction of false weights." },
+          { "id": "b", "label": "Award Half-Compensation Due to Foreign Status", "summary": "Apply reduced commoner penalties as under neighbouring codes." },
+          { "id": "c", "label": "Dismiss the Suit Because the Victim Is a Stranger", "summary": "Restrict Mosaic civil protections to native-born Israelites only." },
+          { "id": "d", "label": "Administer 45 Stripes to the Merchant", "summary": "Exceed the 40-stripe statutory cap without compensating the alien." }
+        ],
+        "correctOptionId": "a",
+        "citations": ["Lev 24:22", "Lev 19:35–36", "Deut 25:13–15", "Exod 21:18–19"],
+        "blessing": { "title": "Equal Justice for the Stranger", "effect": "Commerce flourishes under honest weights, and God's blessing rests upon a nation that defends the stranger.", "delta": 8 },
+        "penalty": { "title": "Oppression of the Stranger", "effect": "Partiality towards native merchants violates Leviticus 24:22 and invites divine judgement on dishonest scales.", "delta": -10 },
+        "rationale": "Unlike class-tiered Ancient Near Eastern codes, Leviticus 24:22 mandates one identical standard of law for both the foreign resident (ger) and the native-born. Honest weights (Lev 19:35–36) and lost-time injury pay (Exod 21:18–19) apply in full."
+      }
+    ]
+  }
+  </script>
+
+  <api-shim></api-shim>
+
+  <script>
+    // Parse embedded JSON database
+    let DB = { cases: [], codex: [], aneComparison: [] };
+    try {
+      const dbEl = document.getElementById(`mosaic-law-db`);
+      if (dbEl && dbEl.textContent) {
+        DB = JSON.parse(dbEl.textContent);
+      }
+    } catch (err) {
+      DB = { cases: [], codex: [], aneComparison: [] };
+    }
+
+    // Application state
+    let appState = {
+      currentView: `bench`,
+      currentCaseIndex: 0,
+      docketFilter: `all`,
+      selectedOptionId: null,
+      hintVisible: false,
+      standing: 65,
+      streak: 0,
+      bestStreak: 0,
+      verdicts: {}, // { [caseId]: { chosenId, isCorrect, title, delta, outcomeTitle, outcomeText, category } }
+      chronicle: []
+    };
+
+    const MAX_STANDING = 100;
+    const MIN_STANDING = 0;
+
+    function getFilteredCases() {
+      if (!DB.cases) return [];
+      if (appState.docketFilter === `all`) return DB.cases;
+      return DB.cases.filter(function(c) { return c.category === appState.docketFilter; });
+    }
+
+    function computeStats() {
+      const entries = Object.values(appState.verdicts);
+      const totalJudged = entries.length;
+      const correctCount = entries.filter(function(v) { return v.isCorrect; }).length;
+      const wrongCount = totalJudged - correctCount;
+      const accuracy = totalJudged > 0 ? Math.round((correctCount / totalJudged) * 100) : null;
+
+      let rank = `Novice Elder`;
+      if (totalJudged >= 4) {
+        if (accuracy >= 88 && appState.standing >= 75) rank = `Righteous Shofet`;
+        else if (accuracy >= 70 && appState.standing >= 55) rank = `Steward of Equity`;
+        else if (accuracy >= 50) rank = `Unsteady Magistrate`;
+        else rank = `Compromised Judge`;
+      }
+
+      let standingLabel = `Peace Within the Gates`;
+      let standingTone = `positive`;
+      if (appState.standing >= 85) {
+        standingLabel = `Rain in Due Season`;
+        standingTone = `positive`;
+      } else if (appState.standing >= 60) {
+        standingLabel = `Peace Within the Gates`;
+        standingTone = `positive`;
+      } else if (appState.standing >= 40) {
+        standingLabel = `Covenant Strained`;
+        standingTone = `warning`;
+      } else {
+        standingLabel = `Land Imperilled`;
+        standingTone = `error`;
+      }
+
+      return {
+        totalJudged: totalJudged,
+        correctCount: correctCount,
+        wrongCount: wrongCount,
+        accuracy: accuracy,
+        rank: rank,
+        standingLabel: standingLabel,
+        standingTone: standingTone
+      };
+    }
+
+    async function persistState() {
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.setAppState === `function`) {
+          await window.notebookAppApi.setAppState(appState);
+        }
+      } catch (e) {
+        // Ignore persistence errors in standalone preview
+      }
+    }
+
+    function switchView(viewName) {
+      appState.currentView = viewName;
+      const views = [`bench`, `codex`, `record`];
+      views.forEach(function(v) {
+        const section = document.getElementById(`view-` + v);
+        const tab = document.getElementById(`tab-` + v);
+        if (section) {
+          if (v === viewName) section.classList.remove(`is-hidden`);
+          else section.classList.add(`is-hidden`);
+        }
+        if (tab) {
+          tab.setAttribute(`aria-selected`, v === viewName ? `true` : `false`);
+        }
+      });
+
+      if (viewName === `codex`) renderCodex();
+      if (viewName === `record`) renderSummaryRecord();
+      persistState();
+    }
+
+    function renderMetrics() {
+      const stats = computeStats();
+      const totalCases = DB.cases.length;
+      const filtered = getFilteredCases();
+      const currentCase = filtered[appState.currentCaseIndex] || DB.cases[0];
+
+      const progressEl = document.getElementById(`metric-progress`);
+      const completedEl = document.getElementById(`metric-completed`);
+      const standingEl = document.getElementById(`metric-standing`);
+      const standingStatusEl = document.getElementById(`metric-standing-status`);
+      const accuracyEl = document.getElementById(`metric-accuracy`);
+      const streakEl = document.getElementById(`metric-streak`);
+      const rankEl = document.getElementById(`metric-rank`);
+      const balanceEl = document.getElementById(`metric-balance`);
+      const navBadge = document.getElementById(`nav-progress-badge`);
+      const codexBadge = document.getElementById(`nav-codex-badge`);
+
+      if (progressEl && currentCase) {
+        progressEl.textContent = (appState.currentCaseIndex + 1) + ` / ` + filtered.length;
+      }
+      if (completedEl) {
+        completedEl.textContent = stats.totalJudged + ` of ` + totalCases + ` rulings delivered`;
+      }
+      if (standingEl) standingEl.textContent = String(appState.standing);
+      if (standingStatusEl) {
+        standingStatusEl.textContent = stats.standingLabel;
+        standingStatusEl.className = `arch-caption` + (stats.standingTone === `warning` ? ` is-warning` : stats.standingTone === `error` ? ` is-error` : ``);
+      }
+      if (accuracyEl) {
+        accuracyEl.textContent = stats.accuracy === null ? `—` : stats.accuracy + `%`;
+      }
+      if (streakEl) {
+        streakEl.textContent = `Current streak: ` + appState.streak + ` (best ` + appState.bestStreak + `)`;
+      }
+      if (rankEl) rankEl.textContent = stats.rank;
+      if (balanceEl) {
+        balanceEl.textContent = stats.correctCount + ` blessings · ` + stats.wrongCount + ` penalties`;
+      }
+      if (navBadge) navBadge.textContent = stats.totalJudged + `/` + totalCases;
+      if (codexBadge) codexBadge.textContent = String(DB.codex.length);
+
+      // Update sidebar meter
+      const sidebarStanding = document.getElementById(`sidebar-standing-num`);
+      const meterEl = document.getElementById(`standing-meter`);
+      const meterFill = document.getElementById(`standing-meter-fill`);
+      const narrativeEl = document.getElementById(`standing-narrative`);
+
+      if (sidebarStanding) sidebarStanding.textContent = appState.standing + ` / 100`;
+      if (meterEl) meterEl.setAttribute(`aria-valuenow`, String(appState.standing));
+      if (meterFill) {
+        meterFill.style.width = appState.standing + `%`;
+        meterFill.className = `meter-fill` + (appState.standing < 40 ? ` is-imperilled` : appState.standing < 60 ? ` is-strained` : ``);
+      }
+      if (narrativeEl) {
+        if (appState.standing >= 85) {
+          narrativeEl.textContent = `Righteous judgements flourish at the gate. Rain falls in due season and neighbouring peoples marvel at Israel's equity.`;
+        } else if (appState.standing >= 60) {
+          narrativeEl.textContent = `The gate stands open in stability. Righteous judgements foster blessing; flawed rulings invite bloodguilt and discord.`;
+        } else if (appState.standing >= 40) {
+          narrativeEl.textContent = `Unjust concessions and misplaced penalties strain communal trust. Restore strict fidelity to Mosaic statutes.`;
+        } else {
+          narrativeEl.textContent = `Warning: Unpunished bloodguilt and warped verdicts imperil the camp. Re-examine witness rules and covenant equity.`;
+        }
+      }
+    }
+
+    function renderChronicle() {
+      const list = document.getElementById(`chronicle-list`);
+      if (!list) return;
+
+      if (!appState.chronicle.length) {
+        list.innerHTML = `<li class="chronicle-item" style="border-left-color: var(--outline);">
+          <div class="chronicle-title"><span>Session Opened</span></div>
+          <div class="chronicle-desc">Awaiting your first ruling at the city gate.</div>
+        </li>`;
+        return;
+      }
+
+      const itemsHtml = appState.chronicle.slice().reverse().map(function(entry) {
+        const sign = entry.delta > 0 ? `+` + entry.delta : String(entry.delta);
+        const cls = entry.isCorrect ? `chronicle-item` : `chronicle-item is-penalty`;
+        return `<li class="${cls}">
+          <div class="chronicle-title">
+            <span>${escapeHtml(entry.outcomeTitle)}</span>
+            <span class="num-cell">${sign}</span>
+          </div>
+          <div class="chronicle-desc">Case ${entry.caseNumber}: ${escapeHtml(entry.outcomeText)}</div>
+        </li>`;
+      }).join(``);
+
+      list.innerHTML = itemsHtml;
+    }
+
+    function renderDocketGrid() {
+      const grid = document.getElementById(`docket-grid`);
+      const summary = document.getElementById(`docket-filter-summary`);
+      if (!grid) return;
+
+      const filtered = getFilteredCases();
+      if (summary) {
+        summary.textContent = `Showing ` + filtered.length + ` petition` + (filtered.length === 1 ? `` : `s`);
+      }
+
+      grid.innerHTML = filtered.map(function(c, idx) {
+        const verdict = appState.verdicts[c.id];
+        let cls = `docket-dot`;
+        if (idx === appState.currentCaseIndex) cls += ` is-current`;
+        if (verdict) {
+          cls += verdict.isCorrect ? ` is-blessed` : ` is-penalised`;
+        }
+        const statusWord = verdict ? (verdict.isCorrect ? `Blessed` : `Penalised`) : `Pending`;
+        return `<button type="button" class="${cls}" onclick="jumpToCase(${idx})" title="Case ${c.number}: ${escapeHtml(c.title)} (${statusWord})" aria-label="Case ${c.number}: ${escapeHtml(c.title)}, ${statusWord}">${c.number}</button>`;
+      }).join(``);
+    }
+
+    function renderCurrentCase() {
+      const filtered = getFilteredCases();
+      if (!filtered.length) return;
+      if (appState.currentCaseIndex >= filtered.length) appState.currentCaseIndex = 0;
+
+      const c = filtered[appState.currentCaseIndex];
+      const existingVerdict = appState.verdicts[c.id];
+
+      const catBadge = document.getElementById(`case-category-badge`);
+      const witBadge = document.getElementById(`case-witness-badge`);
+      const titleEl = document.getElementById(`case-title`);
+      const petEl = document.getElementById(`case-petition`);
+      const evEl = document.getElementById(`case-evidence-note`);
+      const hintPanel = document.getElementById(`case-hint-panel`);
+      const hintLabel = document.getElementById(`hint-toggle-label`);
+      const optionsWrap = document.getElementById(`case-options`);
+      const submitBtn = document.getElementById(`submit-verdict-btn`);
+      const prevBtn = document.getElementById(`prev-case-btn`);
+      const nextNavBtn = document.getElementById(`next-nav-btn`);
+      const feedbackPanel = document.getElementById(`case-feedback`);
+
+      if (catBadge) catBadge.textContent = c.category;
+      if (witBadge) witBadge.textContent = c.witnessStatus;
+      if (titleEl) titleEl.textContent = `Petition ` + c.number + `: ` + c.title;
+      if (petEl) petEl.textContent = c.petition;
+      if (evEl) evEl.textContent = `Court Record: ` + c.evidenceNote;
+
+      if (hintPanel) {
+        hintPanel.textContent = c.codexHint;
+        if (appState.hintVisible) hintPanel.classList.remove(`is-hidden`);
+        else hintPanel.classList.add(`is-hidden`);
+      }
+      if (hintLabel) {
+        hintLabel.textContent = appState.hintVisible ? `Hide Torah Principle` : `Consult Torah Principle`;
+      }
+
+      if (prevBtn) prevBtn.disabled = appState.currentCaseIndex === 0;
+      if (nextNavBtn) nextNavBtn.disabled = appState.currentCaseIndex >= filtered.length - 1;
+
+      if (optionsWrap) {
+        const letters = [`A`, `B`, `C`, `D`];
+        optionsWrap.innerHTML = c.options.map(function(opt, i) {
+          let cls = `option-btn`;
+          if (existingVerdict) {
+            if (opt.id === c.correctOptionId) cls += ` is-correct`;
+            else if (opt.id === existingVerdict.chosenId && !existingVerdict.isCorrect) cls += ` is-wrong`;
+          } else if (appState.selectedOptionId === opt.id) {
+            cls += ` is-selected`;
+          }
+          const isChecked = existingVerdict ? (existingVerdict.chosenId === opt.id) : (appState.selectedOptionId === opt.id);
+          return `<button type="button" class="${cls}" role="radio" aria-checked="${isChecked ? `true` : `false`}" ${existingVerdict ? `disabled` : ``} onclick="selectOption('${opt.id}')">
+            <span class="option-letter">${letters[i]}</span>
+            <span>
+              <span class="option-title">${escapeHtml(opt.label)}</span>
+              <span class="option-desc">${escapeHtml(opt.summary)}</span>
+            </span>
+          </button>`;
+        }).join(``);
+      }
+
+      if (submitBtn) {
+        if (existingVerdict) {
+          submitBtn.classList.add(`is-hidden`);
+        } else {
+          submitBtn.classList.remove(`is-hidden`);
+          submitBtn.disabled = !appState.selectedOptionId;
+        }
+      }
+
+      if (feedbackPanel) {
+        if (existingVerdict) {
+          feedbackPanel.classList.remove(`is-hidden`);
+          feedbackPanel.className = `feedback-panel ` + (existingVerdict.isCorrect ? `is-blessing` : `is-penalty`);
+
+          const fHead = document.getElementById(`feedback-heading`);
+          const fDelta = document.getElementById(`feedback-delta`);
+          const fOutLabel = document.getElementById(`feedback-outcome-label`);
+          const fOutText = document.getElementById(`feedback-outcome-text`);
+          const fRat = document.getElementById(`feedback-rationale`);
+          const fCites = document.getElementById(`feedback-citations`);
+          const fNextBtn = document.getElementById(`feedback-next-btn`);
+
+          if (fHead) {
+            fHead.textContent = existingVerdict.isCorrect
+              ? `Righteous Ruling: ` + c.blessing.title
+              : `Flawed Judgement: ` + c.penalty.title;
+          }
+          if (fDelta) {
+            const deltaVal = existingVerdict.isCorrect ? `+` + c.blessing.delta : String(c.penalty.delta);
+            fDelta.textContent = deltaVal + ` Covenant Standing`;
+            fDelta.className = existingVerdict.isCorrect ? `badge-emerald` : `badge-crimson`;
+          }
+          if (fOutLabel) {
+            fOutLabel.textContent = existingVerdict.isCorrect ? `Divine Blessing Bestowed` : `Communal Penalty Incurred`;
+          }
+          if (fOutText) {
+            fOutText.textContent = existingVerdict.isCorrect ? c.blessing.effect : c.penalty.effect;
+          }
+          if (fRat) fRat.textContent = c.rationale;
+          if (fCites) {
+            fCites.innerHTML = c.citations.map(function(cite) {
+              return `<span class="citation-chip">${escapeHtml(cite)}</span>`;
+            }).join(``);
+          }
+          if (fNextBtn) {
+            const totalDone = Object.keys(appState.verdicts).length;
+            if (totalDone >= DB.cases.length) {
+              fNextBtn.textContent = `View Final Judicial Summary →`;
+            } else if (appState.currentCaseIndex < filtered.length - 1) {
+              fNextBtn.textContent = `Hear Next Petition →`;
+            } else {
+              fNextBtn.textContent = `View Judicial Record →`;
+            }
+          }
+        } else {
+          feedbackPanel.classList.add(`is-hidden`);
+        }
+      }
+
+      renderMetrics();
+      renderDocketGrid();
+      renderChronicle();
+    }
+
+    function selectOption(optId) {
+      const filtered = getFilteredCases();
+      const c = filtered[appState.currentCaseIndex];
+      if (!c || appState.verdicts[c.id]) return;
+      appState.selectedOptionId = optId;
+      renderCurrentCase();
+    }
+
+    function toggleHint() {
+      appState.hintVisible = !appState.hintVisible;
+      renderCurrentCase();
+    }
+
+    function submitVerdict() {
+      const filtered = getFilteredCases();
+      const c = filtered[appState.currentCaseIndex];
+      if (!c || !appState.selectedOptionId || appState.verdicts[c.id]) return;
+
+      const isCorrect = appState.selectedOptionId === c.correctOptionId;
+      const delta = isCorrect ? c.blessing.delta : c.penalty.delta;
+      const outcomeTitle = isCorrect ? c.blessing.title : c.penalty.title;
+      const outcomeText = isCorrect ? c.blessing.effect : c.penalty.effect;
+
+      appState.standing = Math.max(MIN_STANDING, Math.min(MAX_STANDING, appState.standing + delta));
+      if (isCorrect) {
+        appState.streak += 1;
+        if (appState.streak > appState.bestStreak) appState.bestStreak = appState.streak;
+      } else {
+        appState.streak = 0;
+      }
+
+      appState.verdicts[c.id] = {
+        caseNumber: c.number,
+        title: c.title,
+        category: c.category,
+        chosenId: appState.selectedOptionId,
+        isCorrect: isCorrect,
+        delta: delta,
+        outcomeTitle: outcomeTitle,
+        outcomeText: outcomeText
+      };
+
+      appState.chronicle.push({
+        caseNumber: c.number,
+        isCorrect: isCorrect,
+        delta: delta,
+        outcomeTitle: outcomeTitle,
+        outcomeText: outcomeText
+      });
+
+      appState.selectedOptionId = null;
+      appState.hintVisible = false;
+      renderCurrentCase();
+      persistState();
+    }
+
+    function navigateCase(step) {
+      const filtered = getFilteredCases();
+      const nextIdx = appState.currentCaseIndex + step;
+      if (nextIdx < 0 || nextIdx >= filtered.length) return;
+      appState.currentCaseIndex = nextIdx;
+      appState.selectedOptionId = null;
+      appState.hintVisible = false;
+      renderCurrentCase();
+      persistState();
+    }
+
+    function jumpToCase(idx) {
+      const filtered = getFilteredCases();
+      if (idx < 0 || idx >= filtered.length) return;
+      appState.currentCaseIndex = idx;
+      appState.selectedOptionId = null;
+      appState.hintVisible = false;
+      renderCurrentCase();
+      persistState();
+    }
+
+    function advanceAfterVerdict() {
+      const filtered = getFilteredCases();
+      const totalDone = Object.keys(appState.verdicts).length;
+      if (totalDone >= DB.cases.length || appState.currentCaseIndex >= filtered.length - 1) {
+        switchView(`record`);
+        return;
+      }
+      navigateCase(1);
+    }
+
+    function filterDocketCategory(val) {
+      appState.docketFilter = val;
+      appState.currentCaseIndex = 0;
+      appState.selectedOptionId = null;
+      appState.hintVisible = false;
+      renderCurrentCase();
+      persistState();
+    }
+
+    function renderCodex() {
+      const searchEl = document.getElementById(`codex-search`);
+      const catEl = document.getElementById(`codex-category`);
+      const jurEl = document.getElementById(`codex-jurisdiction`);
+      const grid = document.getElementById(`codex-grid`);
+      const aneBody = document.getElementById(`ane-comparison-body`);
+
+      const query = searchEl ? searchEl.value.trim().toLowerCase() : ``;
+      const cat = catEl ? catEl.value : `all`;
+      const jur = jurEl ? jurEl.value : `all`;
+
+      const filtered = DB.codex.filter(function(item) {
+        if (cat !== `all` && item.category !== cat) return false;
+        if (jur !== `all` && item.jurisdiction !== jur) return false;
+        if (query) {
+          const hay = (item.offence + ` ` + item.penalty + ` ` + item.rationale + ` ` + item.citations.join(` `)).toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        return true;
+      });
+
+      if (grid) {
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="codex-card" style="grid-column: 1 / -1; text-align: center;">
+            <p style="margin: 0; color: var(--on-surface-variant);">No statutory entries match your filter. Clear the search box or choose “All Domains”.</p>
+          </div>`;
+        } else {
+          grid.innerHTML = filtered.map(function(item) {
+            const jurClass = item.jurisdiction.indexOf(`Karet`) !== -1 ? `badge-brass` : `badge-emerald`;
+            const citesHtml = item.citations.map(function(c) {
+              return `<span class="citation-chip">${escapeHtml(c)}</span>`;
+            }).join(``);
+            return `<article class="codex-card">
+              <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: center;">
+                <span class="${jurClass}">${escapeHtml(item.jurisdiction)}</span>
+                <span class="input-label" style="margin: 0;">${escapeHtml(item.category)}</span>
+              </div>
+              <h3 class="codex-card-title">${escapeHtml(item.offence)}</h3>
+              <p style="margin: 0; font-weight: 600; color: var(--on-primary-container);">${escapeHtml(item.penalty)}</p>
+              <p style="margin: 0; font-size: 0.9rem; color: var(--on-surface-variant);">${escapeHtml(item.rationale)}</p>
+              <div class="citation-row" style="margin-bottom: 0; margin-top: auto; padding-top: 6px;">${citesHtml}</div>
+            </article>`;
+          }).join(``);
+        }
+      }
+
+      if (aneBody && DB.aneComparison) {
+        aneBody.innerHTML = DB.aneComparison.map(function(row) {
+          return `<tr>
+            <td><strong>${escapeHtml(row.dimension)}</strong></td>
+            <td style="color: var(--on-surface-variant);">${escapeHtml(row.ane)}</td>
+            <td>${escapeHtml(row.mosaic)}</td>
+          </tr>`;
+        }).join(``);
+      }
+    }
+
+    function renderSummaryRecord() {
+      const stats = computeStats();
+      const rankTitle = document.getElementById(`summary-rank-title`);
+      const compPill = document.getElementById(`summary-completion-pill`);
+      const narrative = document.getElementById(`summary-verdict-narrative`);
+      const chartWrap = document.getElementById(`domain-chart-wrap`);
+      const logBody = document.getElementById(`summary-log-body`);
+
+      if (rankTitle) rankTitle.textContent = stats.rank;
+      if (compPill) compPill.textContent = stats.totalJudged + ` of ` + DB.cases.length + ` Adjudicated`;
+
+      if (narrative) {
+        if (stats.totalJudged === 0) {
+          narrative.textContent = `Deliver rulings on the Courtroom Bench to compile your judicial dossier across Israel's civil, criminal, and sacral courts.`;
+        } else if (stats.totalJudged < DB.cases.length) {
+          narrative.textContent = `You have adjudicated ` + stats.totalJudged + ` of ` + DB.cases.length + ` petitions with ` + stats.accuracy + `% fidelity, sustaining a Covenant Standing of ` + appState.standing + `/100. Complete all petitions for a full appraisal.`;
+        } else {
+          narrative.textContent = `Your judicial circuit is complete. Across all ` + DB.cases.length + ` petitions, you achieved ` + stats.accuracy + `% fidelity with ` + stats.correctCount + ` blessings and ` + stats.wrongCount + ` communal penalties, finishing at Covenant Standing ` + appState.standing + `/100.`;
+        }
+      }
+
+      // Compute domain breakdown and render crisp SVG bar chart
+      const domains = [
+        `Crimes Against Life`,
+        `Theft & Restitution`,
+        `Property & Negligence`,
+        `Lex Talionis`,
+        `Judicial Integrity`,
+        `Familial & Liberty`,
+        `Sacral & Karet`
+      ];
+
+      if (chartWrap) {
+        const rows = domains.map(function(dom) {
+          const totalInDom = DB.cases.filter(function(c) { return c.category === dom; }).length;
+          const judgedInDom = Object.values(appState.verdicts).filter(function(v) { return v.category === dom; });
+          const rightInDom = judgedInDom.filter(function(v) { return v.isCorrect; }).length;
+          const pct = judgedInDom.length > 0 ? Math.round((rightInDom / judgedInDom.length) * 100) : 0;
+          return {
+            domain: dom,
+            total: totalInDom,
+            judged: judgedInDom.length,
+            right: rightInDom,
+            pct: pct
+          };
+        });
+
+        const barHeight = 24;
+        const rowGap = 14;
+        const topPad = 14;
+        const leftLabelW = 162;
+        const chartW = 540;
+        const barMaxW = 285;
+        const svgH = topPad + rows.length * (barHeight + rowGap);
+
+        const barsSvg = rows.map(function(r, idx) {
+          const y = topPad + idx * (barHeight + rowGap);
+          const fillW = Math.round((r.pct / 100) * barMaxW);
+          const fillColor = r.judged === 0 ? `var(--data-context)` : (r.pct >= 75 ? `var(--data-2)` : `var(--data-1)`);
+          const statText = r.judged === 0 ? `0/` + r.total + ` judged` : r.right + `/` + r.judged + ` (` + r.pct + `%)`;
+
+          return `<g>
+            <text x="0" y="${y + 16}" fill="var(--on-surface)" font-size="12" font-weight="600">${escapeHtml(r.domain)}</text>
+            <rect x="${leftLabelW}" y="${y}" width="${barMaxW}" height="${barHeight}" rx="4" fill="var(--surface-container-high)" />
+            <rect x="${leftLabelW}" y="${y}" width="${Math.max(fillW, r.judged > 0 ? 6 : 0)}" height="${barHeight}" rx="4" fill="${fillColor}" />
+            <text x="${leftLabelW + barMaxW + 12}" y="${y + 16}" fill="var(--on-surface-variant)" font-size="12" font-weight="600">${statText}</text>
+          </g>`;
+        }).join(``);
+
+        chartWrap.innerHTML = `<svg viewBox="0 0 ${chartW} ${svgH}" width="100%" style="max-width: 100%; height: auto; display: block;" role="img" aria-label="Horizontal bar chart of judicial accuracy across seven Mosaic legal domains">${barsSvg}</svg>`;
+      }
+
+      if (logBody) {
+        const entries = Object.values(appState.verdicts).sort(function(a, b) {
+          return a.caseNumber - b.caseNumber;
+        });
+
+        if (!entries.length) {
+          logBody.innerHTML = `<tr><td colspan="3" style="color: var(--on-surface-variant); text-align: center;">No cases judged yet. Return to the Courtroom Bench to hear your first petition.</td></tr>`;
+        } else {
+          logBody.innerHTML = entries.map(function(v) {
+            const badge = v.isCorrect
+              ? `<span class="badge-emerald">Blessed (+${v.delta})</span>`
+              : `<span class="badge-crimson">Penalty (${v.delta})</span>`;
+            return `<tr>
+              <td><strong>#${v.caseNumber} ${escapeHtml(v.title)}</strong><br><span style="font-size: 0.8rem; color: var(--on-surface-variant);">${escapeHtml(v.category)}</span></td>
+              <td>${badge}</td>
+              <td style="font-size: 0.875rem;">${escapeHtml(v.outcomeTitle)}</td>
+            </tr>`;
+          }).join(``);
+        }
+      }
+    }
+
+    function exportJudicialRecord() {
+      const entries = Object.values(appState.verdicts).sort(function(a, b) {
+        return a.caseNumber - b.caseNumber;
+      });
+      const stats = computeStats();
+      const lines = [
+        `Case Number,Petition Title,Legal Domain,Ruling Correct,Standing Delta,National Outcome`
+      ];
+      entries.forEach(function(e) {
+        lines.push([
+          e.caseNumber,
+          `"` + e.title.replace(/"/g, `""`) + `"`,
+          `"` + e.category.replace(/"/g, `""`) + `"`,
+          e.isCorrect ? `Yes` : `No`,
+          e.delta,
+          `"` + e.outcomeTitle.replace(/"/g, `""`) + `"`
+        ].join(`,`));
+      });
+      lines.push(``);
+      lines.push(`Summary Rank,"` + stats.rank + `",Final Standing,` + appState.standing + `,Accuracy,` + (stats.accuracy === null ? `N/A` : stats.accuracy + `%`));
+
+      const csvContent = lines.join(`\n`);
+      const msgEl = document.getElementById(`record-status-msg`);
+
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.triggerFileDownload === `function`) {
+          window.notebookAppApi.triggerFileDownload({
+            content: csvContent,
+            contentType: `text/csv`,
+            encoding: `UTF-8`,
+            filename: `mosaic-judicial-docket.csv`
+          });
+          if (msgEl) msgEl.textContent = `Docket exported as CSV.`;
+        } else {
+          const blob = new Blob([csvContent], { type: `text/csv;charset=utf-8` });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement(`a`);
+          a.href = url;
+          a.download = `mosaic-judicial-docket.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          if (msgEl) msgEl.textContent = `Docket downloaded as CSV.`;
+        }
+      } catch (err) {
+        if (msgEl) msgEl.textContent = `Export completed in memory (` + entries.length + ` rulings).`;
+      }
+    }
+
+    function handleResetTerm(btn) {
+      if (!btn) return;
+      const labelEl = document.getElementById(`reset-term-label`);
+      if (btn.dataset.armed !== `true`) {
+        btn.dataset.armed = `true`;
+        btn.classList.add(`btn-danger-armed`);
+        if (labelEl) labelEl.textContent = `Click again to confirm reset`;
+        setTimeout(function() {
+          if (btn.dataset.armed === `true`) {
+            btn.dataset.armed = `false`;
+            btn.classList.remove(`btn-danger-armed`);
+            if (labelEl) labelEl.textContent = `Reset Judicial Term`;
+          }
+        }, 4000);
+        return;
+      }
+
+      btn.dataset.armed = `false`;
+      btn.classList.remove(`btn-danger-armed`);
+      if (labelEl) labelEl.textContent = `Reset Judicial Term`;
+
+      appState = {
+        currentView: `bench`,
+        currentCaseIndex: 0,
+        docketFilter: `all`,
+        selectedOptionId: null,
+        hintVisible: false,
+        standing: 65,
+        streak: 0,
+        bestStreak: 0,
+        verdicts: {},
+        chronicle: []
+      };
+
+      const filterSelect = document.getElementById(`docket-category-filter`);
+      if (filterSelect) filterSelect.value = `all`;
+      const msgEl = document.getElementById(`record-status-msg`);
+      if (msgEl) msgEl.textContent = `Judicial term reset.`;
+
+      renderCurrentCase();
+      renderSummaryRecord();
+      switchView(`bench`);
+      persistState();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, `&amp;`)
+        .replace(/</g, `&lt;`)
+        .replace(/>/g, `&gt;`)
+        .replace(/"/g, `&quot;`)
+        .replace(/'/g, `&#39;`);
+    }
+
+    async function initApp() {
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.getAppState === `function`) {
+          const saved = await window.notebookAppApi.getAppState();
+          if (saved && typeof saved === `object`) {
+            appState = Object.assign({}, appState, saved);
+          }
+        }
+      } catch (e) {
+        // Proceed with fresh state
+      }
+
+      const filterSelect = document.getElementById(`docket-category-filter`);
+      if (filterSelect && appState.docketFilter) {
+        filterSelect.value = appState.docketFilter;
+      }
+
+      renderCurrentCase();
+      renderCodex();
+      renderSummaryRecord();
+      switchView(appState.currentView || `bench`);
+
+      if (window.lucide && typeof window.lucide.createIcons === `function`) {
+        window.lucide.createIcons();
+      }
+
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.notifyAppReady === `function`) {
+          window.notebookAppApi.notifyAppReady();
+        }
+      } catch (e) {
+        // Standalone mode
+      }
+    }
+
+    if (document.readyState === `loading`) {
+      document.addEventListener(`DOMContentLoaded`, initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+</html>
