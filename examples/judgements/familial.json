@@ -1,0 +1,204 @@
+[
+  {
+    "id": "fam-kidnap",
+    "category": "Familial & Liberty",
+    "tier": 2,
+    "titles": ["The Kidnapped Pilgrim", "A Captive in the Cellar", "Chains on the Road to {town}", "Stolen Away"],
+    "slots": { "k": "man", "v": "man", "town": "town" },
+    "frames": [
+      "{k} ambushed a fellow Israelite, {v}, on the road to {town}. {@act}. {@proof}",
+      "At {town}, the elders hear that {k} seized {v}, a fellow Israelite. {@act}. {@proof}"
+    ],
+    "evidence": "{@act.ev}; {@proof.ev}.",
+    "witness": "{@proof.w}",
+    "axes": [
+      { "id": "act", "options": [
+        { "id": "holding", "text": "{k} bound {v} in chains and was holding him in a cellar while negotiating his sale to foreign caravan traders", "ev": "victim held for sale" },
+        { "id": "sold", "text": "{k} had already sold {v} to a passing caravan, and {v} was recovered at the border", "ev": "victim already sold" },
+        { "id": "labour", "text": "{k} forced {v} to work in his fields as a slave without pay", "ev": "victim forced into slavery" }
+      ]},
+      { "id": "proof", "options": [
+        { "id": "two", "weight": 2, "text": "Two men who rescued {v} testify to what they saw.", "ev": "two eyewitnesses", "w": "Two Witnesses & Victim Rescued" },
+        { "id": "one", "weight": 1.2, "text": "Only {v}'s own word supports the charge; nobody else saw anything.", "ev": "the victim's word alone", "w": "Victim's Word Alone" }
+      ]}
+    ],
+    "hint": "Weigh how serious the Torah considers the offence, and also whether the court has the proof it requires.",
+    "codex": ["codex-kidnapping", "codex-witness-rule"],
+    "rulings": {
+      "death": { "label": "Sentence {k} to Death", "summary": "Impose the capital penalty for kidnapping a person for sale or forced service.", "harm": 3 },
+      "price": { "label": "Order Double the Sale Price", "summary": "Treat the abduction as an economic offence and assess a money penalty.", "harm": 2, "trap": "ane" },
+      "stripes": { "label": "Sentence {k} to 39 Stripes", "summary": "Flog {k} and release him.", "harm": 2 },
+      "serve": { "label": "Bind {k} to Temporary Servitude", "summary": "Make {k} serve {v} for a year to match his captivity.", "harm": 2 },
+      "acquit": { "label": "Bar Conviction for Want of Witnesses", "summary": "A single accuser's word cannot support a capital sentence.", "harm": 3 }
+    },
+    "rules": [
+      { "when": { "proof": "one" }, "ruling": "acquit", "exclude": [],
+        "rationale": "Even for a capital crime like kidnapping, conviction needs two witnesses (Deut 19:15). A lone accuser, however credible, cannot carry the sentence.",
+        "citations": ["Deut 19:15", "Num 35:30"], "blessing": { "title": "Process Over Passion", "effect": "The court holds to its evidence rule even in an ugly case." } },
+      { "ruling": "death", "exclude": [],
+        "rationale": "Whereas neighbouring ancient Near Eastern codes treated abduction as an economic offence, Exodus 21:16 and Deuteronomy 24:7 make kidnapping a capital crime, whether the victim has been sold or is still found in the kidnapper's possession.",
+        "citations": ["Exod 21:16", "Deut 24:7"], "blessing": { "title": "Liberty Defended", "effect": "Every traveller on the roads of Israel is safer." } }
+    ]
+  },
+
+  {
+    "id": "fam-parents",
+    "category": "Familial & Liberty",
+    "tier": 2,
+    "titles": ["Honour Your Father", "{c} and His Aged Parents", "A Family Matter at {town}?", "Words and Blows at Home"],
+    "slots": { "c": "man", "town": "town" },
+    "frames": [
+      "Two elders of {town} testify before the court: {@act}. {c} claims that family disputes should remain private.",
+      "At {town}, {c} is brought before the gate. {@act}. {c} says it is a private matter between him and his parents."
+    ],
+    "evidence": "{@act.ev}.",
+    "witness": "{@act.w}",
+    "axes": [
+      { "id": "act", "options": [
+        { "id": "both", "text": "{c} viciously struck his aged father with intent to injure and publicly cursed both parents at the gate", "ev": "vicious assault and public reviling", "w": "Two Witnesses: Attack & Curse" },
+        { "id": "struck", "text": "{c} viciously struck his aged father with intent to injure", "ev": "vicious assault on a parent", "w": "Two Witnesses: Vicious Assault" },
+        { "id": "cursed", "text": "{c} publicly reviled his father and mother before the whole gate, though he never touched them", "ev": "public reviling of parents", "w": "Two Witnesses: Public Reviling" },
+        { "id": "accident", "weight": 1.5, "text": "{c} stumbled while helping his aged father down a flight of steps, and his father fell and was bruised", "ev": "accidental fall while helping", "w": "Two Witnesses: Accident" }
+      ]}
+    ],
+    "hint": "Look closely at what {c} actually did and whether he meant any harm.",
+    "codex": ["codex-parents"],
+    "rulings": {
+      "death": { "label": "Pass the Sentence of Death", "summary": "Enforce the capital statute for viciously striking or cursing parents.", "harm": 3 },
+      "pay": { "label": "Pay Medical Expenses & Apologise", "summary": "Treat the matter as a neighbourly misfortune with compensation and an apology.", "harm": 2 },
+      "disinherit": { "label": "Disinherit and Give 39 Stripes", "summary": "Remove the son's inheritance share without a capital penalty.", "harm": 2 },
+      "karet": { "label": "Leave Entirely to Divine Karet", "summary": "Take no human judicial action.", "harm": 2 },
+      "private": { "label": "Rule It a Private Family Matter", "summary": "Decline to hear the case at the gate.", "harm": 2, "trap": "lenient" }
+    },
+    "rules": [
+      { "when": { "act": "accident" }, "ruling": "pay", "exclude": [],
+        "rationale": "The capital statute covers the vicious blow (Hebrew naka) and cursing. A stumble while helping, with no intent to harm, is not an offence against the fifth commandment; the son pays any harm and makes amends.",
+        "citations": ["Exod 21:15", "Exod 20:12"], "blessing": { "title": "Intent Weighed", "effect": "A dutiful son is not punished for an accident." } },
+      { "ruling": "death", "exclude": [],
+        "rationale": "The verb naka in Exodus 21:15 signifies a vicious, injurious assault, and cursing a parent (Exod 21:17; Lev 20:9) is equally capital, upholding the fifth commandment and protecting aged parents.",
+        "citations": ["Exod 21:15, 17", "Exod 20:12", "Lev 20:9"], "blessing": { "title": "Parents Protected", "effect": "Honour for the aged is preserved; the vulnerable are safe in their own homes." } }
+    ]
+  },
+
+  {
+    "id": "fam-servant",
+    "category": "Familial & Liberty",
+    "tier": 3,
+    "titles": ["The Seventh Year", "A Servant Asks for His Freedom", "{s}'s Six Years of Service", "At the Doorpost"],
+    "slots": { "s": "man", "m": "man", "w": "woman", "town": "town" },
+    "frames": [
+      "At {town}, {s}, a Hebrew who sold himself to {m} for debt, has served six full years. {@case}",
+      "{s} comes before the elders of {town}: he entered {m}'s service for debt six years ago. {@case}"
+    ],
+    "evidence": "{@case.ev}.",
+    "witness": "{@case.w}",
+    "axes": [
+      { "id": "case", "options": [
+        { "id": "alone", "text": "He came alone and now asks to go free in the seventh year.", "ev": "came alone; seeks release", "w": "Served Six Years; Came Alone" },
+        { "id": "wife", "text": "He came into service already married to {w}, and asks to go free with her.", "ev": "came with his wife", "w": "Served Six Years; Came with Wife" },
+        { "id": "master", "text": "While in service, {m} gave him {w} as a wife, and they have two children. {s} asks to go free.", "ev": "wife given by master; two children", "w": "Wife Given by the Master" },
+        { "id": "love", "text": "He declares: 'I love my master, my wife and my children; I will not go out free.'", "ev": "servant voluntarily chooses to stay", "w": "Servant Declares Love for Master" }
+      ]}
+    ],
+    "hint": "Look at how he came into service and what he now says he wants.",
+    "codex": ["codex-hebrew-servant"],
+    "rulings": {
+      "alone": { "label": "Free Him in the Seventh Year Without Payment", "summary": "Release {s} with no payment demanded.", "harm": 2 },
+      "withwife": { "label": "Free Him Together with the Wife He Brought", "summary": "Release {s} and {w} together.", "harm": 2 },
+      "stay": { "label": "Free Him Alone; Wife and Children Stay", "summary": "{s} goes free; the wife and children given by the master remain with {m}.", "harm": 2 },
+      "pierce": { "label": "Pierce His Ear at the Doorpost; Serve Permanently", "summary": "Bring him to the judges, pierce his ear, and let him serve for life.", "harm": 2 },
+      "extend": { "label": "Hold Him Until the Full Debt Is Repaid", "summary": "Deny release until every shekel owed has been worked off.", "harm": 2, "trap": "ane" },
+      "sell": { "label": "Sell Him On to Foreign Traders", "summary": "Treat {s} as {m}'s chattel and sell him abroad.", "harm": 3, "trap": "ane" }
+    },
+    "rules": [
+      { "when": { "case": "alone" }, "ruling": "alone", "exclude": [],
+        "rationale": "A Hebrew servant serves six years and goes out free in the seventh, without payment (Exod 21:2; Deut 15:12).",
+        "citations": ["Exod 21:2", "Deut 15:12"], "blessing": { "title": "A Fresh Start", "effect": "Servitude has a time limit, and families can rebuild." } },
+      { "when": { "case": "wife" }, "ruling": "withwife", "exclude": [],
+        "rationale": "If he came with a wife, she goes out with him (Exod 21:3).",
+        "citations": ["Exod 21:3"], "blessing": { "title": "Families Kept Together", "effect": "A man's household leaves with him." } },
+      { "when": { "case": "master" }, "ruling": "stay", "exclude": [],
+        "rationale": "If the master gave him a wife and she bore children, the wife and children belong to the master, and the man goes out alone (Exod 21:4).",
+        "citations": ["Exod 21:4"], "blessing": { "title": "The Law Applied as Written", "effect": "The court holds to the text's distinction, however hard." } },
+      { "ruling": "pierce", "exclude": [],
+        "rationale": "A servant who declares he loves his master, wife and children and will not go free is brought to the judges and the doorpost; his ear is pierced and he serves permanently (Exod 21:5–6).",
+        "citations": ["Exod 21:5–6", "Deut 15:16–17"], "blessing": { "title": "Choice Honoured", "effect": "A man's freely made choice is recorded before the judges." } }
+    ]
+  },
+
+  {
+    "id": "fam-runaway",
+    "category": "Familial & Liberty",
+    "tier": 1,
+    "titles": ["The Runaway at {town}", "Shelter at the Gate", "A Master's Demand", "{s} Escapes"],
+    "slots": { "m": "man", "s": "man", "town": "town", "h": "man", "amt": { "num": [50, 200, 25] } },
+    "frames": [
+      "{s} escaped from {m}'s harsh service and took refuge in {town}, where {h} gave him a place to stay. {@claim}",
+      "At {town}, {m} arrives {@claim} {s} had fled his service, and {h} sheltered him."
+    ],
+    "evidence": "{@claim.ev}.",
+    "witness": "A Runaway Servant Sheltered",
+    "axes": [
+      { "id": "claim", "options": [
+        { "id": "return", "text": "{m} demands that {s} be handed back in chains.", "ev": "master demands return" },
+        { "id": "bounty", "text": "{m} offers a reward of {amt} shekels to whoever brings {s} back.", "ev": "bounty offered" },
+        { "id": "punish", "text": "{m} demands that {h} be punished for harbouring his property.", "ev": "harbourer accused" }
+      ]}
+    ],
+    "hint": "Remember how the Torah treats someone who flees oppression and where neighbours' duty lies.",
+    "codex": ["codex-runaway"],
+    "rulings": {
+      "shelter": { "label": "Let {s} Dwell Freely Among Them", "summary": "Refuse to return {s}; he may settle wherever he chooses and must not be oppressed.", "harm": 3 },
+      "return": { "label": "Return {s} to His Master {m}", "summary": "Hand {s} back to {m} as his property, bound if need be, and close the matter.", "harm": 3, "trap": "ane" },
+      "execute": { "label": "Execute Whoever Harboured Him", "summary": "Put {h} to death for sheltering a runaway servant, as the neighbouring codes would.", "harm": 3, "trap": "ane" },
+      "fine": { "label": "Fine {h} {amt} Shekels and Send {s} Back", "summary": "Penalise {h} for harbouring the servant and return {s} to {m}'s service.", "harm": 2 }
+    },
+    "rules": [
+      { "ruling": "shelter", "exclude": [],
+        "rationale": "'You shall not give up to his master a servant who has escaped from his master to you' (Deut 23:15–16). He dwells where he chooses, and you must not oppress him. This reverses ANE codes that made harbouring a runaway a capital crime.",
+        "citations": ["Deut 23:15–16"], "blessing": { "title": "A Haven for the Oppressed", "effect": "Israel is known as a refuge for those fleeing harsh service." } }
+    ]
+  },
+
+  {
+    "id": "fam-inheritance",
+    "category": "Familial & Liberty",
+    "tier": 2,
+    "titles": ["The Daughters' Claim", "Two Sons, One Double Portion", "An Estate Without Heirs", "{f}'s Land"],
+    "slots": { "f": "man", "s1": "man", "s2": "man", "b": "man", "town": "town" },
+    "frames": [
+      "At {town}, the elders must settle the estate of {f}. {@case}",
+      "{f} has died, and the elders of {town} are asked to divide his estate. {@case}"
+    ],
+    "evidence": "{@case.ev}.",
+    "witness": "{@case.w}",
+    "axes": [
+      { "id": "case", "options": [
+        { "id": "daughters", "text": "He left five daughters and no sons. His brother {b} claims all the land.", "ev": "no sons; daughters survive", "w": "No Sons; Daughters Survive" },
+        { "id": "firstborn", "text": "He had two sons: {s1}, the firstborn, son of his unloved wife, and {s2}, son of his favourite wife. Before he died he said {s2} should have the firstborn's double portion.", "ev": "firstborn is the son of the unloved wife", "w": "Firstborn vs. Favourite Son" },
+        { "id": "none", "text": "He died with no children at all. The sanctuary and his brother {b} both claim the estate.", "ev": "no children", "w": "No Children; Brothers Survive" }
+      ]}
+    ],
+    "hint": "Inheritance follows a legal order, not the dead man's preferences.",
+    "codex": ["codex-inheritance"],
+    "rulings": {
+      "daughters": { "label": "The Daughters Inherit Their Father's Land", "summary": "Give the estate to {f}'s daughters, since he left no son.", "harm": 2 },
+      "firstborn": { "label": "{s1} the Firstborn Takes the Double Portion", "summary": "Honour the firstborn's right regardless of the father's affection.", "harm": 2 },
+      "brothers": { "label": "The Estate Passes to His Brothers", "summary": "With no children, give the land to {f}'s brothers.", "harm": 2 },
+      "loved": { "label": "{s2} the Favourite Son Takes the Double Portion", "summary": "Honour the dying father's wish for his favourite wife's son.", "harm": 2 },
+      "temple": { "label": "The Estate Goes to the Sanctuary", "summary": "Rule that land without a direct heir belongs to the sanctuary.", "harm": 2 },
+      "equal": { "label": "Divide Equally Among All Claimants", "summary": "Split the estate among everyone who has made a claim.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "case": "daughters" }, "ruling": "daughters", "exclude": [],
+        "rationale": "If a man dies with no son, his inheritance passes to his daughters (Num 27:8), as in the case of the daughters of Zelophehad.",
+        "citations": ["Num 27:1–8"], "blessing": { "title": "Daughters Provided For", "effect": "A family's land stays within the family." } },
+      { "when": { "case": "firstborn" }, "ruling": "firstborn", "exclude": [],
+        "rationale": "The firstborn is the first of the man's strength and receives a double portion, even if his mother is the unloved wife (Deut 21:15–17). The father may not give the right to the son of the favourite.",
+        "citations": ["Deut 21:15–17"], "blessing": { "title": "Favouritism Refused", "effect": "A father's affection cannot override the law of inheritance." } },
+      { "ruling": "brothers", "exclude": [],
+        "rationale": "If a man has neither son nor daughter, his inheritance goes to his brothers (Num 27:9).",
+        "citations": ["Num 27:9–11"], "blessing": { "title": "The Clan Land Preserved", "effect": "The estate stays within the family line." } }
+    ]
+  }
+]

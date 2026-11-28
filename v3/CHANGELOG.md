@@ -1,5 +1,12 @@
 # MANNA — Changelog
 
+## Unreleased — Moses un-stuck, Walk refocus, camera fixes
+
+- **Moses could not walk at all**: every spawn path placed him on the camp centre tile, which is inside the blocked Tabernacle footprint (`K_TAB` around `CAMP`), so `canStep()` failed in all eight directions. A new `placePlayerAtCamp()` helper spots him just south of the tabernacle fence (nearest free tile via `findWalk`) and is used by new games, shared journeys, save loads (only when the saved tile is blocked), camp migrations and boot.
+- **Camera refocus on Walk**: selecting the Walk tool now clears the drag-pan offset and glides the camera in close on Moses (zoom target 1.7), like the player-following camera of the previous version. Zoom now animates toward its target (`zoomT3` lerped in `cam3`) instead of snapping, and wheel/panel zooms glide too.
+- **Load camera fix**: loading a save set stale tile-space pan maths (`camX = (x-y)*HW`), throwing the camera target far off the map and leaving Moses off-screen; the load now recentres the camera on him.
+- Tests: **40 passing** (`npm test`), build passes.
+
 ## Unreleased — Desert Outpost world engine migration
 
 - **WebGL world engine replaces the 2D tilemap** (from `examples/Desert Outpost_v5.html`): the game world now renders through a Three.js orthographic camera on a new `#gl` canvas layered under the existing overlay `#c`. The old `HT/WATER/TRAIL/TCOLOR/TYPE` grids, `GROUND[]` WFC ladder, `buildTerrainCanvas()`/tile textures and `renderWorld()` blitter are gone; the frame is a single `draw(dt)` path that renders the 3D scene and then draws the legacy overlay HUD (minimap, labels, pops, weather) on `#c`.

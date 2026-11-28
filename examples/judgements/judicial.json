@@ -1,0 +1,330 @@
+[
+  {
+    "id": "jud-witness",
+    "category": "Judicial Integrity",
+    "tier": 1,
+    "titles": ["The Lone Accuser at the Gate", "A Capital Charge at {town}", "{w}'s Word Against {d}", "Rumour in the Market"],
+    "slots": { "w": "man", "w2": "man", "d": "man", "town": "town" },
+    "frames": [
+      "{w} brings a capital charge of {@charge} against {d}, a business rival. {@wit}",
+      "At the gate of {town}, {d} stands accused of {@charge}. {@wit}"
+    ],
+    "evidence": "{@wit.ev}.",
+    "witness": "{@wit.w}",
+    "axes": [
+      { "id": "charge", "options": [
+        { "id": "blasphemy", "text": "blasphemy", "ev": "" },
+        { "id": "idolatry", "text": "bowing down to another god", "ev": "" }
+      ]},
+      { "id": "wit", "options": [
+        { "id": "one", "weight": 2, "text": "{w} swears earnestly that he saw and heard it himself, but no second witness can be produced.", "ev": "single eyewitness; no corroboration", "w": "One Witness Only" },
+        { "id": "hearsay", "text": "{w} says he heard of it from two market gossips who will not come forward.", "ev": "hearsay only", "w": "Hearsay Only (No Direct Witness)" },
+        { "id": "two", "weight": 2, "text": "Two independent eyewitnesses, {w} and {w2}, each saw it themselves and agree on every detail.", "ev": "two direct eyewitnesses agree", "w": "Two Independent Eyewitnesses" }
+      ]}
+    ],
+    "hint": "Before asking what the penalty is, ask whether the court has the proof the Torah demands.",
+    "codex": ["codex-witness-rule"],
+    "rulings": {
+      "stone": { "label": "Sentence {d} to Stoning", "summary": "Convict on the testimony and carry out the capital sentence, with the witnesses throwing first.", "harm": 3 },
+      "acquit": { "label": "Bar Conviction & Acquit {d}", "summary": "Refuse capital or corporal punishment because the proof is legally insufficient.", "harm": 3 },
+      "half": { "label": "Inflict Half-Penalty (20 Stripes)", "summary": "Impose moderate stripes on suspicion to deter future impiety.", "harm": 2 },
+      "jail": { "label": "Imprison {d} Indefinitely", "summary": "Hold the accused in confinement until a second witness appears.", "harm": 2 },
+      "oath": { "label": "Sentence on {w}'s Sworn Oath", "summary": "Accept the accuser's solemn oath as proof sufficient for execution.", "harm": 3 }
+    },
+    "rules": [
+      { "when": { "wit": "two" }, "ruling": "stone", "exclude": [],
+        "rationale": "With two independent eyewitnesses the evidentiary threshold is met (Deut 17:6), and the capital sentence stands, carried out with the witnesses throwing first (Deut 17:7).",
+        "citations": ["Deut 17:2–7", "Lev 24:16"], "blessing": { "title": "Proof Properly Weighed", "effect": "The guilty are held to account, and the people trust that proof matters." } },
+      { "ruling": "acquit", "exclude": [],
+        "rationale": "Mosaic jurisprudence strictly requires at least two direct eyewitnesses for conviction (Num 35:30; Deut 17:6; 19:15). A lone accuser or hearsay can never justify execution, punishment on suspicion, or indefinite detention.",
+        "citations": ["Num 35:30", "Deut 17:6", "Deut 19:15"], "blessing": { "title": "Evidentiary Integrity Upheld", "effect": "Citizens trust the court's impartiality; malicious accusations fail at the threshold." } }
+    ]
+  },
+
+  {
+    "id": "jud-perjury",
+    "category": "Judicial Integrity",
+    "tier": 2,
+    "titles": ["The Perjured Conspiracy", "False Witnesses at {town}", "A Plot Exposed in Court", "{d}'s Vindication"],
+    "slots": { "d": "man", "w1": "man", "w2": "man", "town": "town", "amt": { "num": [100, 400, 50] } },
+    "frames": [
+      "During a trial at {town}, close questioning by the judges exposes that {w1} and {w2} conspired to fabricate testimony {@plot}.",
+      "{d} stands accused at {town}, but the judges' cross-examination breaks {w1} and {w2}: they admit they lied {@plot}."
+    ],
+    "evidence": "Malicious perjury proven; {@plot.ev}.",
+    "witness": "Cross-Examination Exposes Perjury",
+    "axes": [
+      { "id": "plot", "options": [
+        { "id": "capital", "text": "so that {d}, an innocent landholder, would be executed and his ancestral vineyard seized", "ev": "the plotted punishment was death" },
+        { "id": "fine", "text": "so that {d} would be forced to pay {amt} shekels he did not owe", "ev": "the plotted punishment was a fine of {amt} shekels" },
+        { "id": "stripes", "text": "so that {d} would be flogged for an offence he never committed", "ev": "the plotted punishment was flogging" }
+      ]}
+    ],
+    "hint": "What was the false witnesses' aim? The Torah turns their plan back on them.",
+    "codex": ["codex-witness-rule"],
+    "rulings": {
+      "death": { "label": "Inflict the Plotted Death Penalty on the Witnesses", "summary": "Apply Lex Talionis: do to the false witnesses what they meant to do to {d}.", "harm": 3 },
+      "pay": { "label": "Make the Witnesses Pay the Sum They Plotted", "summary": "Order {w1} and {w2} to pay {amt} shekels to {d}.", "harm": 2 },
+      "lashes": { "label": "Give the False Witnesses the Same Stripes", "summary": "Administer the flogging they meant {d} to suffer.", "harm": 2 },
+      "double": { "label": "Fine Double and Release Them", "summary": "Assess a civil penalty on the conspirators and let them go.", "harm": 2 },
+      "rebuke": { "label": "Exhort Them to Repentance", "summary": "Dismiss the case with a stern priestly rebuke since no punishment was carried out.", "harm": 2, "trap": "lenient" }
+    },
+    "rules": [
+      { "when": { "plot": "capital" }, "ruling": "death", "exclude": [],
+        "rationale": "Under Deut 19:19 false witnesses receive the exact punishment they plotted against the accused. In a capital trial, that is death. This strict symmetry deters judicial murder.",
+        "citations": ["Deut 19:16–19"], "blessing": { "title": "Fear of Perjury Purged", "effect": "Conspirators see that weaponising the courts rebounds upon themselves; the innocent rest secure." } },
+      { "when": { "plot": "fine" }, "ruling": "pay", "exclude": [],
+        "rationale": "The same measure applies: 'you shall do to him as he meant to do to his brother' (Deut 19:19). A plot to extract money is answered by making the plotters pay that money.",
+        "citations": ["Deut 19:16–21"], "blessing": { "title": "The Scheme Backfires", "effect": "Would-be extortionists learn that false testimony costs them what they sought." } },
+      { "ruling": "lashes", "exclude": [],
+        "rationale": "The punishment the witnesses sought is the punishment they receive (Deut 19:19), so a plot to have a man flogged is answered with the same flogging (capped under Deut 25:3).",
+        "citations": ["Deut 19:19", "Deut 25:2–3"], "blessing": { "title": "A Mirror Held Up", "effect": "False witnesses suffer exactly what they intended for the innocent." } }
+    ]
+  },
+
+  {
+    "id": "jud-stripes",
+    "category": "Judicial Integrity",
+    "tier": 1,
+    "titles": ["How Many Stripes?", "The Elders Disagree", "Sentencing at {town}", "A Flogging Dispute"],
+    "slots": { "d": "man", "j": "man", "town": "town", "n": { "num": [45, 100, 5] } },
+    "frames": [
+      "At {town}, {d} has been tried for {@offence}. {@verdict} The younger judge, {j}, urges {n} stripes.",
+      "{d} had been tried at {town} for {@offence}. {@verdict} {j}, a judge, argues that {n} stripes would be fitting."
+    ],
+    "evidence": "{@verdict.ev}.",
+    "witness": "{@verdict.w}",
+    "axes": [
+      { "id": "offence", "options": [
+        { "id": "a", "text": "striking a neighbour in a quarrel" },
+        { "id": "b", "text": "damaging a neighbour's irrigation channel" },
+        { "id": "c", "text": "reviling an elder at the gate" }
+      ]},
+      { "id": "verdict", "options": [
+        { "id": "guilty", "weight": 2, "text": "Two witnesses proved the offence and the court has found that he deserves a beating.", "ev": "guilty; beating deserved", "w": "Guilty; Beating Deserved" },
+        { "id": "innocent", "text": "The evidence cleared {d} completely, yet {j} wants a few stripes 'to be safe'.", "ev": "accused proven innocent", "w": "Accused Cleared" }
+      ]}
+    ],
+    "hint": "Check the verdict first, then recall the legal limit on beatings.",
+    "codex": ["codex-stripes"],
+    "rulings": {
+      "cap": { "label": "Cap the Beating at Forty Stripes", "summary": "Order no more than forty stripes, so {d} is not degraded.", "harm": 2 },
+      "asked": { "label": "Order the {n} Stripes Requested", "summary": "Follow {j}'s view and flog {d} until {n} have been given.", "harm": 2, "trap": "harsh" },
+      "fine": { "label": "Replace the Beating with a Fine", "summary": "Waive stripes and take a fine to the elders in place of the beating.", "harm": 1 },
+      "acquit": { "label": "Acquit {d} and Inflict Nothing", "summary": "The accused was proven innocent; no beating may follow.", "harm": 3 }
+    },
+    "rules": [
+      { "when": { "verdict": "innocent" }, "ruling": "acquit", "exclude": [],
+        "rationale": "Judges must 'acquit the innocent' (Deut 25:1). A man cleared by the evidence may not be beaten on suspicion.",
+        "citations": ["Deut 25:1", "Exod 23:7"], "blessing": { "title": "The Innocent Protected", "effect": "Citizens know a cleared man walks free." } },
+      { "ruling": "cap", "exclude": [],
+        "rationale": "A guilty man who deserves a beating may receive at most forty stripes (Deut 25:2–3), so that he is not degraded before the community.",
+        "citations": ["Deut 25:2–3"], "blessing": { "title": "Punishment With Limits", "effect": "The court shows that even offenders keep their dignity." } }
+    ]
+  },
+
+  {
+    "id": "jud-impartial",
+    "category": "Judicial Integrity",
+    "tier": 1,
+    "titles": ["The Disputed Field", "Silver, Pity and the Scales", "{r} and {p} at the Gate", "A Boundary Dispute at {town}"],
+    "slots": { "r": "man", "p": "man", "town": "town", "amt": { "num": [100, 300, 50] } },
+    "frames": [
+      "At {town}, {r}, a wealthy landowner, and {p}, a poor man, dispute a field. {@evidence} {@pull}",
+      "{r}, a wealthy landowner, and {p}, a poor man, come before the elders at {town} over a field. {@evidence} {@pull}"
+    ],
+    "evidence": "{@evidence.ev}; {@pull.ev}.",
+    "witness": "A Dispute Between Rich and Poor",
+    "axes": [
+      { "id": "evidence", "options": [
+        { "id": "poor", "text": "The boundary stones and two witnesses show the field belongs to {p}.", "ev": "evidence favours the poor man" },
+        { "id": "rich", "text": "The boundary stones and two witnesses show the field belongs to {r}.", "ev": "evidence favours the rich man" }
+      ]},
+      { "id": "pull", "options": [
+        { "id": "gift", "requires": { "evidence": "poor" }, "text": "Before the hearing, {r} sends a gift of {amt} shekels to your house.", "ev": "gift offered by the rich party" },
+        { "id": "prestige", "requires": { "evidence": "poor" }, "text": "{r} is the most respected man in the district, and no one wants to offend him.", "ev": "pressure to favour the great man" },
+        { "id": "pity", "requires": { "evidence": "rich" }, "text": "The whole gate pities {p}, a widow's son, and urges you to rule for him whatever the facts.", "ev": "public pressure to favour the poor man" }
+      ]}
+    ],
+    "hint": "Set aside the gift, the reputation and the pity. What do the stones and the witnesses say?",
+    "codex": ["codex-impartial"],
+    "rulings": {
+      "rich": { "label": "Rule for {r}, the Landowner", "summary": "Award the disputed field to {r}.", "harm": 3 },
+      "poor": { "label": "Rule for {p}, the Poor Man", "summary": "Award the disputed field to {p}.", "harm": 3 },
+      "split": { "label": "Split the Field Between Them", "summary": "Divide the land equally to keep the peace.", "harm": 2 },
+      "adjourn": { "label": "Adjourn Until Feelings Cool", "summary": "Delay the case until the pressure on the gate has passed.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "evidence": "poor" }, "ruling": "poor", "exclude": [],
+        "rationale": "'You shall not accept a bribe' (Exod 23:8) and 'you shall not be partial to the great' (Lev 19:15). The judge follows the evidence, and here it supports the poor man.",
+        "citations": ["Exod 23:8", "Lev 19:15", "Deut 16:19"], "blessing": { "title": "The Bench Is Not for Sale", "effect": "The poor trust the court, and the rich learn silver cannot buy a ruling." } },
+      { "ruling": "rich", "exclude": [],
+        "rationale": "'You shall not be partial to a poor man in his dispute' (Exod 23:3) or show favouritism out of pity (Lev 19:15). The evidence supports the landowner, so the court rules for him.",
+        "citations": ["Exod 23:3", "Lev 19:15"], "blessing": { "title": "Even-Handed Justice", "effect": "The court is trusted by rich and poor alike because pity does not decide cases." } }
+    ]
+  },
+
+  {
+    "id": "jud-weights",
+    "category": "Judicial Integrity",
+    "tier": 2,
+    "titles": ["Deceitful Weights", "A Merchant and a Stranger", "The Rigged Measure at {town}", "One Law for the Alien"],
+    "slots": { "m": "man", "v": "man", "town": "town" },
+    "frames": [
+      "At {town}, the elders find that {m} used {@fraud} to cheat {v}, {@victim}. {@hurt} {m} argues that {v} does not merit the same remedy as a native-born Israelite.",
+      "{v}, {@victim}, accuses the merchant {m}, who used {@fraud}. {@hurt} {m} claims {v} is not entitled to full restitution."
+    ],
+    "evidence": "{@fraud.ev}; {@hurt.ev}.",
+    "witness": "Two Witnesses & Seized False Weights",
+    "axes": [
+      { "id": "fraud", "options": [
+        { "id": "stones", "text": "rigged stone weights when selling grain", "ev": "inaccurate weights seized" },
+        { "id": "jar", "text": "an undersized measuring jar when selling oil", "ev": "undersized measure seized" },
+        { "id": "balance", "text": "a false balance when weighing silver", "ev": "false balance seized" }
+      ]},
+      { "id": "victim", "options": [
+        { "id": "ger", "text": "a resident alien (ger)" },
+        { "id": "labourer", "text": "a poor foreign day-labourer living among the tribes" }
+      ]},
+      { "id": "hurt", "options": [
+        { "id": "hit", "weight": 1.4, "text": "When confronted, {m} also struck {v}, leaving him bruised and out of work for three days.", "ev": "injury and lost work" },
+        { "id": "nohit", "text": "{m} did nothing further, and {v} suffered no injury.", "ev": "no injury" }
+      ]}
+    ],
+    "hint": "The Torah has one standard for native and alien alike. Check whether anything beyond the fraud itself needs repaying.",
+    "codex": ["codex-weights-ger"],
+    "rulings": {
+      "full": { "label": "Apply the Same Law: Restitution & Seize the Weights", "summary": "Give {v} full restoration of what was taken and destroy the false measure.", "harm": 2 },
+      "wages": { "label": "Apply the Same Law: Restitution, Lost Wages & Seizure", "summary": "Give {v} full restoration, pay for his lost time and healing, and destroy the false measure.", "harm": 2 },
+      "half": { "label": "Award Half-Compensation Due to Status", "summary": "Apply reduced penalties as under neighbouring class-based codes.", "harm": 3, "trap": "ane" },
+      "dismiss": { "label": "Dismiss: Strangers Have No Standing", "summary": "Restrict Mosaic civil protections to native-born Israelites.", "harm": 3, "trap": "ane" },
+      "stripes": { "label": "Administer 45 Stripes Without Compensation", "summary": "Flog the merchant beyond the forty-stripe cap and award {v} nothing.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "hurt": "hit" }, "ruling": "wages", "exclude": [],
+        "rationale": "Leviticus 24:22 mandates one identical standard of law for the foreign resident and the native-born. Honest weights (Lev 19:35–36) and lost-time injury pay (Exod 21:18–19) apply in full.",
+        "citations": ["Lev 24:22", "Lev 19:35–36", "Deut 25:13–15", "Exod 21:18–19"], "blessing": { "title": "One Law for All", "effect": "Foreigners trust the tribes' courts, and honest trade thrives." } },
+      { "ruling": "full", "exclude": [],
+        "rationale": "Leviticus 24:22 gives the resident alien the same law as the native-born, and false weights are an abomination (Lev 19:35–36; Deut 25:13–16). With no injury, full restitution and destruction of the measure complete the remedy.",
+        "citations": ["Lev 24:22", "Lev 19:35–36", "Deut 25:13–15"], "blessing": { "title": "Fair Trade Restored", "effect": "Merchants know a cheat answers to the same court whoever he cheats." } }
+    ]
+  },
+
+  {
+    "id": "jud-wages",
+    "category": "Judicial Integrity",
+    "tier": 1,
+    "titles": ["The Unpaid Labourer", "Wages Held Overnight", "{e}'s Workers", "A Poor Man's Pay"],
+    "slots": { "e": "man", "w": "man", "town": "town" },
+    "frames": [
+      "At {town}, {w}, {@worker}, complains that {e} {@delay}. {e} says he will settle 'when it suits him'.",
+      "{w}, {@worker}, brings {e} to the elders of {town}: {e} {@delay}."
+    ],
+    "evidence": "{@delay.ev}.",
+    "witness": "A Poor Labourer's Wage",
+    "axes": [
+      { "id": "worker", "options": [
+        { "id": "day", "text": "a poor day-labourer of the town" },
+        { "id": "ger", "text": "a poor resident alien who hires himself out" },
+        { "id": "shepherd", "text": "a poor hired shepherd" }
+      ]},
+      { "id": "delay", "options": [
+        { "id": "night", "text": "kept his day's wage overnight and refuses to pay it before morning", "ev": "wage held overnight" },
+        { "id": "week", "text": "has withheld his pay for a full week", "ev": "wage withheld for a week" },
+        { "id": "dock", "text": "deducted a third of the wage, claiming {w:he} 'owes goodwill'", "ev": "wage docked without cause" }
+      ]}
+    ],
+    "hint": "How does the Torah treat a poor labourer's wage, and when is it due?",
+    "codex": ["codex-wages"],
+    "rulings": {
+      "pay": { "label": "Order the Full Wage Paid Before Sunset", "summary": "Require {e} to pay in full on the same day, since the labourer depends on it.", "harm": 2 },
+      "month": { "label": "Let the Employer Pay at Month's End", "summary": "Allow {e} to settle with all of his workers together at the end of the month, as suits him.", "harm": 2 },
+      "deduct": { "label": "Allow the Employer's Deduction", "summary": "Let {e} keep the sum he says is owed to him in goodwill and pay only the balance.", "harm": 2 },
+      "fine": { "label": "Fine the Employer and Leave the Wage Unpaid", "summary": "Take a fine for the elders from {e} but make no order that the wage itself be paid.", "harm": 2 }
+    },
+    "rules": [
+      { "ruling": "pay", "exclude": [],
+        "rationale": "'You shall not keep the wages of a hired worker with you all night until the morning' (Lev 19:13). A poor man's wage is due the same day, before the sun sets, whether he is a countryman or an alien (Deut 24:14–15).",
+        "citations": ["Lev 19:13", "Deut 24:14–15"], "blessing": { "title": "The Poor Man Fed", "effect": "Labourers are paid on the day they earn, and the cry of the poor does not reach heaven against the gate." } }
+    ]
+  },
+
+  {
+    "id": "jud-interest",
+    "category": "Judicial Integrity",
+    "tier": 2,
+    "titles": ["Interest on a Loan", "The Foreign Merchant's Debt", "{c} and {b}", "A Loan Gone Sour at {town}"],
+    "slots": { "c": "man", "b": "man", "town": "town", "amt": { "num": [50, 200, 25] } },
+    "frames": [
+      "At {town}, {c} sues for {amt} shekels of interest on a loan to {b}, {@borrower}. {c} says the contract plainly allows it.",
+      "{b}, {@borrower}, borrowed silver from {c} and now refuses to pay the {amt} shekels of interest. {c} appeals to the contract."
+    ],
+    "evidence": "{@borrower.ev}.",
+    "witness": "{@borrower.w}",
+    "axes": [
+      { "id": "borrower", "options": [
+        { "id": "poor", "text": "a poor neighbour who borrowed grain to feed his family", "ev": "needy countryman", "w": "Loan to a Poor Neighbour" },
+        { "id": "ger", "text": "a poor resident alien who borrowed to survive the winter", "ev": "needy resident alien", "w": "Loan to a Poor Resident Alien" },
+        { "id": "nokhri", "text": "a foreign merchant passing through who borrowed to buy trade goods", "ev": "foreign commercial borrower", "w": "Loan to a Foreign Merchant" }
+      ]}
+    ],
+    "hint": "Who is the borrower, and what is the loan for? The Torah does not treat every loan alike.",
+    "codex": ["codex-interest"],
+    "rulings": {
+      "none": { "label": "Strike the Interest; Principal Only", "summary": "Order {b} to repay the principal and cancel any interest.", "harm": 2 },
+      "ok": { "label": "Permit the Agreed Interest", "summary": "Enforce the contract exactly as written, with the interest included in the sum owed.", "harm": 2 },
+      "double": { "label": "Award Double Interest as a Penalty", "summary": "Penalise {b} for the delay by awarding twice the interest named in the contract.", "harm": 2, "trap": "harsh" },
+      "cancel": { "label": "Cancel the Debt Entirely", "summary": "Forgive both the principal and the interest and declare the debt wiped out.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "borrower": "nokhri" }, "ruling": "ok", "exclude": [],
+        "rationale": "The Torah permits interest on loans to a foreigner (nokhri) engaged in trade (Deut 23:20). The ban on interest protects the needy, not commercial borrowers from abroad.",
+        "citations": ["Deut 23:19–20"], "blessing": { "title": "Commerce Respected", "effect": "Trade with foreign merchants continues on clear terms." } },
+      { "ruling": "none", "exclude": [],
+        "rationale": "No interest may be charged to a poor countryman (Exod 22:25) or to a resident alien in need (Lev 25:35–37). A loan to the needy is covenant kindness, not a business.",
+        "citations": ["Exod 22:25", "Lev 25:35–37"], "blessing": { "title": "Kindness Protected", "effect": "The poor can borrow without being crushed by interest." } }
+    ]
+  },
+
+  {
+    "id": "jud-pledge",
+    "category": "Judicial Integrity",
+    "tier": 2,
+    "titles": ["The Creditor's Claim", "A Debt and a Pledge", "Collateral at {town}", "A Pledge in Dispute"],
+    "slots": { "c": "man", "b": "man", "town": "town" },
+    "frames": [
+      "At {town}, {b} complains about {c}, who {@pledge}. {c} says the debt is real and the pledge is his right.",
+      "{c} defends himself before the elders of {town}: he {@pledge}, since {b} owes him money."
+    ],
+    "evidence": "{@pledge.ev}.",
+    "witness": "A Dispute over Collateral",
+    "axes": [
+      { "id": "pledge", "options": [
+        { "id": "cloak", "text": "took {b}'s only cloak as a pledge and keeps it overnight", "ev": "poor man's only cloak held overnight" },
+        { "id": "mill", "text": "seized the upper millstone of {b}'s hand-mill as security", "ev": "millstone taken as pledge" },
+        { "id": "widow", "text": "took a widow's garment as a pledge for her debt", "ev": "widow's garment taken as pledge" },
+        { "id": "door", "text": "barged into {b}'s house to pick out whatever he fancied as a pledge", "ev": "creditor entered the debtor's house" }
+      ]}
+    ],
+    "hint": "The Torah sets limits on what a creditor may take, when he must give it back, and how he may collect.",
+    "codex": ["codex-pledge"],
+    "rulings": {
+      "sunset": { "label": "Return the Cloak Before Sunset", "summary": "Require the creditor to hand it back by nightfall so the poor man can sleep in it.", "harm": 2 },
+      "forbid": { "label": "Forbid Taking It as a Pledge at All", "summary": "Order the item returned; it is a livelihood or a protected person's garment.", "harm": 2 },
+      "outside": { "label": "Creditor Waits Outside; Debtor Brings It Out", "summary": "Forbid entering the home and let the debtor choose what to hand over.", "harm": 2 },
+      "keep": { "label": "Let the Creditor Hold It Until Repaid", "summary": "Enforce the pledge as agreed for as long as the debt lasts.", "harm": 2 },
+      "forfeit": { "label": "Forfeit the Item to the Creditor", "summary": "Give the item to the creditor outright as payment.", "harm": 2, "trap": "ane" }
+    },
+    "rules": [
+      { "when": { "pledge": "cloak" }, "ruling": "sunset", "exclude": [],
+        "rationale": "A cloak taken in pledge must be returned before the sun goes down, because it is the poor man's only covering (Exod 22:26–27; Deut 24:12–13).",
+        "citations": ["Exod 22:26–27", "Deut 24:12–13"], "blessing": { "title": "A Warm Night for the Poor", "effect": "Creditors learn not to take what a man needs to live." } },
+      { "when": { "pledge": ["mill", "widow"] }, "ruling": "forbid", "exclude": [],
+        "rationale": "A mill or upper millstone may not be taken in pledge (Deut 24:6), and neither may a widow's garment (Deut 24:17), since these take away a person's livelihood or protection.",
+        "citations": ["Deut 24:6", "Deut 24:17"], "blessing": { "title": "Livelihoods Protected", "effect": "Creditors cannot strip the poor of their means of living." } },
+      { "ruling": "outside", "exclude": [],
+        "rationale": "The creditor must stay outside, and the debtor brings the pledge out to him (Deut 24:10–11), preserving the dignity and privacy of the home.",
+        "citations": ["Deut 24:10–11"], "blessing": { "title": "A Man's House Is His Own", "effect": "Debtors keep their dignity even when they owe." } }
+    ]
+  }
+]

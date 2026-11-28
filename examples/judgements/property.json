@@ -1,0 +1,188 @@
+[
+  {
+    "id": "prop-damage",
+    "category": "Property & Negligence",
+    "tier": 2,
+    "titles": ["Straying Goats and a Careless Fire", "The Uncovered Cistern", "Damage at {town}", "{a}'s Carelessness"],
+    "slots": { "a": "man", "b": "man", "town": "town" },
+    "frames": [
+      "{b} brings {a} before the elders of {town}. {@damage}. There was no malice, only carelessness.",
+      "At the gate of {town}, {b} demands that {a} answer for a loss: {@damage}. {a} admits it but pleads that he never meant harm."
+    ],
+    "evidence": "{@damage.ev}.",
+    "witness": "Physical Damage & Negligence Verified",
+    "axes": [
+      { "id": "damage", "options": [
+        { "id": "graze", "text": "Through careless fencing, {a}'s goats strayed into {b}'s vineyard and stripped the vines", "ev": "livestock grazed another man's vineyard" },
+        { "id": "fire", "text": "A brush-fire {a} lit to clear thorns spread and consumed {b}'s stacked sheaves of grain", "ev": "uncontrolled fire destroyed grain" },
+        { "id": "pit", "text": "{a} dug a cistern by the road and left it uncovered; {b}'s ox fell in and died", "ev": "ox died in an uncovered pit" }
+      ]}
+    ],
+    "hint": "The Torah gives a different remedy for each kind of damage: grazing, fire and open pits.",
+    "codex": ["codex-grazing-fire", "codex-ox-negligence"],
+    "rulings": {
+      "best": { "label": "Repay from the Best of the Offender's Field", "summary": "Compel {a} to pay from the best produce of his own field or vineyard.", "harm": 1 },
+      "fire": { "label": "Full Compensation for the Whole Loss", "summary": "Order {a} to make complete restitution for everything that was burned.", "harm": 1 },
+      "pit": { "label": "Pay the Animal's Price; Keep the Carcass", "summary": "Order {a} to pay {b} the value of the dead beast and take the carcass.", "harm": 1 },
+      "stripes": { "label": "Thirty-Nine Stripes Without Payment", "summary": "Punish {a}'s carelessness corporally and award nothing to {b}.", "harm": 1 },
+      "split": { "label": "Split the Loss 50/50", "summary": "Divide the loss equally, since nothing was done out of malice.", "harm": 1 },
+      "five": { "label": "Apply the Fivefold Theft Multiplier", "summary": "Treat the negligent loss like a stolen and slaughtered ox.", "harm": 2, "trap": "harsh" }
+    },
+    "rules": [
+      { "when": { "damage": "graze" }, "ruling": "best", "exclude": [],
+        "rationale": "Whoever lets livestock graze in another's field must repay from the best of his own field or vineyard (Exod 22:5).",
+        "citations": ["Exod 22:5"], "blessing": { "title": "Boundaries Respected", "effect": "Farmers keep their animals penned and neighbours keep the peace." } },
+      { "when": { "damage": "fire" }, "ruling": "fire", "exclude": [],
+        "rationale": "Whoever starts a fire that spreads must make full restitution for what burned (Exod 22:6).",
+        "citations": ["Exod 22:6"], "blessing": { "title": "Fire Kept in Check", "effect": "Farmers take care when burning thorns; the harvest is safer." } },
+      { "ruling": "pit", "exclude": [],
+        "rationale": "The owner of an uncovered pit pays the animal's owner in silver and keeps the carcass (Exod 21:33–34).",
+        "citations": ["Exod 21:33–34"], "blessing": { "title": "Hazards Covered", "effect": "People cover their cisterns, and travellers' livestock are safer." } }
+    ]
+  },
+
+  {
+    "id": "prop-ox",
+    "category": "Property & Negligence",
+    "tier": 3,
+    "titles": ["The Goring Ox", "{o}'s Ox Breaks Out", "A Death in {town}", "The Unlatched Gate"],
+    "slots": { "o": "man", "v": "man", "m": "man", "town": "town" },
+    "frames": [
+      "{@history}. This time the beast broke out and {@target}.",
+      "At {town}, {o} stands before the elders. {@history}. The ox escaped and {@target}."
+    ],
+    "evidence": "{@history.ev}; {@target.ev}.",
+    "witness": "{@history.w}",
+    "axes": [
+      { "id": "history", "options": [
+        { "id": "warned", "text": "{o}'s ox had twice gored neighbours, the elders formally warned {o} to keep it penned, and {o} left the gate unlatched", "ev": "owner negligent after formal warning", "w": "Prior Formal Warning Proven" },
+        { "id": "unwarned", "text": "{o}'s ox had always been docile and had never hurt anyone", "ev": "ox had no history of goring", "w": "No Prior Goring" }
+      ]},
+      { "id": "target", "options": [
+        { "id": "free", "text": "killed {v}, a free townsman", "ev": "free man killed" },
+        { "id": "slave", "text": "killed {v}, a bondservant of {m}", "ev": "servant killed" },
+        { "id": "ox", "text": "gored and killed {m}'s ox", "ev": "another man's ox killed" }
+      ]}
+    ],
+    "hint": "Two facts matter: had the owner been warned, and who or what was killed?",
+    "codex": ["codex-ox-negligence", "codex-ox-other"],
+    "rulings": {
+      "clear": { "label": "Stone the Ox; Owner Blameless", "summary": "Execute the ox without eating its flesh; {o} owes nothing.", "harm": 2 },
+      "liable": { "label": "Stone the Ox; Owner Liable to Death or Ransom", "summary": "Stone the ox, flesh uneaten, and hold {o} capitally liable unless a court sets a ransom.", "harm": 3 },
+      "thirty": { "label": "Stone the Ox; Pay Thirty Shekels to the Master", "summary": "Execute the ox and pay thirty shekels of silver to the servant's master.", "harm": 2 },
+      "split": { "label": "Sell the Live Ox; Divide Price and Carcass", "summary": "Divide the price of the living ox and the dead one's carcass equally.", "harm": 2 },
+      "oxforox": { "label": "Owner Pays Ox for Ox", "summary": "Order {o} to give an ox for the dead one and keep the carcass.", "harm": 2 },
+      "exile": { "label": "Exile Owner to a City of Refuge", "summary": "Treat the death as accidental manslaughter by the owner.", "harm": 2 },
+      "fine": { "label": "Impose a Fixed 10-Shekel Fine", "summary": "Treat the incident as ordinary livestock trespass.", "harm": 1, "trap": "lenient" },
+      "meat": { "label": "Stone the Ox & Sell Its Meat", "summary": "Pay the victim's family from the proceeds of the carcass.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "target": "slave" }, "ruling": "thirty", "exclude": [],
+        "rationale": "When an ox kills a servant, the owner pays thirty shekels of silver to the servant's master and the ox is stoned (Exod 21:32), regardless of prior warnings.",
+        "citations": ["Exod 21:32"], "blessing": { "title": "Servant's Worth Recognised", "effect": "The master is compensated and owners guard dangerous animals." } },
+      { "when": { "target": "ox", "history": "warned" }, "ruling": "oxforox", "exclude": [],
+        "rationale": "If the owner knew the ox was a gorer, he must pay ox for ox and keep the carcass (Exod 21:36).",
+        "citations": ["Exod 21:36"], "blessing": { "title": "Warnings Count", "effect": "Owners who ignore a known danger bear the full cost." } },
+      { "when": { "target": "ox" }, "ruling": "split", "exclude": [],
+        "rationale": "If the ox was not a known gorer, the two owners sell the living ox and share the price, and share the dead ox as well (Exod 21:35).",
+        "citations": ["Exod 21:35"], "blessing": { "title": "An Even Share", "effect": "No one is ruined by an accident that nobody saw coming." } },
+      { "when": { "history": "warned" }, "ruling": "liable", "exclude": [],
+        "rationale": "A known gorer is stoned with its flesh uneaten, and the negligent owner who ignored warnings is liable to death, the one homicide case where a court may set a ransom on the owner's life (Exod 21:28–30).",
+        "citations": ["Exod 21:28–30"], "blessing": { "title": "Warnings Heeded", "effect": "Owners learn that ignoring the elders' warning costs a life." } },
+      { "ruling": "clear", "exclude": [],
+        "rationale": "When a previously harmless ox kills a person, the ox is stoned and its flesh not eaten, but the owner is free of blame (Exod 21:28).",
+        "citations": ["Exod 21:28"], "blessing": { "title": "Fault Where It Belongs", "effect": "An owner with no warning is not punished for what he could not foresee." } }
+    ]
+  },
+
+  {
+    "id": "prop-borrowed",
+    "category": "Property & Negligence",
+    "tier": 2,
+    "titles": ["The Dead Donkey", "A Ewe Left in Trust", "Hired Ox, Sudden Death", "Who Bears the Loss?"],
+    "slots": { "o": "man", "k": "man", "town": "town" },
+    "frames": [
+      "{o} and {k} come before the elders of {town}. {@case} {o} asks who must bear the loss.",
+      "Dispute at {town}: {@case} {k} says he owes nothing; {o} says he must pay."
+    ],
+    "evidence": "{@case.ev}.",
+    "witness": "{@case.w}",
+    "axes": [
+      { "id": "case", "options": [
+        { "id": "absent", "text": "{k} borrowed {o}'s donkey for a day's journey. The animal fell and died while {o} was away in another village.", "ev": "borrowed animal died; owner absent", "w": "Borrowed; Owner Absent" },
+        { "id": "present", "text": "{k} borrowed {o}'s donkey, and it died on the road while {o} was walking alongside it.", "ev": "borrowed animal died; owner present", "w": "Borrowed; Owner Present" },
+        { "id": "hired", "text": "{k} hired {o}'s ox for a week of ploughing, and it died of a sudden sickness in the field.", "ev": "hired animal died of sickness", "w": "Hired Animal" },
+        { "id": "stolen", "text": "{o} left a ewe in {k}'s keeping. Thieves took it from the fold while {k} slept.", "ev": "kept animal stolen", "w": "Entrusted; Stolen" },
+        { "id": "torn", "text": "{o} left a ewe in {k}'s keeping. A wild beast tore it, and {k} carried the mangled remains to the elders.", "ev": "kept animal torn by beast; remains produced", "w": "Entrusted; Torn by a Beast" }
+      ]}
+    ],
+    "hint": "Liability follows who had control of the animal and whether the loss was beyond the keeper's power.",
+    "codex": ["codex-borrowed-hired"],
+    "rulings": {
+      "pay": { "label": "Order Full Restitution to the Owner", "summary": "{k} must replace the animal or repay its full price.", "harm": 2 },
+      "nopay": { "label": "Release the Keeper from Payment", "summary": "Rule that the loss falls on the owner and no restitution is due.", "harm": 2 },
+      "double": { "label": "Order Double Restitution", "summary": "Require {k} to repay twice the animal's value as a penalty.", "harm": 1, "trap": "harsh" },
+      "half": { "label": "Split the Loss Evenly", "summary": "Divide the animal's value equally between owner and keeper.", "harm": 1 },
+      "stripes": { "label": "Flog the Keeper for Carelessness", "summary": "Give {k} stripes in place of any payment.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "case": "absent" }, "ruling": "pay", "exclude": [],
+        "rationale": "A borrower who has the animal while the owner is absent must make full restitution (Exod 22:14).",
+        "citations": ["Exod 22:14"], "blessing": { "title": "Borrowers Take Care", "effect": "Borrowers treat other people's animals as their own." } },
+      { "when": { "case": "stolen" }, "ruling": "pay", "exclude": [],
+        "rationale": "If the animal was stolen from the keeper, he must make restitution to its owner (Exod 22:12).",
+        "citations": ["Exod 22:12"], "blessing": { "title": "Keepers Stay Alert", "effect": "People guard what is entrusted to them." } },
+      { "when": { "case": "present" }, "ruling": "nopay", "exclude": [],
+        "rationale": "If the owner was with the animal, the borrower does not pay (Exod 22:14–15).",
+        "citations": ["Exod 22:14–15"], "blessing": { "title": "Fair Risk", "effect": "Borrowers are not ruined by losses the owner witnessed." } },
+      { "when": { "case": "hired" }, "ruling": "nopay", "exclude": [],
+        "rationale": "If the animal was hired, 'it came for its hire' (Exod 22:15); the owner has been paid for the risk.",
+        "citations": ["Exod 22:15"], "blessing": { "title": "Hire Includes Risk", "effect": "Hired work stays affordable because the hire price already covers the risk." } },
+      { "ruling": "nopay", "exclude": [],
+        "rationale": "If a beast tore the animal and the keeper brings the remains as evidence, he does not pay (Exod 22:13).",
+        "citations": ["Exod 22:13"], "blessing": { "title": "Evidence Honoured", "effect": "Honest keepers are protected when the loss was beyond their control." } }
+    ]
+  },
+
+  {
+    "id": "prop-lost",
+    "category": "Property & Negligence",
+    "tier": 1,
+    "titles": ["A Stray on the Road to {town}", "What the Finder Owes", "The Fallen Donkey", "Finders and Keepers?"],
+    "slots": { "a": "man", "b": "man", "town": "town" },
+    "frames": [
+      "{a} comes to the elders of {town} asking what the law requires of him. {@case}",
+      "At {town}, {a} asks the elders what he owes. {@case}"
+    ],
+    "evidence": "{@case.ev}.",
+    "witness": "A Question of Neighbourly Duty",
+    "axes": [
+      { "id": "case", "options": [
+        { "id": "near", "text": "He found {b}'s ox wandering loose on the road. {b} lives next door and {a} knows exactly whose it is.", "ev": "owner known and nearby" },
+        { "id": "far", "text": "He found a strayed ox on the road and has no idea whose it is or where the owner lives.", "ev": "owner unknown or far away" },
+        { "id": "fallen", "text": "He saw {b}'s donkey collapsed under its load by the road. {b}, a man {a} dislikes, is struggling to lift it alone.", "ev": "animal fallen; owner is a rival" }
+      ]}
+    ],
+    "hint": "The Torah has a different duty depending on whether the owner is known and whether the beast is in distress.",
+    "codex": ["codex-lost-property"],
+    "rulings": {
+      "return": { "label": "Return It Directly to Its Owner", "summary": "Lead the animal home to {b} without delay.", "harm": 1 },
+      "keep": { "label": "Keep It Safe Until the Owner Asks", "summary": "Take the animal home, care for it, and restore it whenever the owner comes looking.", "harm": 1 },
+      "help": { "label": "Stop and Help Lift the Beast", "summary": "Join {b} in raising the animal, even though the two are rivals.", "harm": 1 },
+      "salvage": { "label": "Keep the Find as Salvage", "summary": "Rule that finding gives {a} ownership of the animal.", "harm": 2 },
+      "ignore": { "label": "Leave It: It Is Not {a}'s Concern", "summary": "Rule that {a} owes no duty to strangers or rivals.", "harm": 2 },
+      "sell": { "label": "Sell It and Hold the Silver", "summary": "Sell the animal and keep the price until the owner appears.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "case": "near" }, "ruling": "return", "exclude": [],
+        "rationale": "If you meet a neighbour's straying ox or donkey you must bring it back to him (Exod 23:4; Deut 22:1).",
+        "citations": ["Exod 23:4", "Deut 22:1"], "blessing": { "title": "Neighbours Look Out for Each Other", "effect": "Strayed animals find their way home." } },
+      { "when": { "case": "far" }, "ruling": "keep", "exclude": [],
+        "rationale": "If the owner is unknown or far away, the finder keeps the animal at home until the owner comes looking, then restores it (Deut 22:2).",
+        "citations": ["Deut 22:2"], "blessing": { "title": "No One Loses by Honesty", "effect": "Finders care for the animals in their keeping, and owners recover them." } },
+      { "ruling": "help", "exclude": [],
+        "rationale": "You may not hide yourself from a fallen animal on the road; you must help raise it, even if it belongs to an enemy (Deut 22:4; Exod 23:5).",
+        "citations": ["Deut 22:4", "Exod 23:5"], "blessing": { "title": "Rivals Reconciled", "effect": "Helping a rival's beast breaks down feuds." } }
+    ]
+  }
+]

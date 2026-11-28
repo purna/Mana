@@ -4,10 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const v2 = path.join(root, 'v2');
+const v2 = path.join(root, 'v3');
 const vite = path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
 
-// Build the current isometric game into v2/dist, then publish that output as
+// Build the current isometric game into v3/dist, then publish that output as
 // the repository-level dist/ that GitHub Pages uses as the site root.
 execFileSync(vite, ['build'], { cwd: v2, stdio: 'inherit' });
 

@@ -1,0 +1,120 @@
+[
+  {
+    "id": "sac-karet",
+    "category": "Sacral & Karet",
+    "tier": 2,
+    "titles": ["Secret Leaven, Hidden Blood", "A Sin Without Witnesses", "The Householder's Confession", "Cut Off from the People?"],
+    "slots": { "p": "man", "town": "town" },
+    "frames": [
+      "After the feast, {p} of {town} comes forward and confesses that {@sin}. {@intent} There were no human witnesses and no prior warning.",
+      "{p} confesses privately to the elders of {town} that {@sin}. {@intent} No two witnesses saw it, and no court warned him beforehand."
+    ],
+    "evidence": "{@intent.ev}; no human eyewitnesses.",
+    "witness": "Private Confession (No Court Warning)",
+    "axes": [
+      { "id": "sin", "options": [
+        { "id": "leaven", "text": "he ate leavened bread during the Feast of Unleavened Bread" },
+        { "id": "blood", "text": "he consumed animal blood at a private meal" },
+        { "id": "fat", "text": "he ate the forbidden fat of an ox" }
+      ]},
+      { "id": "intent", "options": [
+        { "id": "defiant", "weight": 1.5, "text": "He admits he knew the law perfectly well and did it deliberately.", "ev": "deliberate, high-handed sin" },
+        { "id": "unwitting", "weight": 1.5, "text": "He says he did not know: a servant had mixed it into the dish without telling him.", "ev": "unwitting sin" }
+      ]}
+    ],
+    "hint": "In sacral law the penalty turns on whether the sinner knew what he was doing.",
+    "codex": ["codex-karet-sacral", "codex-inadvertent"],
+    "rulings": {
+      "karet": { "label": "Declare Liable to Karet", "summary": "Recognise Karet, cutting off from the people, as the sanction under Heaven for deliberate sin.", "harm": 2 },
+      "offering": { "label": "Appoint a Sin Offering for the Error", "summary": "Direct {p} to bring a year-old female goat as atonement for the unwitting sin.", "harm": 2 },
+      "burn": { "label": "Execute Immediately by Burning", "summary": "Sentence {p} to death by fire at the gate, as for the gravest sacral crimes.", "harm": 3, "trap": "harsh" },
+      "fivefold": { "label": "Levy a Fivefold Livestock Fine", "summary": "Impose the stolen-ox monetary multiplier on {p}, payable to the priests of the sanctuary.", "harm": 1 },
+      "stripes": { "label": "Administer 45 Stripes at the Gate", "summary": "Exceed forty stripes at the gate to match the gravity of a sacral offence.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "intent": "unwitting" }, "ruling": "offering", "exclude": [],
+        "rationale": "An individual who sins unintentionally brings a year-old female goat as a sin offering (Num 15:27–29; Lev 4:27–28). Karet is reserved for deliberate, high-handed sin.",
+        "citations": ["Lev 4:27–28", "Num 15:27–29"], "blessing": { "title": "Mercy for the Unwitting", "effect": "The error is atoned for and the man restored to the community." } },
+      { "ruling": "karet", "exclude": [],
+        "rationale": "Deliberately eating blood or leaven carries Karet ('cut off from one's people'), not judicial execution (Exod 12:15, 19; Lev 7:27; 17:10–14; Num 15:30–31). Scholars debate whether Karet is expulsion (Hobson 2010) or divine excision (Milgrom; the Talmud), yet agree human tribunals do not execute for it.",
+        "citations": ["Exod 12:15, 19", "Lev 7:27", "Lev 17:10–14", "Num 15:30–31"], "blessing": { "title": "Heaven's Jurisdiction Honoured", "effect": "The court does not claim a penalty that belongs to Heaven." } }
+    ]
+  },
+
+  {
+    "id": "sac-witnessed",
+    "category": "Sacral & Karet",
+    "tier": 3,
+    "titles": ["Firewood on the Sabbath", "Open Defiance at {town}", "The Molech Enticer", "High-Handed Sin"],
+    "slots": { "p": "man", "town": "town", "amt": { "num": [30, 100, 10] } },
+    "frames": [
+      "At {town}, a man named {p} stands accused: {@crime}. {@wit}",
+      "{p} is brought before the elders of {town}. {@crime}. {@wit}"
+    ],
+    "evidence": "{@crime.ev}; {@wit.ev}.",
+    "witness": "{@wit.w}",
+    "axes": [
+      { "id": "crime", "options": [
+        { "id": "sabbath", "text": "he deliberately gathered firewood on the Sabbath in open defiance", "ev": "high-handed Sabbath breach" },
+        { "id": "molech", "text": "he publicly enticed neighbours to give their children to Molech", "ev": "open Molech enticement" }
+      ]},
+      { "id": "wit", "options": [
+        { "id": "two", "weight": 1.5, "text": "Two eyewitnesses who formally warned him testify to the act.", "ev": "two eyewitnesses after formal warning", "w": "Two Eyewitnesses After Formal Warning" },
+        { "id": "none", "weight": 1.5, "text": "But the report comes only from a traveller who saw nothing himself, and no one will testify.", "ev": "no eyewitness will testify", "w": "No Eyewitness Will Testify" }
+      ]}
+    ],
+    "hint": "Can a human court act on this evidence? Distinguish what the court can do from what belongs to Heaven.",
+    "codex": ["codex-sabbath-molech", "codex-karet-sacral"],
+    "rulings": {
+      "stone": { "label": "Judicial Stoning, Witnesses Casting First", "summary": "Impose community stoning, with the witnesses accountable for their testimony.", "harm": 3 },
+      "karet": { "label": "No Human Sentence; Leave It to Karet", "summary": "The court cannot convict without witnesses, so the matter stands under divine excision.", "harm": 2 },
+      "offering": { "label": "Accept a {amt}-Shekel Sanctuary Offering", "summary": "Permit a sin-offering ransom to cover the high-handed act.", "harm": 2, "trap": "ane" },
+      "refuge": { "label": "Exile to a City of Refuge", "summary": "Treat the public act as an unintentional error.", "harm": 2 }
+    },
+    "rules": [
+      { "when": { "wit": "two" }, "ruling": "stone", "exclude": [],
+        "rationale": "Where Sabbath desecration or Molech worship is overt and witnessed, the Torah commands stoning, with eyewitnesses casting the first stones (Num 15:35; Deut 17:7), and Karet stands if the community fails to act (Lev 20:3–5).",
+        "citations": ["Exod 31:14–15", "Num 15:32–36", "Lev 20:2–5", "Deut 17:6–7"], "blessing": { "title": "The Law Upheld Openly", "effect": "Open defiance is answered by the community acting under the law." } },
+      { "ruling": "karet", "exclude": [],
+        "rationale": "Without two eyewitnesses a human court cannot convict (Deut 17:6; 19:15). The offence is not forgotten: it stands under the divine sanction of Karet (Lev 20:3–5), but the court takes no human action.",
+        "citations": ["Deut 17:6", "Deut 19:15", "Lev 20:3–5"], "blessing": { "title": "Humility Before Heaven", "effect": "The court avoids condemning on rumour and leaves what it cannot prove to Heaven." } }
+    ]
+  },
+
+  {
+    "id": "sac-second-passover",
+    "category": "Sacral & Karet",
+    "tier": 2,
+    "titles": ["The Missed Passover", "A Month Late", "{p} and the Feast", "Unclean on the Fourteenth"],
+    "slots": { "p": "man", "town": "town" },
+    "frames": [
+      "At {town}, the elders are asked what to do about {p}, who did not keep the Passover on its day. {@reason}",
+      "After the feast, {p} of {town} stands before the elders. {@reason}"
+    ],
+    "evidence": "{@reason.ev}.",
+    "witness": "{@reason.w}",
+    "axes": [
+      { "id": "reason", "options": [
+        { "id": "unclean", "text": "He had touched a dead body two days earlier and was ritually unclean on the day.", "ev": "unclean through a corpse", "w": "Unclean Through a Corpse" },
+        { "id": "journey", "text": "He was away on a distant journey when the feast fell.", "ev": "on a distant journey", "w": "On a Distant Journey" },
+        { "id": "neglect", "text": "He was clean and at home, but simply chose not to keep it.", "ev": "clean and at home; neglected deliberately", "w": "Clean and at Home" }
+      ]}
+    ],
+    "hint": "Was he unable to keep it, or unwilling?",
+    "codex": ["codex-second-passover"],
+    "rulings": {
+      "second": { "label": "Keep the Passover One Month Later", "summary": "Appoint the fourteenth day of the second month for {p} to keep the feast.", "harm": 2 },
+      "karet": { "label": "Declare Liable to Karet", "summary": "Hold {p} to be cut off from his people for neglecting the feast.", "harm": 2 },
+      "exempt": { "label": "Exempt Him for This Year", "summary": "Excuse {p} from any obligation this year and set no make-up date for the feast.", "harm": 2, "trap": "lenient" },
+      "fine": { "label": "Fine Him and Allow No Make-Up Date", "summary": "Levy a fine on {p} for missing the feast and treat the matter as closed.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "reason": "neglect" }, "ruling": "karet", "exclude": [],
+        "rationale": "A man who is clean and not on a journey, yet neglects the Passover, is cut off from his people (Num 9:13).",
+        "citations": ["Num 9:13"], "blessing": { "title": "Deliberate Neglect Not Excused", "effect": "The covenant feast keeps its weight." } },
+      { "ruling": "second", "exclude": [],
+        "rationale": "Those unclean through a corpse or on a distant journey may keep the Passover a month later, on the fourteenth day of the second month (Num 9:6–11).",
+        "citations": ["Num 9:6–11"], "blessing": { "title": "Mercy for Genuine Inability", "effect": "Those who could not keep the feast on its day still can." } }
+    ]
+  }
+]

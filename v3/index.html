@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MANNA — Forty Years in the Wilderness (Isometric)</title>
+<title>MANNA — Forty Years in the Wilderness</title>
 <link rel="icon" href="favicon.ico">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#23180f">
@@ -173,6 +173,18 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   padding:7px 10px 6px;background:linear-gradient(180deg,rgba(38,29,16,.94),rgba(22,16,9,.92));
   border:1px solid rgba(224,173,79,.4);border-radius:10px;box-shadow:0 10px 26px #0007}
 #dailyHud .dh-title{font-family:Cinzel,serif;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#a8916a;margin-bottom:3px}
+#miniMap{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 190px);width:206px;
+  padding:7px 10px 9px;background:linear-gradient(180deg,rgba(38,29,16,.94),rgba(22,16,9,.92));
+  border:1px solid rgba(224,173,79,.4);border-radius:10px;box-shadow:0 10px 26px #0007}
+#miniMap .mm-title{font-family:Cinzel,serif;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#a8916a;margin-bottom:5px}
+#miniMap .mm-grid{display:grid;grid-template-columns:repeat(9,18px);gap:2px;border-radius:6px;
+  background-image:linear-gradient(rgba(46,32,15,.55),rgba(46,32,15,.55)),linear-gradient(rgba(228,186,120,.12),rgba(228,186,120,.12)),url('./assets/graphics/arabia.jpeg');
+  background-size:auto;background-position:center;background-position:30% 36%;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(224,173,79,.25)}
+#miniMap .mm-cell{width:18px;height:18px;border-radius:4px;background:rgba(120,100,70,.22);position:relative}
+#miniMap .mm-cell.seen{background:rgba(196,164,112,.5)}
+#miniMap .mm-cell.cur{background:rgba(224,173,79,.5);box-shadow:inset 0 0 0 1.5px rgba(224,173,79,.85)}
+#miniMap .mm-camp{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+#miniMap .mm-camp i{width:5px;height:5px;border-radius:1px;background:#f6e7c2;opacity:.95;display:block}
 .dh-row{display:grid;grid-template-columns:12px 1fr auto;gap:7px;align-items:center;font-size:11px;margin:2.5px 0;color:#e0cfa8}
 .dh-row span:nth-child(2){font-variant:small-caps;color:#cbb894}
 .dh-row b{font-family:Cinzel,serif;color:#f2cc6b;font-size:11.5px}
@@ -875,7 +887,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
 </head>
 <body class="menu-open">
 <canvas id="gl" aria-hidden="true"></canvas>
-<canvas id="c" aria-label="Isometric wilderness"></canvas>
+<canvas id="c" aria-label="The wilderness camp"></canvas>
 <input id="saveImport" type="file" accept="application/json,.json" hidden>
 <div id="vignette" aria-hidden="true"></div>
 
@@ -894,6 +906,11 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div class="vital" id="vitalStamina" data-vital="stamina"><span>Stamina</span><div class="bar"><i id="bStamina"></i></div><b class="vital-val" id="vStaminaVal">100</b></div>
     <div class="vital" id="vitalFaith" data-vital="faith"><span>Faith</span><div class="bar"><i id="bFaith"></i></div><b class="vital-val" id="vFaithVal">100</b></div>
     <div class="vital" id="vitalCampWater" data-vital="campwater"><span>Camp water</span><div class="bar"><i id="bCampWater"></i></div><b class="vital-val" id="vCampWaterVal">34</b></div>
+  </div>
+
+  <div id="miniMap" class="panel" aria-label="World grids">
+    <div class="mm-title">Land of the journey</div>
+    <div class="mm-grid" id="mmGrid"></div>
   </div>
 
   <div id="dailyHud" class="panel" aria-label="Collected today">
@@ -999,7 +1016,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div class="sheet">
     <div class="kicker">Exodus 13:21</div>
     <h1>MANNA</h1>
-    <p class="tagline">Forty Years in the Wilderness · Isometric</p>
+    <p class="tagline">Forty Years in the Wilderness</p>
     <p>You are <b>Moses</b>. The Pillar of Cloud goes before the people by day; by night it becomes a Pillar of Fire. Follow it through the wilderness, gather manna, find water, keep the camp alive, and guard the faith of Israel.</p>
     <p class="center" style="color:var(--dim);font-size:13px">Each month is a turn; twelve months make a year. Reach all eight stations before the fortieth year ends.</p>
     <div class="keys">
@@ -1091,8 +1108,9 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div id="mapLegend">
       <span><i style="background:#f6e9d0"></i>Moses</span>
       <span><i style="background:#e8b84a"></i>Pillar</span>
+      <span><i style="background:#f0e2c4"></i>Camp</span>
       <span><i style="background:#9dbb74"></i>Visited</span>
-      <span><i style="background:#6b5a44"></i>Unknown</span>
+      <span><i style="background:#e8b84a"></i>Pillar leads</span>
     </div>
     <button class="primary" id="mapClose">Return</button>
   </div>
@@ -1303,7 +1321,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
     <div class="settings-panel" id="settingsPanel-credits" role="tabpanel" aria-label="Credits" hidden>
       <div class="settings-credits">
         <div class="settings-credits-title">Desert Winds</div>
-        <p class="settings-note">MANNA — Forty Years in the Wilderness · Isometric Edition. Built from the v1 Three.js journey as a 2D isometric adaptation. Music and sound effects are from the MANNA audio library; the wilderness is generated procedurally from the Wadi Rum palette.</p>
+        <p class="settings-note">MANNA — Forty Years in the Wilderness. Built from the v1 Three.js journey as a 2D isometric adaptation. Music and sound effects are from the MANNA audio library; the wilderness is generated procedurally from the Wadi Rum palette.</p>
         <p class="settings-note" style="color:var(--dim);font-style:italic">“The Lord went before them by day in a pillar of cloud to lead them along the way, and by night in a pillar of fire to give them light.” — Exodus 13:21</p>
         <div class="settings-row"><span>Music<small>The desert ambience.</small></span><button id="creditsMusicToggle">On</button></div>
       </div>
@@ -1342,7 +1360,7 @@ body.menu-open #hud{opacity:0;pointer-events:none}
   <div class="sheet">
     <div class="kicker">Music &amp; Credits</div>
     <h2>Desert Winds</h2>
-    <p class="center" style="color:var(--dim)">MANNA — Forty Years in the Wilderness · Isometric Edition</p>
+    <p class="center" style="color:var(--dim)">MANNA — Forty Years in the Wilderness</p>
     <p>Built from the v1 Three.js journey as a 2D isometric adaptation. Music and sound effects are from the MANNA audio library; the wilderness is generated procedurally from the Wadi Rum palette.</p>
     <p class="center" style="color:var(--dim);font-size:12px">“The Lord went before them by day in a pillar of cloud to lead them along the way, and by night in a pillar of fire to give them light.” — Exodus 13:21</p>
     <div id="creditsBtns">
@@ -1410,13 +1428,22 @@ body.menu-open #hud{opacity:0;pointer-events:none}
  * stations, survival actions and forty-year loop are preserved.
  * ------------------------------------------------------------------ */
 
-const N_MAX = 88;            // the wilderness widens to this as the journey advances
-const N0 = 48;               // the known world at the Red Sea shore
-let N = N0;                  // currently revealed extent
+/* The world is a 9x9 supergrid of 48-tile regions. Only a 3x3 window of
+   grids is materialised around the camp and Moses (window-local coordinates,
+   N = 144 tiles); the rest of the wilderness is generated on demand from the
+   world seed as the journey reaches it. Grid (4,4) is the starting camp. */
+const GRID_N = 9, GSIZE = 48, WINDOW_GRIDS = 3;
+const WIN = WINDOW_GRIDS*GSIZE;
+const N_MAX = WIN;
+const N0 = 48;
+const CAMP_GRID = 4;
+let N = WIN;
+let windowGX = CAMP_GRID-1, windowGZ = CAMP_GRID-1;   // window origin grid
+const absTileX = x => x + windowGX*GSIZE, absTileY = y => y + windowGZ*GSIZE;
 const HW = 32;               // half tile width
 const HH = 16;               // half tile height
 const ELEV = 13;             // screen pixels per terrain height level
-const CAMP = { x: 24, y: 24 };
+const CAMP = { x: 72, y: 72 };   // window-local: the camp grid is centred
 const FIREP = { x: CAMP.x+3.2, y: CAMP.y+3.6 };  // the campfire, clear of the tabernacle fence
 const QUOTA = 22;            // manna the camp eats each day
 const DAY_LENGTH = 60;       // real seconds per day/night cycle at ×1
@@ -1451,63 +1478,65 @@ function dailyWaterNeed(){
   return Math.max(4, Math.round(weekly/DAYS_PER_MONTH));
 }
 
+/* Stations are placed in absolute grid coordinates (ax/ay); x/y is the
+   window-local copy, retranslated whenever the loaded window shifts. */
 const STATIONS = [
   {
-    id:'shore', name:'The Red Sea Shore', x:10, y:34, color:'#3f8fb0',
-    scripture:'Exodus 14:31', title:'The sea is behind you',
-    text:'The waters closed over the chariots of Egypt. The people lift their eyes to the pillar of cloud, and for the first time they believe.',
-    trial:'Follow the pillar into the wilderness. Gather manna, find water, and keep the camp alive.',
-    blessing:{ faith:8, health:8 }
-  },
-  {
-    id:'marah', name:'Waters of Marah', x:10, y:15, color:'#4f9a86',
-    scripture:'Exodus 15:23-25', title:'The bitter water is made sweet',
-    text:'Three days without water. At Marah the spring is bitter, and the people murmur. Moses cries to the Lord, and a tree is shown him; he casts it into the waters, and they become sweet.',
-    trial:'Fill your waterskin at the spring and carry water to the thirsty.',
-    blessing:{ hydration:100, campWater:55, faith:6, health:10 }
-  },
-  {
-    id:'elim', name:'Elim', x:38, y:9, color:'#6fae4f',
-    scripture:'Exodus 15:27', title:'Twelve springs and seventy palms',
-    text:'They came to Elim, where there were twelve springs of water and seventy palm trees, and they encamped there beside the waters.',
-    trial:'Rest in the shade. Let the camp recover its strength.',
-    blessing:{ health:22, faith:5, warmth:30, manna:6 }
-  },
-  {
-    id:'sin', name:'Wilderness of Sin', x:42, y:25, color:'#c9b46c',
-    scripture:'Exodus 16:4-15', title:'Bread from heaven',
-    text:'In the morning a fine, flake-like thing lay on the face of the wilderness. “It is the bread the Lord has given you to eat.” Gather only what you need; let nothing remain until morning.',
-    trial:'Gather manna for the household. Do not hoard what will spoil.',
-    blessing:{ manna:12, faith:6, health:8 }
-  },
-  {
-    id:'rephidim', name:'Rephidim', x:30, y:42, color:'#b08a68',
-    scripture:'Exodus 17:1-7', title:'Water from the rock',
-    text:'The people thirsted and tested the Lord. “Behold, I will stand before you there on the rock at Horeb; strike the rock, and water shall come out of it.”',
-    trial:'Strike the rock. Bring water to a dry and grumbling camp.',
-    blessing:{ hydration:100, campWater:70, faith:7, health:12 }
-  },
-  {
-    id:'sinai', name:'Mount Sinai', x:12, y:24, color:'#8a72b0',
+    id:'sinai', name:'Mount Sinai', ax:215, ay:229, x:71, y:85, color:'#8a72b0',
     scripture:'Exodus 19:16-20', title:'The mountain trembles',
     text:'Thunder and lightning, a thick cloud upon the mountain, and the sound of a trumpet growing louder. Moses goes up, and the Lord descends in fire.',
     trial:'Choose faithfulness. The covenant shapes the people you lead.',
     blessing:{ faith:14, health:10, manna:8 }
   },
   {
-    id:'kadesh', name:'Kadesh-Barnea', x:21, y:7, color:'#c98a4a',
+    id:'rephidim', name:'Rephidim', ax:202, ay:242, x:58, y:98, color:'#b08a68',
+    scripture:'Exodus 17:1-7', title:'Water from the rock',
+    text:'The people thirsted and tested the Lord. “Behold, I will stand before you there on the rock at Horeb; strike the rock, and water shall come out of it.”',
+    trial:'Strike the rock. Bring water to a dry and grumbling camp.',
+    blessing:{ hydration:100, campWater:70, faith:7, health:12 }
+  },
+  {
+    id:'marah', name:'Waters of Marah', ax:174, ay:220, x:30, y:76, color:'#4f9a86',
+    scripture:'Exodus 15:23-25', title:'The bitter water is made sweet',
+    text:'Three days without water. At Marah the spring is bitter, and the people murmur. Moses cries to the Lord, and a tree is shown him; he casts it into the waters, and they become sweet.',
+    trial:'Fill your waterskin at the spring and carry water to the thirsty.',
+    blessing:{ hydration:100, campWater:55, faith:6, health:10 }
+  },
+  {
+    id:'elim', name:'Elim', ax:178, ay:202, x:34, y:58, color:'#6fae4f',
+    scripture:'Exodus 15:27', title:'Twelve springs and seventy palms',
+    text:'They came to Elim, where there were twelve springs of water and seventy palm trees, and they encamped there beside the waters.',
+    trial:'Rest in the shade. Let the camp recover its strength.',
+    blessing:{ health:22, faith:5, warmth:30, manna:6 }
+  },
+  {
+    id:'sin', name:'Wilderness of Sin', ax:184, ay:238, x:40, y:94, color:'#c9b46c',
+    scripture:'Exodus 16:4-15', title:'Bread from heaven',
+    text:'In the morning a fine, flake-like thing lay on the face of the wilderness. “It is the bread the Lord has given you to eat.” Gather only what you need; let nothing remain until morning.',
+    trial:'Gather manna for the household. Do not hoard what will spoil.',
+    blessing:{ manna:12, faith:6, health:8 }
+  },
+  {
+    id:'shore', name:'The Red Sea Shore', ax:242, ay:236, x:98, y:92, color:'#3f8fb0',
+    scripture:'Exodus 14:31', title:'The sea is behind you',
+    text:'The waters closed over the chariots of Egypt. The people lift their eyes to the pillar of cloud, and for the first time they believe.',
+    trial:'Follow the pillar into the wilderness. Gather manna, find water, and keep the camp alive.',
+    blessing:{ faith:8, health:8 }
+  },
+  {
+    id:'kadesh', name:'Kadesh-Barnea', ax:210, ay:178, x:66, y:34, color:'#c98a4a',
     scripture:'Numbers 13-14', title:'The report of the spies',
     text:'The land is good, but the people are afraid. Ten spies bring back fear; two bring back faith. The camp stands at the edge of promise, and doubt spreads like a plague.',
     trial:'Hold the camp together. Faith is harder than fear.',
     blessing:{ faith:10, health:8, manna:6 }
   },
   {
-    id:'moab', name:'Plains of Moab', x:41, y:39, color:'#e0b24a',
+    id:'moab', name:'Plains of Moab', ax:252, ay:172, x:108, y:28, color:'#e0b24a',
     scripture:'Deuteronomy 34:1-4', title:'The Promised Land in sight',
     text:'Moses climbs the mountain and looks across the land. Forty years of wandering are ended. The pillar stands still, and the people lift their eyes to the horizon.',
     trial:'Lead the people home.',
     blessing:{ faith:20, health:20 }
-  }
+  },
 ];
 
 const TRIBES = [
@@ -2052,7 +2081,7 @@ const CAM = new THREE.OrthographicCamera();
    walking and the compass behave exactly as before. */
 const view = { rot: 0 };
 const VIEW_QUARTER = Math.PI/2;
-let yaw = VIEW_QUARTER/2, yawT = VIEW_QUARTER/2, zoom3 = .85;
+let yaw = VIEW_QUARTER/2, yawT = VIEW_QUARTER/2, zoom3 = .85, zoomT3 = .85;
 const tgt = { x: 0, z: .5 };
 function proj3(){
   const a = Math.max(1, W) / Math.max(1, H), v = 9.5/zoom3;
@@ -2062,6 +2091,11 @@ function proj3(){
 }
 function cam3(dt){
   yaw += (yawT - yaw)*Math.min(1, dt*8 || .14);
+  // Zoom glides toward its target the same way the yaw does.
+  if (Math.abs(zoomT3 - zoom3) > .002){
+    zoom3 += (zoomT3 - zoom3)*Math.min(1, dt*8 || .14);
+    proj3();
+  }
   const el = .6155, d = 60;
   CAM.position.set(tgt.x + Math.cos(yaw)*Math.cos(el)*d, Math.sin(el)*d, tgt.z + Math.sin(yaw)*Math.cos(el)*d);
   CAM.lookAt(tgt.x, 0, tgt.z);
@@ -2073,8 +2107,14 @@ function rotateView(dir){
   playSfx('click', 0.1);
 }
 function zoomView(factor){
-  zoom3 = clamp(zoom3 * factor, .3, 2.4);
-  proj3();
+  zoomT3 = clamp(zoomT3 * factor, .3, 2.4);
+}
+/* Selecting Walk refocuses the camera on Moses, like the player-following
+   camera of the previous version: drop any drag-pan offset and glide in
+   close so he is centred and clearly visible. */
+function focusPlayer(){
+  camX = 0; camY = 0;
+  zoomT3 = 1.7;
 }
 /* World position of a tile centre: W(i) = i - N/2 + .5 (Migration Guide §2). */
 const WT = i => i - N/2 + .5;
@@ -2091,8 +2131,8 @@ function screenToWorld(sx, sy){
   _nd.set(sx/Math.max(1,W)*2 - 1, -(sy/Math.max(1,H))*2 + 1);
   _ray.setFromCamera(_nd, CAM);
   let p = null;
-  if (groundMesh){
-    const hit = _ray.intersectObject(groundMesh, false);
+  if (groundMeshes.length){
+    const hit = _ray.intersectObjects(groundMeshes, false);
     if (hit.length) p = hit[0].point;
   }
   if (!p && Math.abs(_ray.ray.direction.y) > 1e-5){
@@ -2132,7 +2172,7 @@ let ter = [], TH = [], gtype = [], kind = [], lvl = [], palm = [], dune = [], du
    the mesh is built from. */
 let TH0V = [], THV = [], mesaG = [], sinaiG = [], rampG = [];
 let waterTiles = [];        // pond tiles: the springs the journey drinks from
-let shore = [], pens = [], groundMesh = null;
+let shore = [], pens = [], groundMesh = null, groundMeshes = [];
 let terrainHills = [], hillPhase = [0,0,0,0];
 
 let decor = [], people = [], manna = [], particles = [], pops = [], flights = [], tentFires = [];
@@ -2163,7 +2203,7 @@ function shade(hex, amt){
 /* Deterministic helpers (Migration Guide §2): fresh solver choices come from
    srand(); every variant look comes from whash() so it is stable. */
 function srand(s){ return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-function whash(x, z){ return (((x*73856093) ^ (z*19349663) ^ (seed*83492791)) >>> 0) % 1000 / 1000; }
+function whash(x, z){ const ax = x + windowGX*GSIZE, az = z + windowGZ*GSIZE; return (((ax*73856093) ^ (az*19349663) ^ (seed*83492791)) >>> 0) % 1000 / 1000; }
 const cellOf = v => Math.floor(v + N/2);
 const inMap = (x,z) => x >= 0 && z >= 0 && x < N && z < N;
 const K = (x,z) => inMap(x,z) ? kind[x][z] : 0;
@@ -2210,14 +2250,17 @@ function cliffBetween(x0,z0,x1,z1){
 /* Named pools the journey depends on: the sea behind the Red Sea Shore, the
    springs of Marah and Elim, Rephidim's rock, the oasis near the camp and a
    small wilderness pool. Each is a pond (gtype 2) ringed by grass. */
+/* Centre-grid springs, in the stable absolute frame so they sit over the
+   same world tiles whichever window is loaded. */
 const POOL_SITES = [
-  { x:6.5,  y:36.5, r:3.2 },
-  { x:37.5, y:7.5,  r:2.1 },
-  { x:8.5,  y:14.5, r:1.9 },
-  { x:30.5, y:43.0, r:2.2 },
-  { x:23.0, y:20.0, r:1.5 },
-  { x:44.0, y:33.0, r:1.3 }
+  { x:198.5, y:228.5, r:3.2 },
+  { x:229.5, y:199.5, r:2.1 },
+  { x:200.5, y:206.5, r:1.9 },
+  { x:222.5, y:235.0, r:2.2 },
+  { x:215.0, y:212.0, r:1.5 },
+  { x:236.0, y:225.0, r:1.3 }
 ];
+const absToLocal = (ax2, ay2) => ({ x: ax2 - windowGX*GSIZE, y: ay2 - windowGZ*GSIZE });
 
 function newGrids(){
   ter = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
@@ -2254,12 +2297,15 @@ function flattenAt(cx,cy,r){
    tall, with a winding ramp carved into its flank so Moses can climb to the
    summit. Sandstone up the slopes; granite purple only on the top third
    (levels 3-4). Off the ramp its tiles are solid rock (blocked). */
-const SINAI = { x: 6.5, z: 24, mr: 4.7, ph: 1.3, levels: 4, lvh: .5, path0: -.5, turns: 1.9 };
-function sinaiGeom(x, y){
-  const d = Math.hypot(x+.5-SINAI.x, y+.5-SINAI.z), an = Math.atan2(y+.5-SINAI.z, x+.5-SINAI.x);
+const SINAI = { x: CAMP_GRID*0 + 205.5, z: 222, mr: 4.7, ph: 1.3, levels: 4, lvh: .5, path0: -.5, turns: 1.9 };
+function sinaiGeomLocal(x, y){
+  // callers pass window-local tile coordinates; the massif is absolute
+  const ax = absTileX(x), az = absTileY(y);
+  const d = Math.hypot(ax-SINAI.x, az-SINAI.z), an = Math.atan2(az-SINAI.z, ax-SINAI.x);
   const edge = SINAI.mr*(.92 + .16*Math.sin(an*3 + SINAI.ph));
   return { d, an, edge, t: 1 - d/edge };
 }
+function sinaiGeom(x, y){ return sinaiGeomLocal(x, y); }
 function sinaiLevel(x, y){
   const g = sinaiGeom(x, y);
   if (g.t <= 0) return 0;
@@ -2285,7 +2331,8 @@ function carveSinaiRamp(){
   const pts = sinaiRampTiles();
   let prev = 0;
   for (const pt of pts){
-    const i = Math.floor(pt.x), j = Math.floor(pt.z);
+    // ramp points live in absolute tile space; tiles are window-local
+    const i = Math.floor(pt.x - windowGX*GSIZE), j = Math.floor(pt.z - windowGZ*GSIZE);
     if (!inMap(i,j) || sinaiLevel(i, j) <= 0) continue;
     const natural = sinaiLevel(i, j);
     const lvl = Math.max(prev-1, Math.min(natural, prev+1));
@@ -2300,22 +2347,51 @@ function carveSinaiRamp(){
     prev = lvl;
   }
 }
+/* Per-grid hill sets: pure functions of (worldSeed, grid), cached, so every
+   grid generates identically no matter which window it is loaded into. */
+const gridHillsCache = new Map();
+function hillsForGrid(gx, gz){
+  const key = gx+','+gz;
+  let h = gridHillsCache.get(key);
+  if (h) return h;
+  if (gx === CAMP_GRID && gz === CAMP_GRID){
+    h = { phase: hillPhase, hills: terrainHills, center: true };
+  } else {
+    const r = srand((tileHash2(gx*3+1, gz*5+7, seed ^ 0x51ab)*1e9)|0);
+    const phase = [r()*9, r()*9, r()*9, r()*9];
+    const hills = [];
+    for (let i=0;i<10;i++){
+      const cx = 3 + r()*(GSIZE-6), cz = 3 + r()*(GSIZE-6), hr = 2.1 + r()*4.4;
+      if (r() < .62) continue;
+      if (Math.hypot(cx - (SINAI.x - gx*GSIZE), cz - (SINAI.z - gz*GSIZE)) < 8) continue;
+      hills.push({ x:cx, y:cz, mr: Math.min(hr, 3.8), ph: r()*6 });
+    }
+    h = { phase, hills };
+  }
+  gridHillsCache.set(key, h);
+  return h;
+}
 function tileTerrainLevel(x, y){
   const sl = sinaiLevel(x, y);
   if (sl > 0) return sl;
-  for (const p of POOL_SITES) if (Math.hypot(x+.5-p.x, y+.5-p.y) < p.r + 2.5) return 0;
-  if (Math.hypot(x+.5-CAMP.x, y+.5-CAMP.y) < 9) return 0;
-  if (STATIONS.some(s => Math.hypot(x+.5-s.x, y+.5-s.y) < 4.5)) return 0;
-  const f = .5 + .25*Math.sin(x*.21 + hillPhase[0])*Math.cos(y*.17 + hillPhase[1])
-    + .2*Math.sin((x+y)*.13 + hillPhase[2]) + .1*Math.sin(x*.4 + hillPhase[3])*Math.sin(y*.35 + hillPhase[0]);
+  const gx = Math.floor(absTileX(x)/GSIZE), gz = Math.floor(absTileY(y)/GSIZE);
+  const lx = x + windowGX*GSIZE - gx*GSIZE, ly = y + windowGZ*GSIZE - gz*GSIZE;
+  const gh = hillsForGrid(gx, gz);
+  // Every station keeps a flat approach, in whatever grid it stands.
+  if (STATIONS.some(st => Math.hypot(x+.5-st.x, y+.5-st.y) < 4.5)) return 0;
+  const f = .5 + .25*Math.sin(lx*.21 + gh.phase[0])*Math.cos(ly*.17 + gh.phase[1])
+    + .2*Math.sin((lx+ly)*.13 + gh.phase[2]) + .1*Math.sin(lx*.4 + gh.phase[3])*Math.sin(ly*.35 + gh.phase[0]);
   let L = f > .8 ? 2 : f > .62 ? 1 : 0;
-  for (const m of terrainHills){
-    const d = Math.hypot(x-m.x, y-m.y), an = Math.atan2(y-m.y, x-m.x);
+  for (const m of gh.hills){
+    const d = Math.hypot(lx-m.x, ly-m.y), an = Math.atan2(ly-m.y, lx-m.x);
     if (d < m.mr*(.85 + .2*Math.sin(an*3 + m.ph))) L = Math.min(3, L+2);
   }
+  if (!gh.center) return L;
+  // centre grid: the ponds and the camp keep their ground open
+  for (const p of POOL_SITES) if (Math.hypot(absTileX(x)+.5-p.x, absTileY(y)+.5-p.y) < p.r + 2.5) return 0;
+  if (Math.hypot(x+.5-CAMP.x, y+.5-CAMP.y) < 9) return 0;
   return L;
 }
-
 function refreshHeights(x0, y0, x1, y1){
   for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++)
     TH[x][y] = gtype[x][y] === 2 ? GROUND_Y - .06 : GROUND_Y + ter[x][y]*LV;
@@ -2357,7 +2433,8 @@ function refreshShoreAndPalms(){
   for (let x=0;x<N;x++) for (let y=0;y<N;y++){
     if (kind[x][y] || gtype[x][y] === 2){ palm[x][y] = 0; continue; }
     const pondRing = gtype[x][y] === 1 && D4.some(([a,b]) => inMap(x+a,y+b) && gtype[x+a][y+b] === 2);
-    palm[x][y] = (whash(x,y) < .04 && gtype[x][y] === 0 && ter[x][y] === 0) || (pondRing && whash(x+71,y+13) < .4 && ter[x][y] === 0) ? 1 : 0;
+    const ax = absTileX(x), ay = absTileY(y);
+    palm[x][y] = (whash(ax,ay) < .04 && gtype[x][y] === 0 && ter[x][y] === 0) || (pondRing && whash(ax+71,ay+13) < .4 && ter[x][y] === 0) ? 1 : 0;
   }
 }
 
@@ -2383,36 +2460,132 @@ function placeDunes(r, bandStart = 0){
 
 /* Build the world: tile grids, ponds, terrain levels, pens, palms and dunes.
    The ground mesh and every piece are drawn from this data afterwards. */
-function buildTerrain(){
+/* Springs the story guarantees: an oasis awaits at these stations. */
+const WATER_STATIONS = { sinai:1, marah:1, elim:1, rephidim:1 };
+
+function buildTerrain(translateStations = true){
   seed = state.worldSeed || DEFAULT_WORLD_SEED;
   builtWorldSeed = seed;
-  N = Math.min(N_MAX, Math.max(N0, state.worldN || N0));
+  N = WIN;
+  // centre the window on the camp grid (kept when only re-materialising)
+  if (translateStations){
+    windowGX = Math.max(0, Math.min(GRID_N-WINDOW_GRIDS, CAMP_GRID-1));
+    windowGZ = Math.max(0, Math.min(GRID_N-WINDOW_GRIDS, CAMP_GRID-1));
+  }
   newGrids();
+  gridHillsCache.clear();
+  // stations: absolute grid coordinates -> window-local
+  if (translateStations) for (const st of STATIONS){ st.x = st.ax - windowGX*GSIZE; st.y = st.ay - windowGZ*GSIZE; }
+  state.gridSeen = state.gridSeen || new Set();
   const tb = tbRect();
   for (let x=tb.x0;x<tb.x0+TBSIZE.w;x++) for (let z=tb.z0;z<tb.z0+TBSIZE.l;z++) if (inMap(x,z)) kind[x][z] = K_TAB;
-  for (const p of POOL_SITES) stampPond(p.x, p.y, p.r);
+  for (const p of POOL_SITES){ const lp = absToLocal(p.x, p.y); stampPond(lp.x, lp.y, p.r); }
   flattenAt(CAMP.x, CAMP.y, 5.6);
   STATIONS.forEach(s => flattenAt(s.x, s.y, 3.4));
-  // Hills and mesas: smooth noise gives level steps; a few mesas rise two
-  // levels with cliff edges (Desert Outpost §10i). Flat round the camp,
-  // the stations and every pond.
+  // Hills and mesas of the camp grid: smooth noise gives level steps; a few
+  // mesas rise two levels with cliff edges. Outer grids generate their own
+  // hill sets purely from the seed (see hillsForGrid).
   const r = srand(seed*7+3);
   hillPhase = [r()*9, r()*9, r()*9, r()*9];
   terrainHills = [];
   for (let i=0;i<15;i++){
-    const cx = 3 + r()*(N-6), cy = 3 + r()*(N-6), hr = 2.1 + r()*4.4;
+    const cx = 3 + r()*(GSIZE-6), cy = 3 + r()*(GSIZE-6), hr = 2.1 + r()*4.4;
     if (Math.hypot(cx-CAMP.x, cy-CAMP.y) < 11) continue;
     if (STATIONS.some(s => Math.hypot(cx-s.x, cy-s.y) < 9)) continue;
     if (r() < .6) continue;   // a handful of mesas, the rest open desert
     terrainHills.push({ x:cx, y:cy, mr: Math.min(hr, 3.8), ph: r()*6 });
   }
   for (let x=0;x<N;x++) for (let y=0;y<N;y++) ter[x][y] = tileTerrainLevel(x, y);
+  // springs in the eight outer grids of the window
+  for (let gx=windowGX; gx<windowGX+WINDOW_GRIDS; gx++)
+    for (let gz=windowGZ; gz<windowGZ+WINDOW_GRIDS; gz++){
+      if (gx === CAMP_GRID && gz === CAMP_GRID) continue;
+      const rr = srand((tileHash2(gx*5+3, gz*7+1, seed ^ 0x77aa)*1e9)|0);
+      const n = 1 + Math.floor(rr()*2);
+      for (let i=0;i<n;i++){
+        const px = 6 + rr()*(GSIZE-12), pz = 6 + rr()*(GSIZE-12);
+        if (Math.hypot(px + windowGX*GSIZE - SINAI.x, pz + windowGZ*GSIZE - SINAI.z) < 7) continue;
+        stampPond((gx-windowGX)*GSIZE + px, (gz-windowGZ)*GSIZE + pz, 1.4 + rr()*1.4);
+      }
+    }
+  // Springs where Scripture names water: Sinai, Marah, Elim, Rephidim.
+  for (const st of STATIONS){
+    if (!WATER_STATIONS[st.id]) continue;
+    stampPond(st.x + 5.5, st.y + 4.5, 2.3);
+  }
   carveSinaiRamp();
   refreshHeights(0, 0, N-1, N-1);
   placePens(r);
   refreshShoreAndPalms();
   placeDunes(r);
+  markGridsSeen();
   rebuildGround();
+}
+/* ---- the shifting window -------------------------------------------------
+   The loaded 3x3 grids follow Moses: when he crosses into a neighbouring
+   grid, the window slides one grid over. Everything in window-local
+   coordinates is translated by the same delta, then the new ground is
+   generated purely from the world seed. */
+function playerGridAbs(){
+  return {
+    gx: Math.floor(absTileX(state.player.x)/GSIZE),
+    gz: Math.floor(absTileY(state.player.y)/GSIZE)
+  };
+}
+function translateWindowEntities(dx, dz){
+  const t = o => { o.x += dx; o.y += dz; };
+  t(state.player);
+  for (const p of people) t(p);
+  for (const st of structures) t(st);
+  for (const d of decor) t(d);
+  for (const n of woodNodes) t(n);
+  for (const n of rockNodes) t(n);
+  for (const fc of foeCamps) t(fc);
+  for (const p of pens) t(p);
+  for (const st of STATIONS){ st.x += dx; st.y += dz; }
+  CAMP.x += dx; CAMP.y += dz;
+  for (const cs of state.campSites || []) { cs.x += dx; cs.y += dz; }
+  for (const f of tentFires) t(f);
+  const shiftKey = k => {
+    const c = k.split(',').map(Number);
+    return (c[0]+dx) + ',' + (c[1]+dz);
+  };
+  if (felled.size) felled = new Set([...felled].map(shiftKey));
+  decorUsed = new Set([...decorUsed].map(shiftKey));
+  state.explored = new Set([...state.explored].map(k => {
+    const x = Math.floor(k/1000), y = k - x*1000;
+    return (x+dx)*1000 + (y+dz);
+  }));
+  refreshNodeCells();
+}
+function recenterWindow(pg){
+  const cgx = Math.floor(absTileX(CAMP.x)/GSIZE), cgz = Math.floor(absTileY(CAMP.y)/GSIZE);
+  // the camp's grid must stay inside the 3x3 window
+  let nx = Math.max(cgx-(WINDOW_GRIDS-1), Math.min(cgx, pg.gx-1));
+  let nz = Math.max(cgz-(WINDOW_GRIDS-1), Math.min(cgz, pg.gz-1));
+  nx = Math.max(0, Math.min(GRID_N-WINDOW_GRIDS, nx));
+  nz = Math.max(0, Math.min(GRID_N-WINDOW_GRIDS, nz));
+  // Moving the window's first grid by dx grids changes every window-local
+  // coordinate by the OPPOSITE tile delta.
+  const dx = nx - windowGX, dz = nz - windowGZ;
+  if (!dx && !dz) return false;
+  translateWindowEntities(-dx*GSIZE, -dz*GSIZE);
+  windowGX = nx; windowGZ = nz;
+  rebuildWindowGround();
+  say('The camp looks upon new ground.');
+  return true;
+}
+/* Re-materialise the shifted window from the seed (entities untouched). */
+function rebuildWindowGround(){
+  buildTerrain(false);
+  markRebuild();
+}
+
+/* Remember which grids the journey has laid eyes on (minimap). */
+function markGridsSeen(){
+  for (let gx=windowGX; gx<windowGX+WINDOW_GRIDS; gx++)
+    for (let gz=windowGZ; gz<windowGZ+WINDOW_GRIDS; gz++)
+      state.gridSeen.add(gx+','+gz);
 }
 
 /* ------------------------ the widening wilderness ----------------------
@@ -2429,9 +2602,9 @@ function worldNFor(rings){
 }
 
 function syncWorldExtent(){
-  const rings = Math.floor(state.stationIndex/2) + Math.max(0, (state.campSites||[]).length - 2);
-  const target = worldNFor(rings);
-  return target > N ? extendWorld(target) : false;
+  // The 3x3 window is always fully materialised; the world grows by shifting
+  // the window (see recenterWindow), not by extending a square.
+  return false;
 }
 
 /* Massifs for new land: jittered over an 8-tile grid, pure per grid cell. */
@@ -2553,6 +2726,31 @@ function areaExhausted(){
   return capacity > 0 && left < capacity*0.18;
 }
 
+/* A camp site beside a particular station: the pillar leads Israel there,
+   and the camp pitches within sight of the landmark. */
+function findCampSiteNear(st){
+  let best = null, bestScore = -1;
+  for (let i=0;i<520;i++){
+    const a = rnd()*Math.PI*2, r = 7.5 + rnd()*4.5;
+    const x = st.x + Math.cos(a)*r, y = st.y + Math.sin(a)*r;
+    if (x < 6 || y < 6 || x > N-7 || y > N-7) continue;
+    if (blocked(x, y)) continue;
+    if (Math.hypot(x-st.x, y-st.y) < 5.5) continue;
+    if (STATIONS.some(o => o !== st && Math.hypot(x-o.x, y-o.y) < 13)) continue;
+    if ((state.campSites||[]).some(c => Math.hypot(x-c.x, y-c.y) < 10)) continue;
+    let open = 0, waterNear = 0;
+    for (let dx=-6;dx<=6;dx+=2) for (let dy=-6;dy<=6;dy+=2){
+      const tx = Math.floor(x)+dx, ty = Math.floor(y)+dy;
+      if (tx<1||ty<1||tx>N-2||ty>N-2) continue;
+      if (!blocked(tx,ty) && ter[tx][ty] === 0) open++;
+      if (gtype[tx][ty] === 2) waterNear = 1;
+    }
+    const score = open + (waterNear ? 14 : 0) - r*1.5;
+    if (score > bestScore){ bestScore = score; best = {x,y}; }
+  }
+  return best;
+}
+
 function findCampSite(){
   let best = null, bestScore = -1;
   for (let i=0;i<420;i++){
@@ -2602,9 +2800,16 @@ function migrateCamp(site){
   buildDecor();
   state.tribeStats = savedTribes;
   people = savedPeople;
+  // Moses and the camera come with the camp; any walk in progress ends.
+  if (state.player) placePlayerAtCamp();
+  camX = 0; camY = 0;
+  // Old paddocks stand empty on the abandoned ground; new ones are laid out.
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++) if (kind[x][y] === K_PEN) kind[x][y] = 0;
+  pens = [];
   // buildDecor cleared the structures array; restore the player's tents so
   // they re-pitch in their tribal quarters at the new site.
   structures = playerTents;
+  placePens(srand((seed ^ Math.floor(CAMP.x*7 + CAMP.y*13))|0));
   // Re-home the same Israelites around the new camp; their traits and hoards
   // travel with them.
   for (const p of people){
@@ -2627,8 +2832,7 @@ function migrateCamp(site){
     st.x = x; st.y = y;
   }
 
-  state.player.x = CAMP.x + 1.4; state.player.y = CAMP.y + 1.4;
-  state.player.tx = null; state.player.ty = null; state.player.moving = false;
+  placePlayerAtCamp();
   camX = 0; camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
   manna = []; state.mannaSpawned = false;
@@ -2767,7 +2971,7 @@ function buildDecor(){
 const APP_VERSION = '2.3.0';
 
 const state = {
-  mode:'menu', day:1, hour:5.25, stationIndex:0, visited:new Set(),
+  mode:'menu', day:1, hour:5.25, stationIndex:0, visited:new Set(), routeLog:[],
   player:{ x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false },
   health:100, hunger:100, hydration:100, warmth:100, stamina:100, faith:68,
   manna:0, waterskin:0, campWater:34, silver:18,
@@ -2795,6 +2999,77 @@ let builtWorldSeed = null;
 
 function currentStation(){ return STATIONS[state.stationIndex] || null; }
 
+/* The route is not fixed: from each camp the pillar chooses among the three
+   nearest places not yet visited, so the tribes criss-cross the wilderness
+   and come to know it all. The Jordan closes the journey — Kadesh-Barnea
+   penultimate, the Plains of Moab last. */
+function pickNextStation(from){
+  const here = from || CAMP;
+  const unvisited = STATIONS.map((st,i) => i).filter(i => !state.visited.has(i));
+  if (!unvisited.length) return -1;
+  if (unvisited.length === 1) return unvisited[0];
+  const idxOf = id => STATIONS.findIndex(st => st.id === id);
+  const kadesh = idxOf('kadesh'), moab = idxOf('moab');
+  if (unvisited.length === 2) return unvisited.includes(kadesh) ? kadesh : unvisited[0];
+  const pool = unvisited.filter(i => i !== moab && i !== kadesh);
+  pool.sort((a,b) => dist(here, STATIONS[a]) - dist(here, STATIONS[b]));
+  const near = pool.slice(0, Math.min(3, pool.length));
+  return near[Math.floor(rnd()*near.length)];
+}
+
+/* A day's march toward the destination: the next camp site along the dotted
+   line, stopping short of the landmark so Moses must walk the last steps. */
+const DAY_MARCH = 15, MARCH_STOP = 10;
+function marchSite(){
+  const st = currentStation();
+  if (!st) return null;
+  const d = dist(CAMP, st);
+  if (d <= MARCH_STOP + DAY_MARCH) return null;   // arrived: wait for Moses
+  const t = DAY_MARCH / d;
+  const tx = CAMP.x + (st.x - CAMP.x)*t, ty = CAMP.y + (st.y - CAMP.y)*t;
+  // nudge onto open ground
+  for (let k=0;k<40;k++){
+    const a = rnd()*Math.PI*2, r = (k<20 ? k*0.15 : (k-20)*0.3);
+    const x = tx + Math.cos(a)*r, y = ty + Math.sin(a)*r;
+    if (x<4 || y<4 || x>N-5 || y>N-5) continue;
+    if (!blocked(x,y)) return { x, y };
+  }
+  return { x: clamp(tx,4,N-5), y: clamp(ty,4,N-5) };
+}
+
+/* Water within reach makes a halt an oasis: the camp settles for a month or
+   more (until the ground is spent, checked weekly). Dry ground means a
+   decamp every day, travelling the dotted line toward the pillar. */
+function waterNearCamp(site){
+  const cx = Math.floor(site.x), cy = Math.floor(site.y);
+  for (let dx=-13;dx<=13;dx++) for (let dy=-13;dy<=13;dy++){
+    const x = cx+dx, y = cy+dy;
+    if (x<0||y<0||x>=N||y>=N) continue;
+    if (gtype[x][y] === 2) return true;
+  }
+  return false;
+}
+function campLegMode(site){
+  return waterNearCamp(site || CAMP) ? 'oasis' : 'dry';
+}
+
+/* Daily march on dry ground (called at dawn from endDay). */
+function marchCampDaily(){
+  if (state.mode !== 'playing') return false;
+  const st = currentStation();
+  if (!st) return false;
+  if (campLegMode() === 'oasis') return false;   // an oasis holds the camp
+  if (dist(CAMP, st) <= MARCH_STOP + DAY_MARCH) return false;
+  const site = marchSite();
+  if (!site) return false;
+  const day = state.day;
+  if (migrateCamp(site)){
+    say(`There is no water here for the flocks. Israel decamps and marches a day toward ${st.name}.`);
+    return true;
+  }
+  return false;
+}
+
 function stationRequirements(index = state.stationIndex){
   const tier = Math.floor((yearOfMonth()-1)/6);
   return {
@@ -2810,7 +3085,7 @@ function canEnterStation(){
 
 
 function resetState(){
-  state.mode = 'playing'; state.day = 1; state.hour = 5.25; state.stationIndex = 0;
+  state.mode = 'playing'; state.day = 1; state.hour = 5.25; state.stationIndex = 0; state.routeLog = [];
   state.visited = new Set();
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
   state.health = 100; state.hunger = 100; state.hydration = 100; state.warmth = 100;
@@ -2852,7 +3127,7 @@ function resetState(){
   fx = []; fxTimers.ambient = 0; fxTimers.pillar = 0; fxTimers.fire = 0;
   woodNodes.forEach(n => { n.wood = n.max; n.claimedBy = null; });
   rockNodes.forEach(n => { n.stone = n.max; });
-  state.player.x = CAMP.x; state.player.y = CAMP.y;
+  placePlayerAtCamp();
   people.forEach(p => {
     p.x = p.hx; p.y = p.hy; p.wx = p.hx; p.wy = p.hy; p.t = 0;
     p.carry = 0; p.hoard = 0; p.woodCarry = 0; p.task = 'idle'; p.target = null;
@@ -2882,6 +3157,16 @@ function canStep(e, nx, ny){
   const a = Math.floor(e.x), b = Math.floor(e.y), c = Math.floor(nx), d = Math.floor(ny);
   if (!inMap(a,b) || !inMap(c,d)) return false;
   return Math.abs(ter[a][b] - ter[c][d]) < 2;
+}
+/* Moses stands just south of the tabernacle fence: the tabernacle footprint
+   is blocked ground (K_TAB is stamped around the camp centre), so spawning on
+   the camp tile itself traps him — he could not step in any direction.
+   findWalk() steps out to the nearest free tile if the spot is taken. */
+function placePlayerAtCamp(){
+  const p = state.player;
+  const [sx, sz] = findWalk(CAMP.x, CAMP.y + 2);
+  p.x = sx + .5; p.y = sz + .5;
+  p.tx = null; p.ty = null; p.moving = false;
 }
 
 function say(msg){
@@ -3211,7 +3496,7 @@ function revealAround(x,y,r){
   const x0 = Math.max(0,Math.floor(x-r)), x1 = Math.min(N-1,Math.ceil(x+r));
   const y0 = Math.max(0,Math.floor(y-r)), y1 = Math.min(N-1,Math.ceil(y+r));
   for (let i=x0;i<=x1;i++) for (let j=y0;j<=y1;j++)
-    if (Math.hypot(i-x,j-y) <= r) state.explored.add(i*100+j);
+    if (Math.hypot(i-x,j-y) <= r) state.explored.add(i*1000+j);
 }
 
 function findFreeNear(cx,cy,r){
@@ -3687,7 +3972,7 @@ function startTrial(index){
   state.mode = 'playing';
   state.trial = { def, step:0, snapshot, counsels:0, base:{ raidLog:state.raidLog.length, manna:state.manna, structures:structures.length } };
   state.day = setup.day; state.hour = setup.hour; state.stationIndex = setup.stationIndex;
-  state.visited = new Set(STATIONS.slice(0, setup.stationIndex).map(s => s.id));
+  state.visited = new Set(STATIONS.slice(0, setup.stationIndex).map((s2,i) => i));
   state.health = setup.health; state.hunger = setup.hunger; state.hydration = setup.hydration;
   state.warmth = setup.warmth; state.stamina = setup.stamina; state.faith = setup.faith;
   state.manna = setup.manna; state.campWater = setup.campWater; state.wood = setup.wood; state.silver = setup.silver;
@@ -3697,6 +3982,7 @@ function startTrial(index){
   structures = setup.structures.map(s => ({ kind:s.kind, x:s.x, y:s.y, s:1 }));
   raiders = []; manna = []; particles = []; pops = []; flights = [];
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
+  placePlayerAtCamp();
   people.forEach(p => {
     p.x = p.hx; p.y = p.hy; p.wx = p.hx; p.wy = p.hy; p.t = 0;
     p.carry = 0; p.hoard = 0; p.woodCarry = 0; p.task = 'idle'; p.target = null;
@@ -4217,6 +4503,7 @@ function endDay(){
 
   state.day += 1;
   state.dayTracking = { manna:0, water:0, wood:0, stone:0 };
+  marchCampDaily();
   state.duskDone = false;
   state.nightDone = false;
   state.mannaSpawned = false;
@@ -5850,7 +6137,7 @@ function updateBuildBar(){
 }
 $('buildBar').addEventListener('click', e => {
   const w = e.target.closest('button[data-mode="walk"]');
-  if (w){ cancelBuild(); return; }
+  if (w){ cancelBuild(); focusPlayer(); return; }
   const b = e.target.closest('button[data-tool]');
   if (b) toggleBuildTool(b.dataset.tool);
 });
@@ -6229,6 +6516,7 @@ function openStation(){
   state.mode = 'station';
   state.focusStation = s;
   state.visited.add(state.stationIndex);
+  if (!state.routeLog.includes(s.id)) state.routeLog.push(s.id);
   $('stationKicker').textContent = s.scripture;
   $('stationTitle').textContent = s.title;
   $('stationText').textContent = s.text;
@@ -6250,16 +6538,31 @@ function openStation(){
 }
 
 function advanceStation(){
-  state.stationIndex++;
   state.focusStation = null;
   state.mode = 'playing';
   syncWorldExtent();
-  const next = currentStation();
-  if (!next){
-    endGame(true, 'Eight stations are behind you. The pillar stands still on the Plains of Moab, and the Promised Land lies open before the people.');
+  // The pillar chooses the next halt: one of the three nearest places not
+  // yet visited (Kadesh and the Plains of Moab close the journey).
+  const nextIdx = pickNextStation(CAMP);
+  if (nextIdx < 0){
+    endGame(true, 'Every station of the wilderness lies behind you. The pillar stands still on the Plains of Moab, and the Promised Land lies open before the people.');
     return;
   }
-  say(`The pillar moves on to ${next.name}. Follow the cloud.`);
+  state.stationIndex = nextIdx;
+  const next = currentStation();
+  // Decamp: the pillar leads to new ground near the next station. The
+  // tabernacle and the tents travel and are re-pitched free; sentry posts
+  // and watchtowers go into the store and must be built out again.
+  const site = findCampSiteNear(next);
+  if (site){
+    migrateCamp(site);
+    say(`Israel breaks camp and follows the pillar to ${next.name}. The tabernacle and the tents are re-pitched; set out the watchtowers and sentry posts again.`);
+    playSfx('day', 0.3);
+    revealAround(Math.floor(next.x), Math.floor(next.y), 7);
+    markGridsSeen();
+  } else {
+    say(`The pillar moves on to ${next.name}. Follow the cloud.`);
+  }
   saveGame();
   updateHud(true);
 }
@@ -6577,10 +6880,11 @@ function setSaveStatus(text, kind){
 
 function savePayload(){
   return {
-    v:4, worldSeed:state.worldSeed, worldN:N, day:state.day, hour:state.hour, stationIndex:state.stationIndex,
+    v:4, grid9:true, geo2:true, gridSeen:[...(state.gridSeen||[])],
+    worldSeed:state.worldSeed, worldN:N, day:state.day, hour:state.hour, stationIndex:state.stationIndex,
     camp:{ x:CAMP.x, y:CAMP.y },
     tribeStats:state.tribeStats, events:state.events,
-    visited:[...state.visited], player:{ x:state.player.x, y:state.player.y },
+    visited:[...state.visited], routeLog:[...(state.routeLog||[])], player:{ x:state.player.x, y:state.player.y },
     health:state.health, hunger:state.hunger, hydration:state.hydration,
     warmth:state.warmth, stamina:state.stamina, faith:state.faith,
     manna:state.manna, waterskin:state.waterskin, campWater:state.campWater,
@@ -6670,14 +6974,54 @@ function applySaveData(data){
   state.mode = 'playing';
   state.worldSeed = data.worldSeed || DEFAULT_WORLD_SEED;
   state.worldN = Math.min(N_MAX, Math.max(N0, Math.floor(Number(data.worldN)) || N0));
-  if (builtWorldSeed !== state.worldSeed){
+  // Pre-grid9 saves stored window-local coordinates of the old 48..88-tile
+  // world, whose tiles now sit in the camp grid: shift everything +48.
+  if (!data.grid9){
+    const sh = o => { o.x += GSIZE; o.y += GSIZE; };
+    if (data.camp){ data.camp.x += GSIZE; data.camp.y += GSIZE; }
+    if (data.player){ data.player.x += GSIZE; data.player.y += GSIZE; }
+    for (const st of data.structures || []) sh(st);
+    for (const cs of data.campSites || []) sh(cs);
+    data.felled = (data.felled || []).map(k => {
+      const c = String(k).split(',').map(Number);
+      return (c[0]+GSIZE) + ',' + (c[1]+GSIZE);
+    });
+    data.explored = (data.explored || []).map(k => {
+      k = Number(k)|0;
+      let x, y;
+      if (k >= 0 && k < 48*48){ x = Math.floor(k/48); y = k % 48; }       // legacy stride 48
+      else { x = Math.floor(k/100); y = k % 100; }                        // legacy stride 100
+      return (x+GSIZE)*1000 + (y+GSIZE);
+    });
+  }
+  // Reordered geography (Sinai first): remap legacy station indexes by id.
+  const LEGACY_STATION_ORDER = ['shore','marah','elim','sin','rephidim','sinai','kadesh','moab'];
+  if (!data.geo2 && Number.isFinite(Number(data.stationIndex))){
+    const oid = LEGACY_STATION_ORDER[clamp(Math.floor(Number(data.stationIndex)), 0, LEGACY_STATION_ORDER.length-1)];
+    const ni = STATIONS.findIndex(st => st.id === oid);
+    if (ni >= 0) data.stationIndex = ni;
+  }
+  if (!data.geo2){
+    const remapVisit = v => {
+      let id = null;
+      if (typeof v === 'string' && LEGACY_STATION_ORDER.includes(v)) id = v;
+      else if (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) < LEGACY_STATION_ORDER.length) id = LEGACY_STATION_ORDER[Number(v)];
+      if (!id) return null;
+      const ni = STATIONS.findIndex(st => st.id === id);
+      return ni >= 0 ? ni : null;
+    };
+    if (Array.isArray(data.visited)) data.visited = data.visited.map(remapVisit).filter(v => v !== null);
+    if (Array.isArray(data.routeLog)) data.routeLog = data.routeLog.map(v => typeof v === 'string' && LEGACY_STATION_ORDER.includes(v) ? v : null).filter(Boolean);
+  }
+  state.gridSeen = new Set(data.gridSeen || []);
+  if (builtWorldSeed !== state.worldSeed || N !== WIN || !groundMeshes.length){
     buildTerrain();
   }
   view.rot = 0; yawT = yaw = VIEW_QUARTER/2;
   // Restore a migrated camp site: flatten the saved camp, carve its trails,
   // then build the decor, tents and people around it.
   if (data.camp && Number.isFinite(Number(data.camp.x)) && Number.isFinite(Number(data.camp.y))
-    && (Math.abs(Number(data.camp.x) - 24) > 0.01 || Math.abs(Number(data.camp.y) - 24) > 0.01)){
+    && (Math.abs(Number(data.camp.x) - CAMP.x) > 0.01 || Math.abs(Number(data.camp.y) - CAMP.y) > 0.01)){
     CAMP.x = clamp(Number(data.camp.x), 2, N-3);
     CAMP.y = clamp(Number(data.camp.y), 2, N-3);
     flattenAt(CAMP.x, CAMP.y, 5.6);
@@ -6714,7 +7058,11 @@ function applySaveData(data){
   state.events = { rock:false, law:false, calf:false, jordan:false, ...(data.events || {}) };
   state.stationIndex = clamp(data.stationIndex ?? 0, 0, STATIONS.length);
   state.visited = new Set(data.visited || []);
+  state.routeLog = Array.isArray(data.routeLog) ? data.routeLog.filter(x => typeof x === 'string') : [];
   state.player = { x:data.player?.x ?? CAMP.x, y:data.player?.y ?? CAMP.y, tx:null, ty:null, moving:false };
+  // Older saves may hold Moses inside the blocked tabernacle footprint; move
+  // him out to the nearest free tile so he can walk again.
+  if (blocked(state.player.x, state.player.y)) placePlayerAtCamp();
   state.health = data.health ?? 100;
   state.hunger = data.hunger ?? 100;
   state.hydration = data.hydration ?? 100;
@@ -6731,7 +7079,7 @@ function applySaveData(data){
     ? { sentry: Math.max(0, Math.floor(Number(data.defenseStore.sentry)||0)), tower: Math.max(0, Math.floor(Number(data.defenseStore.tower)||0)) }
     : { sentry:0, tower:0 };
   state.areaHarvest = Math.max(0, Number(data.areaHarvest) || 0);
-  state.campSites = Array.isArray(data.campSites) ? data.campSites.slice(-8).filter(c => c && Number.isFinite(c.x) && Number.isFinite(c.y)) : [];
+  state.campSites = Array.isArray(data.campSites) ? data.campSites.slice(-8).filter(c => c && Number.isFinite(c.x) && Number.isFinite(c.y) && c.x >= 0 && c.y >= 0 && c.x <= N && c.y <= N) : [];
   state.armyCasualties = Math.max(0, Number(data.armyCasualties) || 0);
   state.foesDefeated = Array.isArray(data.foesDefeated) ? data.foesDefeated.filter(id => FOES[id]) : [];
   state.foeCamp = data.foeCamp && FOES[data.foeCamp.id] && !state.foesDefeated.includes(data.foeCamp.id)
@@ -6761,17 +7109,14 @@ function applySaveData(data){
   state.raidSpawned = false;
   state.score = data.score ?? 0;
   state.speed = data.speed ?? 1;
-  // Legacy saves keyed explored tiles by the old stride of 48; remap them.
-  state.explored = new Set((data.explored || []).map(k => {
-    k = Number(k) | 0;
-    return (k >= 0 && k < 48*48) ? Math.floor(k/48)*100 + (k % 48) : k;
-  }).filter(k => k >= 0 && k < 100*100));
+  state.explored = new Set((data.explored || []).map(k => Number(k)|0).filter(k => k >= 0 && k < 1000*1000));
   state.log = []; state.keys = {}; state.duskDone = false; state.nightDone = false;
   state.mannaSpawned = false; state.interaction = null; state.endShown = false;
   manna = []; particles = []; pops = []; flights = []; tentFires = [];
   revealAround(state.player.x, state.player.y, 5);
-  camX = (state.player.x-state.player.y)*HW;
-  camY = (state.player.x+state.player.y)*HH;
+  // The camera follows Moses; the old tile-space pan maths sent the view far
+  // off the map after loading, leaving Moses somewhere off-screen.
+  camX = 0; camY = 0;
   setSpeed(state.speed);
   $('reportOverlay').classList.remove('open');
   $('eventOverlay').classList.remove('open');
@@ -6915,11 +7260,12 @@ function applySharedToNewGame(p){
   state.day = clamp(p.day, 1, TOTAL_DAYS);
   state.hour = 6;
   state.stationIndex = clamp(p.station, 0, STATIONS.length - 1);
-  state.visited = new Set(STATIONS.slice(0, state.stationIndex).map(s => s.id));
+  state.visited = new Set(STATIONS.slice(0, state.stationIndex).map((s2,i) => i));
   state.structures = p.layout.map(s => ({ kind:s.kind, x:s.x, y:s.y, s:1 }));
   structures = state.structures;
   state.blueprints = p.blueprints || [null,null,null];
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
+  placePlayerAtCamp();
   state.health = 100; state.hunger = 100; state.hydration = 100; state.warmth = 100;
   state.stamina = 100; state.faith = 60; state.manna = 6; state.campWater = 26;
   state.waterskin = 0; state.wood = 6; state.silver = 12;
@@ -7034,6 +7380,7 @@ const RK_SAND = [0xd2b27a,0xc2975e,0xb88e58,0xa87a4c,0xc9a76e].map(_hx);
 const RK_GRAN = [0xa293a6,0x94849a,0x837389,0x77697d,0x8d7f93].map(_hx);
 function rebuildGround(){
   while (GR3.children.length) GR3.remove(GR3.children[0]);
+  groundMeshes.length = 0;
   const tones = [0xe6c590,0xdfbb84,0xe9ca98], greens = [0x8fbf5f,0x84b455], blues = [0x4a9ab8,0x5aa6c2];
   const ROCKC = new THREE.Color(0xc4a470), GRANC = new THREE.Color(0x8d7f93), TCo = [];
   mesaG = Array.from({length:N_MAX}, () => new Uint8Array(N_MAX));
@@ -7076,67 +7423,17 @@ function rebuildGround(){
     return m;
   };
   const mesaField = field(mesaG), sinaiField = field(sinaiG);
-  // heights: smooth tile interpolation plus the massif jumps
-  const S6 = MS_S6, NS6 = N*S6, NV = N*S6+1, hS = 1/S6;
+  // heights: smooth tile interpolation plus the massif jumps, built as one
+  // mesh per grid so the 3x3 window loads without a monolithic field.
+  const S6 = MS_S6, NS6 = GSIZE*S6, NV = GSIZE*S6+1, hS = 1/S6;
   const cosi = u => u*u*(3-2*u);
   const tileV = (x, z) => {
     const u = x+N/2-.5, v = z+N/2-.5, i = Math.floor(u), j = Math.floor(v), fu = cosi(u-i), fv = cosi(v-j);
     const h = (a,b) => TH0V[ci(a)][ci(b)];
     return (h(i,j)*(1-fu) + h(i+1,j)*fu)*(1-fv) + (h(i,j+1)*(1-fu) + h(i+1,j+1)*fu)*fv;
   };
-  const HG = new Float32Array(NV*NV);
-  for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
-    const x = ix*hS-N/2, z = iz*hS-N/2;
-    HG[iz*NV+ix] = tileV(x, z) + 2*LV*smstep(.36,.64, mesaField(x, z));
-  }
-  // gameplay heights: mesh height of each tile centre, so gyAt, ghosts and
-  // props all sit exactly on the rendered surface.
   THV = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
-  for (let x=0;x<N;x++) for (let z=0;z<N;z++) THV[x][z] = HG[(z*S6+S6/2)*NV + x*S6 + S6/2];
   if (!FD.length || FD.length < N_MAX) FD = Array.from({length:N_MAX}, () => new Float32Array(N_MAX));
-  for (let x=0;x<N;x++) for (let z=0;z<N;z++){
-    let mn = 1e9;
-    for (const [a,b] of [[1,1],[5,1],[1,5],[5,5],[3,1],[1,3],[5,3],[3,5]]) mn = Math.min(mn, HG[(z*S6+b)*NV + x*S6 + a]);
-    FD[x][z] = Math.max(0, THV[x][z] - mn);
-  }
-  // vertex colours: tile palette blended per sample, sandstone on slopes,
-  // granite on the Sinai massif, shade in concavities and light on lips.
-  const hAt = (ix,iz) => HG[Math.max(0,Math.min(NV-1,iz))*NV + Math.max(0,Math.min(NV-1,ix))];
-  const pos = new Float32Array(NV*NV*3), cols = new Float32Array(NV*NV*3);
-  for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
-    const kk = iz*NV+ix, x = ix*hS-N/2, z = iz*hS-N/2, h = HG[kk];
-    pos[kk*3] = x; pos[kk*3+1] = h; pos[kk*3+2] = z;
-    const u = x+N/2-.5, v = z+N/2-.5, i = Math.floor(u), j = Math.floor(v), fu = cosi(u-i), fv = cosi(v-j);
-    let r2 = 0, g2 = 0, b2 = 0;
-    for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]]){
-      const q = TCo[ci(a)][ci(c)]; r2 += q.r*w; g2 += q.g*w; b2 += q.b*w;
-    }
-    // granite tint follows the top-third levels, blended smoothly across
-    // the four surrounding tiles.
-    let pf = 0;
-    for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]])
-      if (sinaiG[ci(a)][ci(c)] && ter[ci(a)][ci(c)] >= 3) pf += w;
-    const pal = pf > .45 ? RK_GRAN : RK_SAND;
-    const gx = (hAt(ix+1,iz)-hAt(ix-1,iz))/(2*hS), gz = (hAt(ix,iz+1)-hAt(ix,iz-1))/(2*hS);
-    const slope = 1-1/Math.sqrt(1+gx*gx+gz*gz);
-    const rm = smstep(.1,.4,slope), rc = pal[Math.floor(whash(ix>>1,iz>>1)*4.99)];
-    const ao = (hAt(ix+1,iz)+hAt(ix-1,iz)+hAt(ix,iz+1)+hAt(ix,iz-1))/4 - h;
-    const sh = 1 - Math.max(0, Math.min(.3, ao*16)) + Math.max(0, Math.min(.07, -ao*10));
-    const mr = Math.max(rm, .2*Math.max(0, Math.min(1, ao*12)), pf > .2 ? .4 : 0);
-    cols[kk*3]   = Math.min(1, (r2 + (rc[0]-r2)*mr) * sh);
-    cols[kk*3+1] = Math.min(1, (g2 + (rc[1]-g2)*mr) * sh);
-    cols[kk*3+2] = Math.min(1, (b2 + (rc[2]-b2)*mr) * sh);
-  }
-  const idx = new Uint32Array(NS6*NS6*6); let ii = 0;
-  for (let iz=0;iz<NS6;iz++) for (let ix=0;ix<NS6;ix++){
-    const a = iz*NV+ix, b = a+1, c = a+NV, d = c+1;
-    idx[ii++] = a; idx[ii++] = c; idx[ii++] = b; idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
-  }
-  const gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  gg.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  gg.setIndex(new THREE.BufferAttribute(idx, 1));
-  gg.computeVertexNormals();
   const gmat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.95, flatShading:false });
   // fragment detail: sand ripples and grain on flat ground, eroded strata
   // and streaks on the rock faces (all procedural, world space).
@@ -7148,21 +7445,73 @@ function rebuildGround(){
       .replace('#include <common>', '#include <common>\nvarying vec3 vWP;varying vec3 vWN;\nfloat h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\nfloat vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1.0,0.0)),f.x),mix(h21(i+vec2(0.0,1.0)),h21(i+vec2(1.0,1.0)),f.x),f.y);}')
       .replace('#include <color_fragment>', '#include <color_fragment>\nfloat slp=1.0-clamp(normalize(vWN).y,0.0,1.0);float flatW=1.0-smoothstep(0.10,0.38,slp);\nfloat rp=sin((vWP.x*0.85+vWP.z*0.53)*15.0+vn(vWP.xz*1.6)*5.5)*0.5+0.5;\nfloat rip=mix(0.925,1.035,rp*rp)*mix(0.95,1.04,vn(vWP.xz*0.3));\nfloat grain=0.955+0.09*h21(floor(vWP.xz*70.0));\nfloat st=sin(vWP.y*30.0+vn(vec2((vWP.x+vWP.z)*2.5,vWP.y*5.0))*3.0)*0.5+0.5;\nfloat streak=vn(vec2((vWP.x+vWP.z)*6.0,vWP.y*1.5));\nfloat rock=mix(0.80,1.07,st)*mix(0.86,1.04,streak);\ndiffuseColor.rgb*=mix(rock,rip*grain,flatW);');
   };
-  const gm = new THREE.Mesh(gg, gmat);
-  gm.receiveShadow = true; gm.castShadow = true;
-  GR3.add(gm);
-  // sand skirt round the map edge
-  {
+  for (let gzi=0; gzi<WINDOW_GRIDS; gzi++) for (let gxi=0; gxi<WINDOW_GRIDS; gxi++){
+    const tx0 = gxi*GSIZE, tz0 = gzi*GSIZE;            // window-local tile range
+    const HG = new Float32Array(NV*NV);
+    for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
+      const x = tx0 + ix*hS - N/2, z = tz0 + iz*hS - N/2;
+      HG[iz*NV+ix] = tileV(x, z) + 2*LV*smstep(.36,.64, mesaField(x, z));
+    }
+    for (let x=tx0;x<tx0+GSIZE;x++) for (let z=tz0;z<tz0+GSIZE;z++)
+      THV[x][z] = HG[((z-tz0)*S6+S6/2)*NV + (x-tx0)*S6 + S6/2];
+    for (let x=tx0;x<tx0+GSIZE;x++) for (let z=tz0;z<tz0+GSIZE;z++){
+      let mn = 1e9;
+      for (const [a,b] of [[1,1],[5,1],[1,5],[5,5],[3,1],[1,3],[5,3],[3,5]]) mn = Math.min(mn, HG[((z-tz0)*S6+b)*NV + (x-tx0)*S6 + a]);
+      FD[x][z] = Math.max(0, THV[x][z] - mn);
+    }
+    const hAt = (ix,iz) => HG[Math.max(0,Math.min(NV-1,iz))*NV + Math.max(0,Math.min(NV-1,ix))];
+    const pos = new Float32Array(NV*NV*3), cols = new Float32Array(NV*NV*3);
+    for (let iz=0;iz<NV;iz++) for (let ix=0;ix<NV;ix++){
+      const kk = iz*NV+ix, x = tx0 + ix*hS - N/2, z = tz0 + iz*hS - N/2, h = HG[kk];
+      pos[kk*3] = x; pos[kk*3+1] = h; pos[kk*3+2] = z;
+      const u = x+N/2-.5, v = z+N/2-.5, i = Math.floor(u), j = Math.floor(v), fu = cosi(u-i), fv = cosi(v-j);
+      let r2 = 0, g2 = 0, b2 = 0;
+      for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]]){
+        const q = TCo[ci(a)][ci(c)]; r2 += q.r*w; g2 += q.g*w; b2 += q.b*w;
+      }
+      // granite tint follows the top-third levels, blended smoothly across
+      // the four surrounding tiles.
+      let pf = 0;
+      for (const [a,c,w] of [[i,j,(1-fu)*(1-fv)],[i+1,j,fu*(1-fv)],[i,j+1,(1-fu)*fv],[i+1,j+1,fu*fv]])
+        if (sinaiG[ci(a)][ci(c)] && ter[ci(a)][ci(c)] >= 3) pf += w;
+      const pal = pf > .45 ? RK_GRAN : RK_SAND;
+      const gx2 = (hAt(ix+1,iz)-hAt(ix-1,iz))/(2*hS), gz2 = (hAt(ix,iz+1)-hAt(ix,iz-1))/(2*hS);
+      const slope = 1-1/Math.sqrt(1+gx2*gx2+gz2*gz2);
+      const rm = smstep(.1,.4,slope), rc = pal[Math.floor(whash(ix>>1,iz>>1)*4.99)];
+      const ao = (hAt(ix+1,iz)+hAt(ix-1,iz)+hAt(ix,iz+1)+hAt(ix,iz-1))/4 - h;
+      const sh = 1 - Math.max(0, Math.min(.3, ao*16)) + Math.max(0, Math.min(.07, -ao*10));
+      const mr = Math.max(rm, .2*Math.max(0, Math.min(1, ao*12)), pf > .2 ? .4 : 0);
+      cols[kk*3]   = Math.min(1, (r2 + (rc[0]-r2)*mr) * sh);
+      cols[kk*3+1] = Math.min(1, (g2 + (rc[1]-g2)*mr) * sh);
+      cols[kk*3+2] = Math.min(1, (b2 + (rc[2]-b2)*mr) * sh);
+    }
+    const idx = new Uint32Array(NS6*NS6*6); let ii = 0;
+    for (let iz=0;iz<NS6;iz++) for (let ix=0;ix<NS6;ix++){
+      const a = iz*NV+ix, b = a+1, c = a+NV, d = c+1;
+      idx[ii++] = a; idx[ii++] = c; idx[ii++] = b; idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
+    }
+    const gg = new THREE.BufferGeometry();
+    gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    gg.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    gg.setIndex(new THREE.BufferAttribute(idx, 1));
+    gg.computeVertexNormals();
+    const gm = new THREE.Mesh(gg, gmat);
+    gm.receiveShadow = true; gm.castShadow = true;
+    GR3.add(gm);
+    groundMeshes.push(gm);
+    // sand skirt only along the loaded window's outer edge
+    const west = gxi === 0, east = gxi === WINDOW_GRIDS-1, north = gzi === 0, south = gzi === WINDOW_GRIDS-1;
+    if (!(west || east || north || south)) continue;
     const sp = [], sc2 = [], c0 = _hx(0xb89a62);
     const seg = (h1,px,pz,h2,qx,qz) => {
       for (const [a,b,c] of [[px,h1,pz],[px,-.05,pz],[qx,h2,qz],[qx,h2,qz],[px,-.05,pz],[qx,-.05,qz]]){ sp.push(a,b,c); sc2.push(c0[0],c0[1],c0[2]); }
     };
     for (let t=0;t<NS6;t++){
-      const a = t*hS-N/2, b = a+hS;
-      seg(hAt(t,0), a, -N/2, hAt(t+1,0), b, -N/2);
-      seg(hAt(t,NS6), a, N/2, hAt(t+1,NS6), b, N/2);
-      seg(hAt(0,t), -N/2, a, hAt(0,t+1), -N/2, b);
-      seg(hAt(NS6,t), N/2, a, hAt(NS6,t+1), N/2, b);
+      const a = tx0 + t*hS - N/2, b = a+hS;
+      if (north) seg(hAt(t,0), a, tz0 - N/2, hAt(t+1,0), b, tz0 - N/2);
+      if (south) seg(hAt(t,NS6), a, tz0+GSIZE - N/2, hAt(t+1,NS6), b, tz0+GSIZE - N/2);
+      if (west)  seg(hAt(0,t), tx0 - N/2, a, hAt(0,t+1), tx0 - N/2, b);
+      if (east)  seg(hAt(NS6,t), tx0+GSIZE - N/2, a, hAt(NS6,t+1), tx0+GSIZE - N/2, b);
     }
     const sgg = new THREE.BufferGeometry();
     sgg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sp), 3));
@@ -7170,8 +7519,8 @@ function rebuildGround(){
     sgg.computeVertexNormals();
     GR3.add(new THREE.Mesh(sgg, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:1, side:THREE.DoubleSide })));
   }
-  groundMesh = gm;
 }
+
 
 /* ---- grid sync: gameplay piece lists -> tent grid ---- */
 let tentTribe = new Map();
@@ -7460,7 +7809,7 @@ function build(){
     fm(.3*k2,.18*k2,col,.16*k2,-.09*k2);
     fm(.12*k2,.1*k2,0xf5e9c8,.1*k2,-.09*k2);
     fm(.1*k2,.09*k2,col,.34*k2,-.1*k2);
-    flags.push({ g:fg, r0:d*PI/2, ph:whash(t.x,t.z)*6 });
+    flags.push({ g:fg, r0:d*PI/2, ph:whash(absTileX(t.x),absTileY(t.z))*6 });
   }
   // ---- fires, hearth stones, sheep folds — example campfire at each hearth
   for (const f of nodes.filter(q => q.t === 'fire')){
@@ -8608,6 +8957,7 @@ function makeAnimal(goat, r){
   return gp;
 }
 function findWalk(cx,cz){
+  cx = Math.round(cx); cz = Math.round(cz);   // camps may stand on fractional sites
   for (let rr=0;rr<8;rr++)
     for (let i=-rr;i<=rr;i++) for (let j=-rr;j<=rr;j++)
       if (Math.max(Math.abs(i),Math.abs(j)) === rr && walkable(cx+i,cz+j)) return [cx+i,cz+j];
@@ -8921,6 +9271,30 @@ function draw(dt = 0){
 
 /* ------------------------------- HUD --------------------------------- */
 
+function renderMiniMap(){
+  const grid = $('mmGrid');
+  if (!grid || grid.children.length !== GRID_N){
+    grid.innerHTML = '';
+    for (let gz=0; gz<GRID_N; gz++) for (let gx=0; gx<GRID_N; gx++){
+      const cell = document.createElement('div');
+      cell.className = 'mm-cell'; cell.dataset.g = gx+','+gz;
+      grid.appendChild(cell);
+    }
+  }
+  const seen = state.gridSeen || new Set();
+  const cgx = Math.floor(absTileX(CAMP.x)/GSIZE), cgz = Math.floor(absTileY(CAMP.y)/GSIZE);
+  for (const cell of grid.children){
+    const [gx, gz] = cell.dataset.g.split(',').map(Number);
+    const isWin = gx >= windowGX && gx < windowGX+WINDOW_GRIDS && gz >= windowGZ && gz < windowGZ+WINDOW_GRIDS;
+    cell.classList.toggle('cur', isWin);
+    cell.classList.toggle('seen', !isWin && seen.has(cell.dataset.g));
+    let camp = cell.querySelector('.mm-camp');
+    if (gx === cgx && gz === cgz){
+      if (!camp){ camp = document.createElement('div'); camp.className = 'mm-camp'; camp.innerHTML = '<i></i>'; cell.appendChild(camp); }
+    } else if (camp) camp.remove();
+  }
+}
+
 function updateHud(force){
   const now = performance.now();
   if (!force && now - state.lastHud < 110) return;
@@ -8993,12 +9367,17 @@ function updateHud(force){
   $('dhWater').textContent = dt2.water;
   $('dhWood').textContent = dt2.wood;
   $('dhStone').textContent = dt2.stone;
+  renderMiniMap();
   const daily = $('dailyHud');
   if (daily){
     if (anyVital){
       const v = $('vitals');
       daily.style.top = (v.offsetTop + v.offsetHeight + 6) + 'px';
     } else daily.style.top = '';
+  }
+  const mini = $('miniMap');
+  if (mini){
+    mini.style.top = (daily.offsetTop + daily.offsetHeight + 6) + 'px';
   }
 
   $('rSkin').textContent = state.waterskin;
@@ -9034,14 +9413,30 @@ function updateHud(force){
 
 /* ------------------------------- map --------------------------------- */
 
+/* Satellite plate of Arabia and Sinai behind the journey map (loaded once,
+   drawn whenever the map is open). */
+let arabiaImg = null;
+const arabiaAsset = new Image();
+arabiaAsset.src = './assets/graphics/arabia.jpeg';
+arabiaAsset.onload = () => { arabiaImg = arabiaAsset; if (state.mode === 'map') drawMap(); };
+
 function drawMap(){
   const c = $('mapCanvas');
   const mg = c.getContext('2d');
   const mw = c.width, mh = c.height;
   mg.clearRect(0,0,mw,mh);
-  const bg = mg.createLinearGradient(0,0,0,mh);
-  bg.addColorStop(0,'#d8bd8a'); bg.addColorStop(1,'#b9955e');
-  mg.fillStyle = bg; mg.fillRect(0,0,mw,mh);
+  if (arabiaImg && arabiaImg.complete && arabiaImg.naturalWidth){
+    const sc = Math.max(mw/arabiaImg.naturalWidth, mh/arabiaImg.naturalHeight);
+    const dw = arabiaImg.naturalWidth*sc, dh = arabiaImg.naturalHeight*sc;
+    mg.drawImage(arabiaImg, (mw-dw)/2, (mh-dh)/2, dw, dh);
+    // a parchment wash keeps the terrain paint and labels readable
+    mg.fillStyle = 'rgba(216,189,138,.38)';
+    mg.fillRect(0,0,mw,mh);
+  } else {
+    const bg = mg.createLinearGradient(0,0,0,mh);
+    bg.addColorStop(0,'#d8bd8a'); bg.addColorStop(1,'#b9955e');
+    mg.fillStyle = bg; mg.fillRect(0,0,mw,mh);
+  }
   mg.fillStyle = 'rgba(120,80,40,.08)';
   for (let i=0;i<900;i++){
     mg.fillRect((i*97)%mw, (i*53)%mh, 1.4, 1.4);
@@ -9054,7 +9449,7 @@ function drawMap(){
 
   // Explored ground.
   for (let x=0;x<N;x++) for (let y=0;y<N;y++){
-    if (!state.explored.has(x*100+y)) continue;
+    if (!state.explored.has(x*1000+y)) continue;
     let col = '#cdb07a';
     if (gtype[x][y] === 2) col = '#679ab0';
     else if (kind[x][y] === K_TAB) col = '#e8dcbe';
@@ -9067,29 +9462,51 @@ function drawMap(){
   // Fog over unexplored.
   mg.fillStyle = 'rgba(24,16,10,.80)';
   for (let x=0;x<N;x++) for (let y=0;y<N;y++){
-    if (state.explored.has(x*100+y)) continue;
+    if (state.explored.has(x*1000+y)) continue;
     mg.fillRect(mx(x),my(y),scale+0.5,scale+0.5);
   }
 
-  // Journey line.
-  mg.strokeStyle = 'rgba(232,184,74,.28)';
+  // Journey line: dotted legs through every visited halt, in the order the
+  // pillar led them, then the open leg toward the next water or wilderness.
+  const routeStations = (state.routeLog||[]).map(id => STATIONS.findIndex(st => st.id === id)).filter(i => i >= 0);
+  mg.strokeStyle = 'rgba(232,184,74,.34)';
   mg.lineWidth = 1.5; mg.setLineDash([4,4]);
   mg.beginPath();
-  STATIONS.forEach((st,i) => i ? mg.lineTo(mx(st.x),my(st.y)) : mg.moveTo(mx(st.x),my(st.y)));
+  routeStations.forEach((i,k) => k ? mg.lineTo(mx(STATIONS[i].x),my(STATIONS[i].y)) : mg.moveTo(mx(STATIONS[i].x),my(STATIONS[i].y)));
+  const dest = currentStation();
+  if (dest){
+    const fromSt = routeStations.length ? STATIONS[routeStations[routeStations.length-1]] : CAMP;
+    mg.moveTo(mx(fromSt.x),my(fromSt.y));
+    mg.lineTo(mx(dest.x),my(dest.y));
+  }
   mg.stroke(); mg.setLineDash([]);
 
-  // Stations.
+  // Camps pitched along the journey: a tent glyph on every site, the live
+  // camp crowned with a label.
+  (state.campSites||[]).forEach(cs => {
+    if (cs.x < 0 || cs.y < 0 || cs.x > N || cs.y > N) return;   // pitched outside the loaded window
+    const x = mx(cs.x), y = my(cs.y);
+    mg.fillStyle = '#cfb98d';
+    mg.beginPath(); mg.moveTo(x-5.5,y+3.5); mg.lineTo(x,y-4.5); mg.lineTo(x+5.5,y+3.5); mg.closePath(); mg.fill();
+    mg.strokeStyle = 'rgba(42,26,16,.85)'; mg.lineWidth = 1.3; mg.stroke();
+  });
+  {
+    const cx2 = mx(CAMP.x), cy2 = my(CAMP.y);
+    mg.fillStyle = '#f0e2c4';
+    mg.beginPath(); mg.moveTo(cx2-7,cy2+4); mg.lineTo(cx2,cy2-5.5); mg.lineTo(cx2+7,cy2+4); mg.closePath(); mg.fill();
+    mg.strokeStyle = '#2a1a10'; mg.lineWidth = 1.6; mg.stroke();
+    mg.fillStyle = '#f8ecd2'; mg.font = '600 11px Cinzel, Georgia, serif'; mg.textAlign = 'center';
+    mg.fillText('Camp', cx2, cy2-10);
+  }
+
+  // Stations: only the visited halts and the living pillar are shown — the
+  // rest of the wilderness keeps its secrets.
   STATIONS.forEach((st,i) => {
-    const x = mx(st.x), y = my(st.y);
-    const known = state.explored.has(Math.floor(st.x)*100+Math.floor(st.y)) || state.visited.has(i);
-    if (!known){
-      mg.fillStyle = '#6b5a44';
-      mg.beginPath(); mg.arc(x,y,4.5,0,6.28); mg.fill();
-      return;
-    }
-    const active = state.stationIndex === i;
     const visited = state.visited.has(i);
-    mg.fillStyle = visited ? '#9dbb74' : active ? '#e8b84a' : st.color;
+    const active = state.stationIndex === i;
+    if (!visited && !active) return;
+    const x = mx(st.x), y = my(st.y);
+    mg.fillStyle = visited ? '#9dbb74' : '#e8b84a';
     mg.beginPath(); mg.arc(x,y,active?7:5,0,6.28); mg.fill();
     if (active){
       mg.strokeStyle = 'rgba(232,184,74,.55)';
@@ -9606,10 +10023,16 @@ $('mClose').addEventListener('click', closeMarket);
 
 /* -------------------------------- loop ------------------------------- */
 
+let lastGridCheck = 0;
 function frame(ts){
   syncScreenWake();
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts;
+  if (state.mode === 'playing' && ts - lastGridCheck > 700){
+    lastGridCheck = ts;
+    const pg = playerGridAbs();
+    if (pg.gx !== windowGX+1 || pg.gz !== windowGZ+1) recenterWindow(pg);
+  }
   if (state.mode === 'playing') update(dt);
   else updatePeople(dt * 0.5);
   if (state.mode === 'map') drawMap();
@@ -9628,7 +10051,9 @@ function boot(){
   syncGrid();
   build();
   state.explored = new Set();
+  state.gridSeen = state.gridSeen || new Set();
   state.player = { x:CAMP.x, y:CAMP.y, tx:null, ty:null, moving:false };
+  placePlayerAtCamp();
   camX = 0;
   camY = 0;
   revealAround(CAMP.x, CAMP.y, 6);
@@ -9639,8 +10064,10 @@ function boot(){
 
   const cont = $('menuContinue'), begin = $('menuBegin');
   const found = readSave();
-  /* With a saved journey, Continue is the primary action and Begin is the
-     explicit fresh-start choice. */
+  /* With a saved journey, Continue is the only way onward; fresh starts live
+     in the pause panel under 'Start a new journey'. */
+  begin.hidden = !!found;
+  begin.title = '';
   if (found){
     cont.hidden = false;
     cont.classList.add('primary'); cont.classList.remove('ghost');
@@ -9659,6 +10086,7 @@ function boot(){
   const shared = consumeShareLink();
   if (shared){
     state.sharedJourney = shared;
+    begin.hidden = false;
     begin.classList.add('primary'); begin.classList.remove('ghost');
     cont.classList.remove('primary'); cont.classList.add('ghost');
     begin.textContent = 'Begin shared wilderness';

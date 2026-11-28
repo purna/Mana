@@ -1,0 +1,141 @@
+[
+  {
+    "id": "theft-multiplier",
+    "category": "Theft & Restitution",
+    "tier": 1,
+    "titles": ["The Stolen Beast of {town}", "A Night Raid on {o}'s Pen", "The Thief Who Sold at Dawn", "Livestock Theft near {town}"],
+    "slots": { "t": "man", "o": "man", "town": "town" },
+    "frames": [
+      "{t} stole {@animal} by night and {@fate}. Two witnesses testify to the theft. {@means}.",
+      "At {town}, {o} accuses {t} of taking {@animal}. {t} {@fate}. Two witnesses confirm it. {@means}."
+    ],
+    "evidence": "{@animal.ev}; {@fate.ev}; {@means.ev}.",
+    "witness": "Two Witnesses to the Theft",
+    "axes": [
+      { "id": "animal", "options": [
+        { "id": "ox", "text": "{o}'s prized plough-ox", "ev": "stolen animal is an ox" },
+        { "id": "sheep", "text": "{o}'s best breeding ewe", "ev": "stolen animal is a sheep" }
+      ]},
+      { "id": "fate", "options": [
+        { "id": "sold", "text": "sold it to a butcher beyond the hills before {o} could track it down", "ev": "animal already sold" },
+        { "id": "slaughtered", "text": "slaughtered it and shared the meat at a feast", "ev": "animal already slaughtered" },
+        { "id": "alive", "weight": 1.3, "text": "was caught at dawn driving it home, still alive and unharmed", "ev": "animal recovered alive" }
+      ]},
+      { "id": "means", "options": [
+        { "id": "rich", "text": "{t} is a prosperous man who can pay any judgement", "ev": "thief is solvent" },
+        { "id": "flocks", "text": "{t} owns several flocks and a good house", "ev": "thief owns ample property" }
+      ]}
+    ],
+    "hint": "The multiplier depends on two facts: what kind of animal it was, and what happened to it.",
+    "codex": ["codex-ox-slaughtered", "codex-sheep-slaughtered", "codex-live-theft"],
+    "rulings": {
+      "double": { "label": "Double Restitution", "summary": "Require {t} to repay twice the animal's value.", "harm": 1 },
+      "four": { "label": "Fourfold Restitution", "summary": "Order {t} to pay four animals' worth for the one stolen.", "harm": 1 },
+      "five": { "label": "Fivefold Restitution", "summary": "Order {t} to pay five animals' worth for the one stolen.", "harm": 1 },
+      "death": { "label": "Capital Execution for Livestock Theft", "summary": "Sentence {t} to death, as under neighbouring royal codes.", "harm": 3, "trap": "ane",
+        "penalty": { "title": "Life Valued Below Property", "effect": "Executing a thief who can simply repay inverts the Torah's order: property crimes are repaid in property, never in blood." } },
+      "waive": { "label": "Return the Animal and Fine Nothing", "summary": "Close the matter once the owner has his animal or its price back.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "fate": "alive" }, "ruling": "double", "exclude": [],
+        "rationale": "When the stolen animal is found alive in the thief's possession, the penalty is double (Exod 22:4), whatever the species.",
+        "citations": ["Exod 22:4"],
+        "blessing": { "title": "Honest Measure Restored", "effect": "The owner is repaid twice over and neighbours see theft does not pay." } },
+      { "when": { "animal": "ox" }, "ruling": "five", "exclude": [],
+        "rationale": "An ox that has been slaughtered or sold carries a fivefold penalty (Exod 22:1). The heavier rate reflects both the thief's hardened intent in disposing of the animal and the ox's irreplaceable role in ploughing.",
+        "citations": ["Exod 22:1"],
+        "blessing": { "title": "The Plough-Ox Restored", "effect": "The farmer recovers more than he lost; theft of working animals becomes unprofitable." } },
+      { "ruling": "four", "exclude": [],
+        "rationale": "A sheep that has been slaughtered or sold carries a fourfold penalty (Exod 22:1), lower than the ox because it is not a working animal.",
+        "citations": ["Exod 22:1"],
+        "blessing": { "title": "Flock Restored", "effect": "The shepherd is repaid fourfold and the district's flocks are safer." } }
+    ]
+  },
+
+  {
+    "id": "theft-insolvent",
+    "category": "Theft & Restitution",
+    "tier": 2,
+    "titles": ["The Live Lamb and the Insolvent Thief", "{t} Cannot Pay", "A Pen Raided at {town}", "The Penniless Thief"],
+    "slots": { "t": "man", "o": "man", "town": "town" },
+    "frames": [
+      "Elders searching {t}'s pen at {town} find {o}'s stolen {@goods} alive and unharmed. {t} confesses. {@means}",
+      "{o} accuses {t} of stealing his {@goods}. The animals are found alive in {t}'s pen and {t} confesses. {@means}"
+    ],
+    "evidence": "{@goods.ev}; {@means.ev}.",
+    "witness": "Stolen Property Found in Possession",
+    "axes": [
+      { "id": "goods", "options": [
+        { "id": "a", "text": "sheep and donkey", "ev": "animals recovered alive" },
+        { "id": "b", "text": "plough-ox and donkey", "ev": "animals recovered alive" },
+        { "id": "c", "text": "young goats", "ev": "animals recovered alive" }
+      ]},
+      { "id": "means", "options": [
+        { "id": "poor", "weight": 1.5, "text": "{t} owns neither silver nor land with which to pay any judgement.", "ev": "perpetrator completely insolvent" },
+        { "id": "ok", "text": "{t} owns a good farm and can pay what the court orders.", "ev": "perpetrator can pay" }
+      ]}
+    ],
+    "hint": "Check what happened to the animals, and whether the thief is able to pay.",
+    "codex": ["codex-live-theft"],
+    "rulings": {
+      "double_serve": { "label": "Double Restitution with Temporary Servitude", "summary": "Assess twice the value and bind {t} to temporary service until it is worked off.", "harm": 1 },
+      "double": { "label": "Double Restitution from {t}'s Property", "summary": "Order {t} to pay twice the animals' value from {t:his} own means.", "harm": 1 },
+      "execute": { "label": "Execute the Thief", "summary": "Impose the death penalty on {t} because {t:he} cannot or will not pay the judgement.", "harm": 3, "trap": "ane" },
+      "jail": { "label": "Fourfold Fine and Indefinite Prison", "summary": "Levy four animals' worth and keep {t} in prison until his kin settle the whole sum.", "harm": 2 },
+      "waive": { "label": "Waive All Restitution", "summary": "Return the live animals alone and excuse {t} from any further duty to the owner.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "means": "poor" }, "ruling": "double_serve", "exclude": [],
+        "rationale": "Live stolen animals carry double restitution (Exod 22:4). A thief who cannot pay is sold for his theft (Exod 22:3), meaning temporary bonded service to work off the debt, never execution or perpetual debtors' prison.",
+        "citations": ["Exod 22:3–4"],
+        "blessing": { "title": "Restitution Without Cruelty", "effect": "The owner is repaid and the thief keeps his life and a way back into the community." } },
+      { "ruling": "double", "exclude": [],
+        "rationale": "Live stolen animals carry double restitution (Exod 22:4). The thief can pay, so no servitude is needed.",
+        "citations": ["Exod 22:4"],
+        "blessing": { "title": "Measure for Measure", "effect": "The penalty is clear and proportionate; neighbours know what theft will cost." } }
+    ]
+  },
+
+  {
+    "id": "theft-trust",
+    "category": "Theft & Restitution",
+    "tier": 3,
+    "titles": ["Goods Left in Trust", "The Missing Fleeces", "Two Claimants and One Ox", "The Keeper's Oath"],
+    "slots": { "o": "man", "k": "man", "t": "man", "town": "town" },
+    "frames": [
+      "At {town}, the elders hear a matter about goods left with a neighbour. {@case}"
+    ],
+    "evidence": "{@case.ev}.",
+    "witness": "{@case.w}",
+    "axes": [
+      { "id": "case", "options": [
+        { "id": "found", "text": "{o} left a quantity of silver with {k} for safekeeping. It was stolen from {k}'s house, and the thief, {t}, has been caught.", "ev": "entrusted goods stolen; thief caught", "w": "Thief Identified and Caught" },
+        { "id": "notfound", "text": "{o} left a quantity of silver with {k}, and it vanished from {k}'s house. No thief has been found, and {o} suspects {k} himself.", "ev": "entrusted goods missing; no thief found", "w": "No Thief Found" },
+        { "id": "dispute", "text": "{o} and {k} each claim the same ox, and neither can prove it. Both come before the judges.", "ev": "two claimants, no proof", "w": "Rival Claims, No Proof" }
+      ]}
+    ],
+    "hint": "Entrusted goods have three different outcomes. Work out who has been proven to be at fault, if anyone.",
+    "codex": ["codex-entrusted-goods"],
+    "rulings": {
+      "thief_double": { "label": "The Thief Repays Double to the Owner", "summary": "Order {t} to pay {o} twice the value of the goods taken.", "harm": 2 },
+      "oath": { "label": "Keeper Swears Before the Judges", "summary": "{k} declares under oath that he did not lay a hand on {o}'s property; if cleared, no payment.", "harm": 2 },
+      "judges_double": { "label": "Judges Name the Guilty Claimant, Who Pays Double", "summary": "The court decides who is at fault and that party pays the other twice the value.", "harm": 2 },
+      "keeper_pays": { "label": "Keeper Repays the Full Value at Once", "summary": "Hold {k} liable for the whole loss even though no one proves he took it.", "harm": 2, "trap": "ane" },
+      "split": { "label": "Split the Loss Evenly", "summary": "Divide the loss equally between the owner and the keeper.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "case": "found" }, "ruling": "thief_double", "exclude": [],
+        "rationale": "If the thief is found, he pays double (Exod 22:7). The keeper who guarded in good faith owes nothing.",
+        "citations": ["Exod 22:7"],
+        "blessing": { "title": "The Guilty Party Pays", "effect": "Neighbours can safely leave goods in trust; the thief, not the keeper, carries the loss." } },
+      { "when": { "case": "notfound" }, "ruling": "oath", "exclude": [],
+        "rationale": "If no thief is found, the keeper comes before the judges and swears he did not lay hands on his neighbour's goods (Exod 22:8). The Torah does not make an honest keeper pay merely because something went missing.",
+        "citations": ["Exod 22:8, 10–11"],
+        "blessing": { "title": "Trust Protected", "effect": "Honest keepers are not ruined by thieves; an oath before God keeps false claims in check." } },
+      { "ruling": "judges_double", "exclude": [],
+        "rationale": "When two claimants dispute the same property, the judges decide, and the party they condemn pays double to the other (Exod 22:9).",
+        "citations": ["Exod 22:9"],
+        "blessing": { "title": "A Court Worth Trusting", "effect": "Liars learn that a false claim costs twice as much as the honest loss." } }
+    ]
+  }
+]

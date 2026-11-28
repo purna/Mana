@@ -1,0 +1,163 @@
+[
+  {
+    "id": "lex-assault",
+    "category": "Lex Talionis",
+    "tier": 1,
+    "titles": ["The Quarry Brawl", "Blows at the {place:t}", "An Eye for an Eye?", "The Bedridden Mason"],
+    "slots": { "a": "man", "b": "man", "place": "fieldPlace" },
+    "frames": [
+      "During a quarrel at {place}, {a} {@injury}. {@demand}.",
+      "{b} brings {a} before the elders: in a quarrel at {place}, {a} {@injury}. {@demand}."
+    ],
+    "evidence": "{@injury.ev}.",
+    "witness": "Two Witnesses & Medical Inspection",
+    "axes": [
+      { "id": "injury", "options": [
+        { "id": "temp", "text": "struck {b} with a rock. {b} did not die but lay bedridden for six weeks before walking with a staff", "ev": "non-fatal assault; temporary incapacity" },
+        { "id": "eye", "text": "struck {b} with a rock and destroyed one of {b:his} eyes for good", "ev": "permanent loss of an eye confirmed" },
+        { "id": "tooth", "text": "struck {b} in the face with a rock and knocked out {b:his} front tooth", "ev": "permanent loss of a tooth confirmed" }
+      ]},
+      { "id": "demand", "options": [
+        { "id": "leg", "text": "{b} demands that {a}'s own leg be broken in literal retaliation" },
+        { "id": "same", "text": "{b}'s family demands that {a} suffer exactly the same injury" }
+      ]}
+    ],
+    "hint": "Compare what the injured man has lost: only time and health, or something that will never come back.",
+    "codex": ["codex-nonfatal-assault", "codex-lex-talionis"],
+    "rulings": {
+      "time": { "label": "Compensate Lost Time & Full Medical Care", "summary": "Order {a} to pay {b}'s lost wages and healing costs until fully recovered.", "harm": 2 },
+      "damages": { "label": "Assess Proportional Damages for the Loss", "summary": "Order {a} to pay damages equal to the permanent harm, plus all healing costs.", "harm": 2 },
+      "literal": { "label": "Inflict the Identical Injury on {a}", "summary": "Enforce literal bodily retaliation by maiming {a} in exactly the way {b} was hurt.", "harm": 2, "trap": "harsh" },
+      "stripes": { "label": "Flog {a} Without Payment", "summary": "Administer 39 stripes to {a} in public and dismiss the financial claim entirely.", "harm": 1 },
+      "dismiss": { "label": "Dismiss Both Claims", "summary": "Rule that mutual quarrelling voids any right to recovery for either man.", "harm": 1 }
+    },
+    "rules": [
+      { "when": { "injury": "temp" }, "ruling": "time", "exclude": [],
+        "rationale": "When the victim recovers, Exodus 21:18–19 requires the assailant to pay for the lost time and complete healing. Lex talionis is a principle of proportional damages, not literal mutilation.",
+        "citations": ["Exod 21:18–19", "Lev 19:18"], "blessing": { "title": "Vengeance Capped", "effect": "Quarrels end with repayment instead of a cycle of maiming." } },
+      { "ruling": "damages", "exclude": [],
+        "rationale": "For a permanent injury, 'eye for eye, tooth for tooth' (Exod 21:24; Lev 24:19–20; Deut 19:21) sets a measure: the court assesses damages equal to the harm, no more and no less, in addition to healing costs.",
+        "citations": ["Exod 21:24", "Lev 24:19–20", "Deut 19:21"], "blessing": { "title": "Proportion Preserved", "effect": "The penalty matches the harm; no one is mutilated and no one is under-compensated." } }
+    ]
+  },
+
+  {
+    "id": "lex-servant",
+    "category": "Lex Talionis",
+    "tier": 2,
+    "titles": ["The Master Who Struck His Servant", "{m}'s Rod", "A Servant's Eye", "Blows in the Household"],
+    "slots": { "m": "man", "s": { "anyOf": ["man", "woman"] }, "town": "town" },
+    "frames": [
+      "At {town}, a bondservant's household brings a complaint: {@outcome}. {m} argues that a master may do as he pleases with his own household.",
+      "{s}'s kin bring {m} before the elders. {@outcome}. {m} claims that no penalty applies to a master."
+    ],
+    "evidence": "{@outcome.ev}.",
+    "witness": "{@outcome.w}",
+    "axes": [
+      { "id": "outcome", "options": [
+        { "id": "eye", "text": "in a rage {m} struck {s}, {m:his} bondservant, across the face and destroyed one eye", "ev": "permanent loss of an eye", "w": "Permanent Loss of Eye Confirmed" },
+        { "id": "tooth", "text": "{m} knocked out one of {s}'s teeth in a fit of temper", "ev": "permanent loss of a tooth", "w": "Permanent Loss of Tooth Confirmed" },
+        { "id": "died", "text": "{m} beat {s}, {m:his} bondservant, with a rod and {s} died under {m:his} hand", "ev": "servant died immediately", "w": "Servant Died at Once" },
+        { "id": "later", "text": "{m} beat {s}, {m:his} bondservant, with a rod; {s} lingered a day or two and then died", "ev": "servant survived a day or two", "w": "Servant Survived a Day or Two" }
+      ]}
+    ],
+    "hint": "The Torah protects bondservants, but the remedy differs for lasting injury, immediate death, and later death.",
+    "codex": ["codex-slave-maiming"],
+    "rulings": {
+      "free": { "label": "Set the Servant Free for the Injury", "summary": "Order {s} released immediately and unconditionally.", "harm": 3 },
+      "avenge": { "label": "Avenge the Servant's Death", "summary": "Hold {m} answerable for the killing as for any homicide.", "harm": 3 },
+      "later": { "label": "No Vengeance: the Master Bears the Loss", "summary": "Decline to avenge, since the servant survived a day or two and the loss is {m}'s own.", "harm": 2 },
+      "literal": { "label": "Gouge Out the Master's Eye", "summary": "Apply literal Lex Talionis and keep the servant bound.", "harm": 2, "trap": "harsh" },
+      "dismiss": { "label": "Dismiss: a Master Is Immune", "summary": "Rule that a master answers for nothing unless the servant dies on the spot.", "harm": 3, "trap": "ane" },
+      "fine": { "label": "Fine the Master 15 Shekels", "summary": "Leave the servant in bondage and fine the master.", "harm": 2, "trap": "ane" }
+    },
+    "rules": [
+      { "when": { "outcome": ["eye", "tooth"] }, "ruling": "free", "exclude": [],
+        "rationale": "In stark contrast to the Code of Hammurabi, which treated servants as chattel, Exodus 21:26–27 gives immediate, unconditional freedom to a servant whose eye or even a single tooth is destroyed by his master.",
+        "citations": ["Exod 21:26–27"], "blessing": { "title": "A Servant's Dignity Upheld", "effect": "Masters learn that a servant's body is not their property to destroy." } },
+      { "when": { "outcome": "died" }, "ruling": "avenge", "exclude": [],
+        "rationale": "If a servant dies under the master's hand, the master is to be avenged upon (Exod 21:20); the killing is not treated as a mere loss of property.",
+        "citations": ["Exod 21:20"], "blessing": { "title": "No One Above the Law", "effect": "Even a master's authority cannot excuse a killing." } },
+      { "ruling": "later", "exclude": [],
+        "rationale": "If the servant survives a day or two, the text declines vengeance because the servant is the master's own property and loss (Exod 21:21). It distinguishes this from death on the spot.",
+        "citations": ["Exod 21:20–21"], "blessing": { "title": "The Text Applied as Written", "effect": "The court holds to the text's careful distinction." } }
+    ]
+  },
+
+  {
+    "id": "lex-pregnant",
+    "category": "Lex Talionis",
+    "tier": 3,
+    "titles": ["The Brawl by the Spice Stalls", "A Fall in the Market", "{h}'s Wife", "Blows Near the Well"],
+    "slots": { "h": "man", "w": "woman", "a": "man", "b": "man", "town": "town" },
+    "frames": [
+      "At {town}, {a} and {b} brawled near the spice stalls and knocked down {h}'s pregnant wife {w}, causing a premature birth. {@outcome}. {h} demands harsh justice.",
+      "{h} brings {a} and {b} before the elders. In their brawl, {h}'s pregnant wife {w} was knocked down and gave birth early. {@outcome}. {h} demands harsh justice."
+    ],
+    "evidence": "{@outcome.ev}.",
+    "witness": "{@outcome.w}",
+    "axes": [
+      { "id": "outcome", "options": [
+        { "id": "none", "weight": 1.5, "text": "Midwives confirm that neither mother nor child suffered lasting injury or death", "ev": "premature birth without lasting harm", "w": "Midwives: No Lasting Harm" },
+        { "id": "eye", "text": "Midwives report that {w} lost the sight of one eye in the fall", "ev": "lasting injury to the mother", "w": "Midwives: Lasting Injury" },
+        { "id": "died", "text": "Midwives report that {w} died of her injuries", "ev": "the mother died", "w": "Midwives: Mother Died" }
+      ]}
+    ],
+    "hint": "The remedy depends entirely on the outcome for the mother and child.",
+    "codex": ["codex-lex-talionis"],
+    "rulings": {
+      "fine": { "label": "Court-Approved Monetary Fine", "summary": "Require the fighters to pay the fine {h} requests, as moderated by the judges.", "harm": 2 },
+      "talion": { "label": "Apply Lex Talionis Matching the Harm", "summary": "Assess the penalty the harm requires: life for life, eye for eye, no more.", "harm": 3 },
+      "execute": { "label": "Execute Both Brawlers ('Life for Life')", "summary": "Impose capital punishment automatically, whatever the medical outcome.", "harm": 3, "trap": "harsh" },
+      "exile": { "label": "Exile Both Fighters to a City of Refuge", "summary": "Treat the scuffle as manslaughter and send both men to a refuge city.", "harm": 2 },
+      "acquit": { "label": "Acquit Completely", "summary": "Dismiss the case against both men with no penalty at all.", "harm": 2, "trap": "lenient" }
+    },
+    "rules": [
+      { "when": { "outcome": "none" }, "ruling": "fine", "exclude": [],
+        "rationale": "Exodus 21:22 prescribes a fine proposed by the husband and moderated by the judges when the premature birth causes no further harm; 'life for life, eye for eye' (vv. 23–25) applies only when serious injury or death follows.",
+        "citations": ["Exod 21:22–25"], "blessing": { "title": "Penalty Fits the Harm", "effect": "The fighters pay, the family is satisfied, and no one is maimed over a scuffle." } },
+      { "ruling": "talion", "exclude": [],
+        "rationale": "When serious injury or death follows, Exodus 21:23–25 applies the full scale: life for life, eye for eye, tooth for tooth, with the judges ensuring the penalty matches the harm exactly.",
+        "citations": ["Exod 21:23–25", "Lev 24:19–20"], "blessing": { "title": "Measure for Measure", "effect": "The harm is answered in proportion, neither more nor less." } }
+    ]
+  },
+
+  {
+    "id": "lex-animal",
+    "category": "Lex Talionis",
+    "tier": 1,
+    "titles": ["The Slain Donkey", "Beast for Beast", "{a}'s Temper", "A Dead Ox at {town}"],
+    "slots": { "a": "man", "b": "man", "town": "town" },
+    "frames": [
+      "At {town}, {b} accuses {a} of killing {b}'s {@animal}: {a} {@deed}. {b} demands {a}'s life in return.",
+      "{b} brings {a} before the elders. {a} {@deed}, and {b}'s {@animal} is dead. {b} demands blood for blood."
+    ],
+    "evidence": "{@animal.ev}; {@deed.ev}.",
+    "witness": "Two Witnesses to the Killing of the Animal",
+    "axes": [
+      { "id": "animal", "options": [
+        { "id": "donkey", "text": "donkey", "ev": "a donkey was killed" },
+        { "id": "ox", "text": "plough-ox", "ev": "a plough-ox was killed" },
+        { "id": "goat", "text": "milking goat", "ev": "a milking goat was killed" }
+      ]},
+      { "id": "deed", "options": [
+        { "id": "rage", "text": "struck it down in a rage", "ev": "killed in anger" },
+        { "id": "ravine", "text": "drove it over the edge of a ravine in a fit of temper", "ev": "driven into a ravine" }
+      ]}
+    ],
+    "hint": "Read 'life for life' in the Torah's own words when the victim is an animal.",
+    "codex": ["codex-animal-life"],
+    "rulings": {
+      "replace": { "label": "Replace the Animal, Life for Life", "summary": "Order {a} to give {b} a living animal of equal worth in its place.", "harm": 1 },
+      "execute": { "label": "Execute {a} for the Beast's Life", "summary": "Take a human life for the animal's life, applying blood-for-blood to a beast.", "harm": 3, "trap": "harsh" },
+      "dismiss": { "label": "Dismiss: Beasts Are Mere Property", "summary": "Rule that no remedy lies for the death of a beast, since animals have no standing at law.", "harm": 2 },
+      "stripes": { "label": "Flog {a} and Order No Payment", "summary": "Give {a} stripes for his temper and award {b} nothing for the loss of the animal.", "harm": 1 },
+      "double": { "label": "Order Double Restitution", "summary": "Require {a} to pay {b} twice the animal's value as a penalty for the killing.", "harm": 1 }
+    },
+    "rules": [
+      { "ruling": "replace", "exclude": [],
+        "rationale": "'Whoever takes an animal's life shall make it good, life for life' (Lev 24:18, 21): he replaces the animal with one of equal worth. Lex talionis for an animal means exact replacement, not the offender's death.",
+        "citations": ["Lev 24:18, 21"], "blessing": { "title": "Fair Replacement", "effect": "The owner is made whole and the quarrel ends without bloodshed." } }
+    ]
+  }
+]
